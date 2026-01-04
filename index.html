@@ -677,6 +677,21 @@
                      return vA - vB;
                 });
 
+                // CÁLCULO DO TEMPO TOTAL DO BLOCO
+                let blockTotalMinutes = 0;
+                blockRecords.forEach(r => {
+                    if (r.startTime && r.endTime) {
+                        const [h1, m1] = r.startTime.split(':').map(Number);
+                        const [h2, m2] = r.endTime.split(':').map(Number);
+                        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+                        if (diff < 0) diff += 1440;
+                        blockTotalMinutes += diff;
+                    }
+                });
+                const bHours = Math.floor(blockTotalMinutes / 60);
+                const bMins = blockTotalMinutes % 60;
+                const blockDurationText = `${bHours}h ${bMins}min`;
+
                 const valvesHtml = blockRecords.map((r, index) => {
                     // Verifica se é o último item para não colocar borda embaixo
                     const isLast = index === blockRecords.length - 1;
@@ -711,13 +726,21 @@
                 `}).join('');
 
                 return `
-                <div class="pdf-card">
-                    <div class="flex justify-between items-center border-b border-slate-200 pb-2 mb-2 bg-slate-50 -mx-3 -mt-2 px-3 pt-2">
-                        <span class="text-sm font-bold text-slate-800 uppercase">BLOCO ${blockKey}</span>
-                        <span class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">${blockRecords.length > 1 ? blockRecords.length + ' REGISTROS' : '1 REGISTRO'}</span>
+                <div class="pdf-card flex flex-col justify-between h-full">
+                    <div>
+                        <div class="flex justify-between items-center border-b border-slate-200 pb-2 mb-2 bg-slate-50 -mx-3 -mt-2 px-3 pt-2">
+                            <span class="text-sm font-bold text-slate-800 uppercase">BLOCO ${blockKey}</span>
+                            <span class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">${blockRecords.length > 1 ? blockRecords.length + ' REGISTROS' : '1 REGISTRO'}</span>
+                        </div>
+                        <div class="flex flex-col gap-0">
+                            ${valvesHtml}
+                        </div>
                     </div>
-                    <div class="flex flex-col gap-0">
-                        ${valvesHtml}
+                    
+                    <!-- RODAPÉ DO BLOCO COM TOTAL DE HORAS -->
+                    <div class="mt-3 pt-2 border-t border-slate-300 flex justify-between items-center bg-green-50 -mx-3 -mb-2 px-3 py-2 rounded-b">
+                        <span class="text-[9px] font-bold text-green-800 uppercase tracking-wide">Tempo Total Bloco</span>
+                        <span class="text-xs font-black text-green-700">${blockDurationText}</span>
                     </div>
                 </div>
             `}).join('');
@@ -736,22 +759,34 @@
                 });
 
                 const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF('l', 'mm', 'a4');
                 
-                const pageWidth = 297;  
-                const pageHeight = 210; 
-                /* Margem reduzida para 1mm para subir ao maximo */
-                const margin = 1;
-                const imgWidth = pageWidth - (margin * 2);
+                // --- MODO PÁGINA INFINITA ---
+                // Define a largura fixa (baseada em A4 Paisagem para manter a escala)
+                const pdfWidth = 297; 
+                const margin = 2; // Margem pequena (2mm)
+                
+                // Calcula a altura necessária proporcionalmente
+                const imgWidth = pdfWidth - (margin * 2);
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                const usablePageHeight = pageHeight - (margin * 2);
+                
+                // Altura final do PDF = Altura da Imagem + Margens
+                let pdfHeight = imgHeight + (margin * 2);
+                
+                // Garante altura mínima de um A4 (210mm) para não ficar estranho se tiver pouco item
+                if (pdfHeight < 210) pdfHeight = 210;
 
-                let printedHeight = 0;
-                while (printedHeight < imgHeight) {
-                    if (printedHeight > 0) pdf.addPage();
-                    pdf.addImage(imgData, 'PNG', margin, margin - printedHeight, imgWidth, imgHeight);
-                    printedHeight += usablePageHeight;
-                }
+                // Cria o PDF com tamanho personalizado [largura, altura]
+                // A orientação é ajustada automaticamente baseada nas dimensões, mas forçamos 'p' se for muito comprido
+                const orientation = pdfHeight > pdfWidth ? 'p' : 'l';
+                
+                const pdf = new jsPDF({
+                    orientation: orientation,
+                    unit: 'mm',
+                    format: [pdfWidth, pdfHeight]
+                });
+
+                // Adiciona a imagem completa em uma única página
+                pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
 
                 const today = new Date();
                 const day = String(today.getDate()).padStart(2, '0');
