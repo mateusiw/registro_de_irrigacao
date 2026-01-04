@@ -552,11 +552,14 @@
             list.innerHTML = sortedKeys.map(blockKey => {
                 const blockRecords = grouped[blockKey];
                 
+                // ALTERADO: Ordenar PRIMEIRO pelo horário de início, DEPOIS pela válvula
                 blockRecords.sort((a, b) => {
+                     const timeDiff = a.startTime.localeCompare(b.startTime);
+                     if(timeDiff !== 0) return timeDiff;
+                     
                      const vA = parseInt(a.valve) || 0;
                      const vB = parseInt(b.valve) || 0;
-                     if(vA !== vB) return vA - vB;
-                     return a.startTime.localeCompare(b.startTime);
+                     return vA - vB;
                 });
 
                 const rowsHtml = blockRecords.map(rec => {
@@ -664,10 +667,14 @@
             gridContainer.innerHTML = Object.keys(grouped).map(blockKey => {
                 const blockRecords = grouped[blockKey];
                 
+                // ALTERADO (PDF): Ordenar PRIMEIRO pelo horário de início, DEPOIS pela válvula
                 blockRecords.sort((a, b) => {
-                     const valveDiff = parseInt(a.valve) - parseInt(b.valve);
-                     if(valveDiff !== 0) return valveDiff;
-                     return a.startTime.localeCompare(b.startTime);
+                     const timeDiff = a.startTime.localeCompare(b.startTime);
+                     if(timeDiff !== 0) return timeDiff;
+
+                     const vA = parseInt(a.valve) || 0;
+                     const vB = parseInt(b.valve) || 0;
+                     return vA - vB;
                 });
 
                 const valvesHtml = blockRecords.map((r, index) => {
