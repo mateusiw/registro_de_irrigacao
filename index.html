@@ -75,18 +75,24 @@
             </div>
         </div>
         
-        <!-- Área da Direita: Contador e Botão -->
-        <div class="flex gap-3 items-center">
+        <!-- Área da Direita: Contador e Botões -->
+        <div class="flex gap-2 items-center">
             <!-- Contador com Rótulo -->
-            <div class="flex flex-col items-end">
-                <span class="text-[9px] text-green-200 font-bold uppercase tracking-wider">Nº Registros</span>
+            <div class="flex flex-col items-end mr-1">
+                <span class="text-[9px] text-green-200 font-bold uppercase tracking-wider">Irrigações Realizadas</span>
                 <span id="recordCountBadge" class="text-sm font-mono font-bold text-white leading-none">0</span>
             </div>
             
-            <!-- Botão com Texto (VERMELHO) -->
+            <!-- Botão CSV (NOVO) -->
+            <button type="button" onclick="window.downloadCSV()" class="flex items-center justify-center gap-1 px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg shadow-md border border-slate-500 transition-all active:scale-95" title="Baixar CSV">
+                <i data-lucide="sheet" class="w-4 h-4"></i>
+                <span class="text-xs font-bold hidden sm:inline-block">CSV</span>
+            </button>
+
+            <!-- Botão PDF -->
             <button type="button" id="btnDownload" onclick="window.downloadPDF()" class="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-md border border-red-500 transition-all active:scale-95">
                 <i data-lucide="file-down" class="w-4 h-4"></i>
-                <span class="text-xs font-bold hidden sm:inline-block">Enviar PDF</span>
+                <span class="text-xs font-bold hidden sm:inline-block">PDF</span>
                 <span class="text-xs font-bold sm:hidden">PDF</span>
             </button>
         </div>
@@ -209,13 +215,14 @@
 
     <!-- ÁREA OCULTA PARA GERAÇÃO DO PDF -->
     <div style="position: absolute; top: 0; left: -9999px;">
-        <div id="pdf-report-grid" class="p-8 bg-white" style="font-family: Arial, sans-serif; width: 1200px;">
+        <!-- Padding top zerado (pt-0) para encostar no topo -->
+        <div id="pdf-report-grid" class="px-5 pb-5 pt-0 bg-white" style="font-family: Arial, sans-serif; width: 1200px;">
             
             <!-- CABEÇALHO DO PDF -->
-            <div class="flex flex-col items-center justify-center mb-6 border-b-2 border-green-700 pb-6">
-                <div class="flex items-center gap-4 mb-4">
-                    <img src="https://i.imgur.com/S7Jzv77.png" class="h-16 w-auto" alt="Logo">
-                    <h1 class="text-3xl font-black text-green-800 uppercase tracking-widest">Relatório Diário de Irrigação</h1>
+            <div class="flex flex-col items-center justify-center mb-2 border-b-2 border-green-700 pb-2">
+                <div class="flex items-center justify-between w-full mb-1 px-4 pt-2">
+                    <h1 class="text-3xl font-black text-green-800 uppercase tracking-widest text-center flex-1">Relatório Diário de Irrigação</h1>
+                    <img src="https://i.imgur.com/S7Jzv77.png" class="h-24 w-auto" alt="Logo">
                 </div>
                 
                 <div class="w-full bg-slate-50 rounded-xl border border-slate-200 flex divide-x divide-slate-200 overflow-hidden shadow-sm">
@@ -227,10 +234,27 @@
                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Responsável Técnico</span>
                         <span id="pdfCollaborator" class="text-xs font-bold text-slate-800 uppercase leading-none text-center"></span>
                     </div>
+                    <!-- CONTADOR DE BLOCOS -->
                     <div class="flex-1 p-3 flex flex-col items-center justify-center">
-                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Registros</span>
+                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Blocos Irrigados</span>
+                        <span class="text-xl font-black text-green-700 leading-none">
+                            <span id="pdfBlockCount">0</span>
+                        </span>
+                    </div>
+                    
+                    <!-- POSIÇÃO TROCADA: AGORA IRRIGAÇÕES VEM ANTES -->
+                    <div class="flex-1 p-3 flex flex-col items-center justify-center">
+                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Irrigações Realizadas</span>
                         <span class="text-xl font-black text-green-700 leading-none flex items-center gap-1">
-                            <span id="pdfTotalCount">0</span> <span class="text-[10px] text-green-600 font-normal">itens</span>
+                            <span id="pdfTotalCount">0</span>
+                        </span>
+                    </div>
+
+                    <!-- POSIÇÃO TROCADA: AGORA HORAS VEM DEPOIS -->
+                    <div class="flex-1 p-3 flex flex-col items-center justify-center">
+                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Horas de irrigação</span>
+                        <span class="text-xl font-black text-green-700 leading-none">
+                            <span id="pdfTotalDuration">0h 0min</span>
                         </span>
                     </div>
                 </div>
@@ -248,9 +272,15 @@
 
     <!-- JAVASCRIPT PURO -->
     <script>
+        // Confirmação no console
+        console.log("Console pronto para edição!");
+
         // --- 1. DEFINIÇÃO DE ESTADO ---
         let records = JSON.parse(localStorage.getItem('irrigation_records')) || [];
         let editingId = null;
+        
+        // NOVA VARIÁVEL DE CONTROLE
+        let csvDownloaded = false;
 
         // --- 2. FUNÇÕES GLOBAIS ---
 
@@ -260,6 +290,8 @@
 
         function saveData() {
             localStorage.setItem('irrigation_records', JSON.stringify(records));
+            // REGRA: Se os dados mudaram, obriga a baixar o CSV novamente
+            csvDownloaded = false; 
             renderList();
         }
 
@@ -284,6 +316,69 @@
             const s = document.getElementById('startTime').value;
             const e = document.getElementById('endTime').value;
             document.getElementById('liveDuration').innerText = calculateDuration(s, e);
+        }
+
+        // --- FUNÇÃO PARA EXPORTAR CSV ---
+        window.downloadCSV = function() {
+            if (records.length === 0) {
+                alert("Não há registros para exportar.");
+                return;
+            }
+
+            // Inicializa vazio (sem cabeçalho para evitar duplicidade na planilha)
+            let csvContent = "";
+            
+            const collab = document.getElementById('collaborator').value;
+
+            records.forEach(r => {
+                const dateFmt = formatDate(r.date);
+                const dur = calculateDuration(r.startTime, r.endTime);
+                
+                // Monta a linha
+                const row = [
+                    dateFmt,
+                    collab,
+                    r.block,
+                    r.valve,
+                    r.startTime,
+                    r.endTime,
+                    dur
+                ].join(";");
+                
+                csvContent += row + "\n";
+            });
+
+            // Cria o arquivo Blob com BOM para caracteres especiais (Acentos)
+            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            
+            const today = new Date();
+            const dateStr = String(today.getDate()).padStart(2, '0') + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + today.getFullYear();
+            
+            // Adicionado sufixo _CSV
+            link.setAttribute("download", `Dados_Irrigacao_${dateStr}_CSV.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // REGRA: Marca que o CSV foi baixado com sucesso
+            csvDownloaded = true;
+            
+            // Feedback visual rápido
+            const btn = document.querySelector('button[onclick="window.downloadCSV()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> <span class="text-xs font-bold hidden sm:inline-block">Baixado!</span>`;
+            btn.classList.remove('bg-slate-600', 'hover:bg-slate-700');
+            btn.classList.add('bg-green-600', 'hover:bg-green-700');
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.add('bg-slate-600', 'hover:bg-slate-700');
+                btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }, 2000);
         }
 
         window.resetFormState = function() {
@@ -496,6 +591,12 @@
                 alert("Não há registros para gerar o PDF.");
                 return;
             }
+            
+            // REGRA DE SEGURANÇA: Verifica se o CSV já foi baixado
+            if (!csvDownloaded) {
+                alert("⚠️ AÇÃO NECESSÁRIA:\n\nPara garantir a segurança dos dados, é obrigatório baixar o arquivo CSV (Planilha) antes de gerar o PDF.\n\nPor favor, clique no botão 'CSV' primeiro.");
+                return;
+            }
 
             const btn = document.getElementById('btnDownload');
             const icon = btn.querySelector('i') || btn.querySelector('svg');
@@ -505,6 +606,26 @@
             const pdfDateRef = records.length > 0 ? formatDate(records[0].date) : formatDate(new Date().toISOString().split('T')[0]);
             document.getElementById('pdfDate').innerText = pdfDateRef;
             document.getElementById('pdfTotalCount').innerText = records.length;
+            
+            // LÓGICA PARA CONTAR BLOCOS ÚNICOS
+            const uniqueBlocks = new Set(records.map(r => r.block)).size;
+            document.getElementById('pdfBlockCount').innerText = uniqueBlocks;
+
+            // CÁLCULO DO TEMPO TOTAL
+            let totalMinutes = 0;
+            records.forEach(r => {
+                if (r.startTime && r.endTime) {
+                    const [h1, m1] = r.startTime.split(':').map(Number);
+                    const [h2, m2] = r.endTime.split(':').map(Number);
+                    let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+                    if (diff < 0) diff += 1440;
+                    totalMinutes += diff;
+                }
+            });
+            const tHours = Math.floor(totalMinutes / 60);
+            const tMins = totalMinutes % 60;
+            document.getElementById('pdfTotalDuration').innerText = `${tHours}h ${tMins}min`;
+
             document.getElementById('pdfCollaborator').innerText = document.getElementById('collaborator').value;
 
             const gridContainer = document.getElementById('pdf-grid-container');
@@ -572,7 +693,8 @@
                 
                 const pageWidth = 297;  
                 const pageHeight = 210; 
-                const margin = 10;
+                /* Margem reduzida para 1mm para subir ao maximo */
+                const margin = 1;
                 const imgWidth = pageWidth - (margin * 2);
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
                 const usablePageHeight = pageHeight - (margin * 2);
@@ -589,7 +711,8 @@
                 const month = String(today.getMonth() + 1).padStart(2, '0');
                 const year = today.getFullYear();
                 
-                pdf.save(`Relatorio_de_Irrigacao_${day}-${month}-${year}_SPG_OASIS.pdf`);
+                // Adicionado sufixo _PDF
+                pdf.save(`Relatorio_de_Irrigacao_${day}-${month}-${year}_SPG_OASIS_PDF.pdf`);
 
             } catch (err) {
                 console.error(err);
@@ -608,6 +731,7 @@
         window.deleteRecord = deleteRecord;
         window.clearAll = clearAll;
         window.downloadPDF = downloadPDF;
+        window.downloadCSV = downloadCSV;
         window.updateLiveDuration = updateLiveDuration;
         
         window.lucide = lucide;
