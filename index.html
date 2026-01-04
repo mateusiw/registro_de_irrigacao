@@ -3,554 +3,629 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Registro de Irrigação</title>
+    <title>Relatório de Irrigação</title>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- PWA Meta Tags -->
+    <!-- Configurações PWA -->
     <meta name="theme-color" content="#15803d">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Irrigação">
 
-    <!-- Ícone PWA -->
+    <!-- Ícone -->
     <link rel="icon" type="image/png" href="https://i.imgur.com/S7Jzv77.png">
     <link rel="apple-touch-icon" href="https://i.imgur.com/S7Jzv77.png">
 
-    <!-- Web App Manifest -->
-    <link rel="manifest" href='data:application/manifest+json,{
-        "name": "Registro de Irrigação",
-        "short_name": "Irrigação",
-        "start_url": ".",
-        "display": "standalone",
-        "background_color": "#f8fafc",
-        "theme_color": "#15803d",
-        "orientation": "portrait",
-        "icons": [{
-            "src": "https://i.imgur.com/S7Jzv77.png",
-            "sizes": "192x192",
-            "type": "image/png"
-        }]
-    }'>
-
-    <!-- React & Babel -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- PDF Libs -->
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
-        body { -webkit-tap-highlight-color: transparent; user-select: none; }
-        input, select, textarea { user-select: text; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
+        input, select { user-select: text; }
         .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
         
-        /* Grid para o PDF */
+        /* Grid para o PDF - 3 COLUNAS */
         #pdf-grid-container {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
+            gap: 10px;
+            align-content: start;
         }
         
+        /* Estilo do Cartão no PDF */
         .pdf-card {
             background: #fff;
             border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 12px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border-radius: 6px;
+            padding: 8px 12px;
+            box-shadow: none;
             break-inside: avoid;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
-        /* Animação suave para IA */
-        .ai-gradient {
-            background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+        .pdf-valve-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed #e2e8f0;
+            padding-bottom: 2px;
+            margin-bottom: 2px;
         }
-        
-        /* Modal Animation */
-        .modal-enter { animation: slideUp 0.3s ease-out forwards; }
-        @keyframes slideUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        .pdf-valve-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 0;
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
-    <div id="root"></div>
+<body class="bg-slate-50 text-slate-900 min-h-screen pb-24 safe-area-bottom">
 
-    <script type="text/babel" data-type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const apiKey = ""; // Chave injetada pelo ambiente
-
-        const { useState, useEffect } = React;
-
-        const Icons = {
-            Clock: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-            Calendar: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-            Activity: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
-            Save: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
-            Trash2: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>,
-            FileDown: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>,
-            Loader: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>,
-            User: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-            Sparkles: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>,
-            BrainCircuit: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.97-3.284"/><path d="M17.97 14.716A4 4 0 0 1 16 18"/></svg>,
-            X: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
-            Send: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-        };
-
-        async function callGemini(prompt, systemInstruction = "") {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] }
-            };
-
-            let delay = 1000;
-            for (let i = 0; i < 5; i++) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (!response.ok) {
-                        if (response.status === 429) throw new Error("Too Many Requests");
-                        throw new Error(`API Error: ${response.status}`);
-                    }
-                    const data = await response.json();
-                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta da IA.";
-                } catch (error) {
-                    if (i === 4) throw error;
-                    await new Promise(r => setTimeout(r, delay));
-                    delay *= 2;
-                }
-            }
-        }
-
-        function IrrigationApp() {
-            const [user, setUser] = useState(null);
-            const [records, setRecords] = useState([]);
-            const [loading, setLoading] = useState(true);
-            const [submitting, setSubmitting] = useState(false);
-            const [generatingPdf, setGeneratingPdf] = useState(false);
+    <!-- Navbar -->
+    <div class="bg-green-700 text-white px-4 py-3 flex justify-between items-center shadow-lg sticky top-0 z-40 pt-safe-top">
+        <div class="flex items-center gap-3">
+            <!-- LOGO SEM FUNDO BRANCO -->
+            <img src="https://i.imgur.com/S7Jzv77.png" alt="Logo" class="h-10 w-auto">
+            <div>
+                <h1 class="text-lg font-bold leading-tight tracking-tight">Relatório Diário de Irrigação</h1>
+                <p class="text-[10px] text-green-100 font-medium">SPG Oásis</p>
+            </div>
+        </div>
+        
+        <!-- Área da Direita: Contador e Botão -->
+        <div class="flex gap-3 items-center">
+            <!-- Contador com Rótulo -->
+            <div class="flex flex-col items-end">
+                <span class="text-[9px] text-green-200 font-bold uppercase tracking-wider">Nº Registros</span>
+                <span id="recordCountBadge" class="text-sm font-mono font-bold text-white leading-none">0</span>
+            </div>
             
-            // IA States & Console
-            const [showConsole, setShowConsole] = useState(false);
-            const [aiInput, setAiInput] = useState("");
-            const [aiLoading, setAiLoading] = useState(false);
-            const [analysisResult, setAnalysisResult] = useState("");
-            const [analyzing, setAnalyzing] = useState(false);
+            <!-- Botão com Texto (VERMELHO) -->
+            <button type="button" id="btnDownload" onclick="window.downloadPDF()" class="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-md border border-red-500 transition-all active:scale-95">
+                <i data-lucide="file-down" class="w-4 h-4"></i>
+                <span class="text-xs font-bold hidden sm:inline-block">Enviar PDF</span>
+                <span class="text-xs font-bold sm:hidden">PDF</span>
+            </button>
+        </div>
+    </div>
 
-            const [collaborator, setCollaborator] = useState('Mateus Paulo');
-            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-            const [block, setBlock] = useState('');
-            const [valve, setValve] = useState('');
-            const [startTime, setStartTime] = useState('');
-            const [endTime, setEndTime] = useState('');
+    <div class="container mx-auto p-4 space-y-6 max-w-md">
+        
+        <!-- 1. RESPONSÁVEL -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex items-center gap-3">
+            <div class="bg-green-100 p-2 rounded-lg text-green-700">
+                <i data-lucide="user" class="w-5 h-5"></i>
+            </div>
+            <div class="flex-1">
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Responsável</label>
+                <select id="collaborator" onchange="window.saveCollaborator()" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-2 outline-none">
+                    <option value="ANTONIO AIRTON CORDEIRO DE BRITO">ANTONIO AIRTON CORDEIRO DE BRITO</option>
+                    <option value="ALEXANDRO RIBEIRO LIMA">ALEXANDRO RIBEIRO LIMA</option>
+                    <option value="FRANCISCO FÁBIO TEXEIRA PEREIRA">FRANCISCO FÁBIO TEXEIRA PEREIRA</option>
+                    <option value="RAFAEL SARAIVA DE LIMA">RAFAEL SARAIVA DE LIMA</option>
+                </select>
+            </div>
+        </div>
 
-            useEffect(() => {
-                const initAuth = async () => {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (error) { console.error("Erro auth:", error); }
-                };
-                initAuth();
-                const unsubscribe = onAuthStateChanged(auth, setUser);
-                return () => unsubscribe();
-            }, []);
+        <!-- 2. FORMULÁRIO DETALHADO -->
+        <div id="formContainer" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 transition-colors duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="formTitle" class="text-lg font-semibold text-green-800 flex items-center gap-2">
+                    <i data-lucide="activity" class="w-5 h-5"></i> <span id="formTitleText">Novo Registro</span>
+                </h2>
+                <button id="cancelEditBtn" type="button" onclick="window.cancelEdit()" class="hidden text-xs text-red-500 font-bold hover:text-red-700 underline">
+                    Cancelar
+                </button>
+            </div>
+            
+            <form onsubmit="window.addRecord(event)" class="space-y-4">
+                
+                <!-- DATA -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Data do Registro</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="calendar" class="w-5 h-5"></i>
+                        </div>
+                        <input type="date" id="date" required class="w-full bg-slate-50 border border-slate-300 rounded-lg py-2.5 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800">
+                    </div>
+                </div>
 
-            useEffect(() => {
-                if (!user) return;
-                const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'irrigations'));
-                const unsubscribe = onSnapshot(q, (snapshot) => {
-                    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                    const sorted = data.sort((a, b) => {
-                        const dateA = new Date(a.date + 'T' + a.startTime);
-                        const dateB = new Date(b.date + 'T' + b.startTime);
-                        return dateA - dateB; 
-                    });
-                    setRecords(sorted);
-                    setLoading(false);
-                });
-                return () => unsubscribe();
-            }, [user]);
-
-            // IA Feature 1: Processar Texto
-            const handleSmartEntry = async () => {
-                if (!aiInput.trim()) return;
-                setAiLoading(true);
-                try {
-                    const prompt = `Extraia dados de irrigação deste texto: "${aiInput}".
-                    Data atual (se não mencionada use esta): ${new Date().toISOString().split('T')[0]}.
-                    Retorne APENAS um JSON: { "date": "YYYY-MM-DD", "block": "String", "valve": "Number", "startTime": "HH:MM", "endTime": "HH:MM" }.
-                    Se faltar algo, deixe string vazia.`;
-                    
-                    const result = await callGemini(prompt, "Você é um assistente de extração de dados JSON.");
-                    const cleanJson = result.replace(/```json|```/g, '').trim();
-                    const data = JSON.parse(cleanJson);
-
-                    if (data.date) setDate(data.date);
-                    if (data.block) setBlock(data.block.toUpperCase());
-                    if (data.valve) setValve(data.valve);
-                    if (data.startTime) setStartTime(data.startTime);
-                    if (data.endTime) setEndTime(data.endTime);
-                    
-                    setAiInput("");
-                    setShowConsole(false); // Fecha console ao aplicar
-                    alert("Dados preenchidos! Verifique e salve.");
-                } catch (e) {
-                    alert("Não entendi o texto. Tente novamente.");
-                    console.error(e);
-                } finally {
-                    setAiLoading(false);
-                }
-            };
-
-            // IA Feature 2: Analisar Dados
-            const handleAnalyzeDay = async () => {
-                if (records.length === 0) {
-                    alert("Sem registros para analisar.");
-                    return;
-                }
-                setAnalyzing(true);
-                try {
-                    const dataSummary = JSON.stringify(records.map(r => ({
-                        bloco: r.block,
-                        valvula: r.valve,
-                        duracao: calculateDuration(r.startTime, r.endTime)
-                    })));
-
-                    const prompt = `Analise estes registros de irrigação: ${dataSummary}.
-                    1. Calcule o tempo total irrigado no dia.
-                    2. Identifique se alguma válvula irrigou muito pouco (<20min) ou muito (>2h).
-                    3. Dê um resumo curto em Português para o agricultor.
-                    Use emojis. Seja direto.`;
-
-                    const result = await callGemini(prompt, "Você é um agrônomo especialista em irrigação.");
-                    setAnalysisResult(result);
-                } catch (e) {
-                    console.error(e);
-                    alert("Erro na análise.");
-                } finally {
-                    setAnalyzing(false);
-                }
-            };
-
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                if (!user || !block || !valve || !startTime || !endTime) { alert("Preencha todos os campos."); return; }
-                setSubmitting(true);
-                try {
-                    await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'irrigations'), {
-                        date, block, valve, startTime, endTime, createdAt: serverTimestamp()
-                    });
-                    setBlock(''); setValve(''); setStartTime(''); setEndTime('');
-                } catch (error) { alert("Erro ao salvar."); } finally { setSubmitting(false); }
-            };
-
-            const handleDelete = async (id) => {
-                if (!confirm("Apagar registro?")) return;
-                try { await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'irrigations', id)); } catch (e) { console.error(e); }
-            };
-
-            const calculateDuration = (start, end) => {
-                if (!start || !end) return "--";
-                const [h1, m1] = start.split(':').map(Number);
-                const [h2, m2] = end.split(':').map(Number);
-                let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-                if (diff < 0) diff += 1440;
-                return `${Math.floor(diff / 60)}h ${diff % 60}min`;
-            };
-
-            const formatDate = (d) => {
-                if (!d) return "";
-                const [y, m, day] = d.split('-');
-                return `${day}/${m}/${y}`;
-            };
-
-            const downloadPDF = async () => {
-                if (records.length === 0) { alert("Sem registros."); return; }
-                setGeneratingPdf(true);
-                setTimeout(async () => {
-                    try {
-                        const { jsPDF } = window.jspdf;
-                        const element = document.getElementById('pdf-report-grid');
-                        const desktopWidth = 1200; 
-
-                        const canvas = await html2canvas(element, { 
-                            scale: 2, 
-                            useCORS: true, 
-                            allowTaint: true, 
-                            windowWidth: desktopWidth,
-                            backgroundColor: '#ffffff',
-                            onclone: (doc) => {
-                                const el = doc.getElementById('pdf-report-grid');
-                                if (el) { el.style.width = desktopWidth + 'px'; el.style.padding = '40px'; }
-                            }
-                        });
-
-                        const imgData = canvas.toDataURL('image/png');
-                        const pdf = new jsPDF('l', 'mm', 'a4');
-                        const pageWidth = 297;  
-                        const pageHeight = 210; 
-                        const margin = 10;
-                        const imgWidth = pageWidth - (margin * 2);
-                        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                        const usablePageHeight = pageHeight - (margin * 2);
-
-                        let printedHeight = 0;
-                        while (printedHeight < imgHeight) {
-                            if (printedHeight > 0) pdf.addPage();
-                            pdf.addImage(imgData, 'PNG', margin, margin - printedHeight, imgWidth, imgHeight);
-                            printedHeight += usablePageHeight;
-                        }
-
-                        const now = new Date();
-                        const day = String(now.getDate()).padStart(2, '0');
-                        const month = String(now.getMonth() + 1).padStart(2, '0');
-                        pdf.save(`Boletim_${collaborator.replace(/\s+/g, '_')}_${day}-${month}.pdf`);
-                    } catch (err) { console.error("Erro PDF:", err); alert("Erro ao gerar PDF."); } 
-                    finally { setGeneratingPdf(false); }
-                }, 100);
-            };
-
-            if (!user && loading) return <div className="min-h-screen bg-green-50 flex items-center justify-center text-green-800 font-semibold animate-pulse">Carregando...</div>;
-
-            return (
-                <div className="min-h-screen bg-slate-50 font-sans pb-24 safe-area-bottom">
-                    <header className="bg-green-700 text-white p-4 shadow-lg sticky top-0 z-10 pt-safe-top">
-                        <div className="max-w-md mx-auto flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <img src="https://i.imgur.com/S7Jzv77.png" className="h-9 w-auto bg-white rounded p-0.5" alt="Logo" />
-                                <h1 className="text-xl font-bold tracking-tight">Irrigação</h1>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="text-xs bg-green-800 px-2 py-1 rounded-full text-green-100 border border-green-600">{records.length}</div>
-                                <button onClick={downloadPDF} disabled={generatingPdf} className="bg-green-800 hover:bg-green-600 text-white p-2 rounded-lg transition-colors border border-green-600 shadow-sm flex items-center justify-center" title="Baixar Boletim">
-                                    {generatingPdf ? <Icons.Loader className="h-5 w-5 animate-spin" /> : <Icons.FileDown className="h-5 w-5" />}
-                                </button>
+                <!-- SEÇÃO LOCALIZAÇÃO -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Localização</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] text-slate-500 mb-1">Bloco / Setor</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                    <i data-lucide="map-pin" class="w-4 h-4"></i>
+                                </div>
+                                <!-- INPUT COM RESTRIÇÃO (MAX 2 CARACTERES, UPPERCASE) -->
+                                <input type="text" id="block" required maxlength="2" placeholder="1 ou A" 
+                                    oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"
+                                    class="w-full bg-slate-50 border border-slate-300 rounded-lg py-2 pl-9 pr-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 uppercase text-slate-800 font-medium text-center">
                             </div>
                         </div>
-                    </header>
-
-                    <main className="max-w-md mx-auto p-4 space-y-6">
-                        {/* Colaborador */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex items-center gap-3">
-                            <div className="bg-green-100 p-2 rounded-lg text-green-700"><Icons.User className="h-5 w-5" /></div>
-                            <div className="flex-1">
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Responsável</label>
-                                <select value={collaborator} onChange={(e) => setCollaborator(e.target.value)} className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-2">
-                                    <option value="Mateus Paulo">Mateus Paulo</option>
-                                    <option value="João Silva">João Silva</option>
-                                    <option value="Maria Oliveira">Maria Oliveira</option>
-                                    <option value="Carlos Souza">Carlos Souza</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Formulário Manual */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-                            <h2 className="text-lg font-semibold text-green-800 mb-4 flex items-center gap-2"><Icons.Activity className="h-5 w-5" /> Novo Registro</h2>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Data</label>
-                                    <div className="relative">
-                                        <input type="date" required value={date} onChange={e => setDate(e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded-lg py-3 px-3 focus:outline-none focus:ring-2 focus:ring-green-500" />
-                                        <div className="absolute right-3 top-3 pointer-events-none text-slate-400"><Icons.Calendar className="h-5 w-5" /></div>
-                                    </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 mb-1">Nº Válvula</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                    <i data-lucide="hash" class="w-4 h-4"></i>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-600 mb-1">Bloco</label>
-                                        <input type="text" required placeholder="Ex: A1" value={block} onChange={e => setBlock(e.target.value.toUpperCase())} className="w-full bg-slate-50 border border-slate-300 rounded-lg py-3 px-3 focus:outline-none focus:ring-2 focus:ring-green-500 uppercase" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-600 mb-1">Válvula</label>
-                                        <input type="number" required placeholder="Nº" value={valve} onChange={e => setValve(e.target.value)} className="w-full bg-slate-50 border border-slate-300 rounded-lg py-3 px-3 focus:outline-none focus:ring-2 focus:ring-green-500" />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                    <div><label className="block text-xs font-bold text-green-700 uppercase mb-1">Início</label><input type="time" required value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg py-2 px-1 text-center font-mono text-lg focus:ring-2 focus:ring-green-500" /></div>
-                                    <div><label className="block text-xs font-bold text-red-700 uppercase mb-1">Fim</label><input type="time" required value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg py-2 px-1 text-center font-mono text-lg focus:ring-2 focus:ring-red-500" /></div>
-                                </div>
-                                <button type="submit" disabled={submitting} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 disabled:opacity-50 touch-manipulation">
-                                    {submitting ? "Salvando..." : <><Icons.Save className="h-5 w-5" /> Registrar</>}
-                                </button>
-                            </form>
-                        </div>
-
-                        {/* Lista de Registros */}
-                        <div className="space-y-3">
-                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider ml-1">Histórico (Hoje)</h3>
-                            
-                            {/* Card de Análise da IA */}
-                            {analysisResult && (
-                                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-sm text-purple-900 shadow-sm animate-fade-in mb-4 relative">
-                                    <button onClick={() => setAnalysisResult("")} className="absolute top-2 right-2 text-purple-400 hover:text-purple-600 p-1"><Icons.X className="h-4 w-4" /></button>
-                                    <h4 className="font-bold flex items-center gap-2 mb-2"><Icons.Sparkles className="h-4 w-4" /> Resumo da IA</h4>
-                                    <p className="whitespace-pre-line leading-relaxed">{analysisResult}</p>
-                                </div>
-                            )}
-
-                            {records.length === 0 && !loading && <div className="text-center py-8 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300"><p>Sem registros.</p></div>}
-                            {records.map((rec) => (
-                                <div key={rec.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 relative overflow-hidden">
-                                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-green-500"></div>
-                                    <div className="pl-3 flex justify-between items-start">
-                                        <div>
-                                            <div className="flex items-baseline gap-2 mb-1">
-                                                <span className="text-xs font-bold text-slate-500 uppercase">{formatDate(rec.date)}</span>
-                                                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">BLOCO {rec.block}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3 mt-2">
-                                                <div><span className="block text-[10px] text-slate-400 uppercase">Válvula</span><span className="text-lg font-bold text-slate-800">#{rec.valve}</span></div>
-                                                <div className="h-8 w-px bg-slate-200"></div>
-                                                <div><span className="block text-[10px] text-slate-400 uppercase">Tempo</span><div className="flex items-center gap-1 text-green-700 font-bold"><Icons.Clock className="h-3 w-3" />{calculateDuration(rec.startTime, rec.endTime)}</div></div>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col items-end">
-                                            <div className="text-xs text-slate-400 font-mono bg-slate-50 px-2 py-1 rounded mb-2">{rec.startTime} - {rec.endTime}</div>
-                                            <button onClick={() => handleDelete(rec.id)} className="p-2 text-slate-300 hover:text-red-500 active:bg-red-50 rounded-lg"><Icons.Trash2 className="h-5 w-5" /></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </main>
-
-                    {/* BOTÃO FLUTUANTE (FAB) PARA ABRIR CONSOLE */}
-                    <button 
-                        onClick={() => setShowConsole(true)}
-                        className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-lg shadow-purple-500/30 hover:shadow-xl hover:scale-105 active:scale-95 transition-all z-40 flex items-center justify-center"
-                    >
-                        <Icons.Sparkles className="h-6 w-6" />
-                    </button>
-
-                    {/* MODAL / CONSOLE DE IA */}
-                    {showConsole && (
-                        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => { if(e.target === e.currentTarget) setShowConsole(false); }}>
-                            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl modal-enter overflow-hidden flex flex-col max-h-[85vh]">
-                                
-                                {/* Cabeçalho do Console */}
-                                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white flex justify-between items-center shrink-0">
-                                    <h3 className="font-bold flex items-center gap-2"><Icons.BrainCircuit className="h-5 w-5" /> Console Inteligente</h3>
-                                    <button onClick={() => setShowConsole(false)} className="text-white/80 hover:text-white bg-white/10 rounded-full p-1"><Icons.X className="h-5 w-5" /></button>
-                                </div>
-
-                                {/* Corpo do Console */}
-                                <div className="p-4 flex-1 overflow-y-auto space-y-4 bg-slate-50">
-                                    
-                                    {/* Opções Rápidas (Chips) */}
-                                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                        <button 
-                                            onClick={handleAnalyzeDay} 
-                                            disabled={analyzing || records.length === 0}
-                                            className="flex items-center gap-1 bg-white border border-purple-200 text-purple-700 px-3 py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-purple-50 whitespace-nowrap"
-                                        >
-                                            {analyzing ? <Icons.Loader className="h-3 w-3 animate-spin" /> : "📊 Analisar Dia"}
-                                        </button>
-                                        <div className="w-px h-6 bg-slate-300 my-auto"></div>
-                                        <span className="text-[10px] text-slate-400 my-auto font-medium">SELECIONAR AÇÃO</span>
-                                    </div>
-
-                                    {/* Campo de Texto da IA */}
-                                    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm focus-within:ring-2 focus-within:ring-blue-500 transition-all">
-                                        <label className="text-xs font-bold text-slate-400 mb-2 block uppercase">Digitar ou Colar Comando</label>
-                                        <textarea
-                                            value={aiInput}
-                                            onChange={(e) => setAiInput(e.target.value)}
-                                            placeholder="Ex: Liguei a válvula 3 do bloco A2 das 07:00 as 08:20..."
-                                            className="w-full text-sm resize-none focus:outline-none min-h-[100px] bg-transparent"
-                                        ></textarea>
-                                        <div className="flex justify-between items-center mt-2 border-t border-slate-100 pt-2">
-                                            <span className="text-[10px] text-slate-400 italic">A IA preencherá o formulário.</span>
-                                            <button 
-                                                onClick={handleSmartEntry}
-                                                disabled={aiLoading || !aiInput.trim()}
-                                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 disabled:opacity-50"
-                                            >
-                                                {aiLoading ? <Icons.Loader className="h-3 w-3 animate-spin" /> : <><Icons.Send className="h-3 w-3" /> Enviar</>}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="text-[10px] text-center text-slate-400 leading-tight px-4">
-                                        Dica: Tente ditar comandos usando o microfone do seu teclado para ser mais rápido.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* PDF Hidden */}
-                    <div style={{ position: 'absolute', top: 0, left: '-9999px' }}>
-                        <div id="pdf-report-grid" className="p-8 bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
-                            <div className="flex justify-between items-center mb-6 border-b-2 border-green-700 pb-4">
-                                <div className="flex items-center gap-4">
-                                    <img src="https://i.imgur.com/S7Jzv77.png" className="h-16 w-auto" alt="Logo" />
-                                    <div>
-                                        <h1 className="text-2xl font-bold text-green-800 uppercase tracking-wide">Boletim de Irrigação</h1>
-                                        <p className="text-sm text-slate-500">Relatório Operacional Diário - Grade Operacional</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-sm font-bold text-slate-600 uppercase">Data de Referência</div>
-                                    <div className="text-xl font-mono text-slate-900">{records.length > 0 ? formatDate(records[0].date) : formatDate(new Date().toISOString().split('T')[0])}</div>
-                                </div>
-                            </div>
-                            <div id="pdf-grid-container">
-                                {records.map((rec, i) => (
-                                    <div key={i} className="pdf-card">
-                                        <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-2">
-                                            <span className="text-xs font-bold text-slate-500 uppercase">Bloco {rec.block}</span>
-                                            <span className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full font-bold">Válvula #{rec.valve}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <div className="text-center">
-                                                <div className="text-[10px] text-slate-400 uppercase">Início</div>
-                                                <div className="text-lg font-mono font-bold text-slate-700">{rec.startTime}</div>
-                                            </div>
-                                            <div className="text-slate-300 mx-2">-</div>
-                                            <div className="text-center">
-                                                <div className="text-[10px] text-slate-400 uppercase">Fim</div>
-                                                <div className="text-lg font-mono font-bold text-slate-700">{rec.endTime}</div>
-                                            </div>
-                                            <div className="w-px h-8 bg-slate-200 mx-2"></div>
-                                            <div className="text-center">
-                                                <div className="text-[10px] text-slate-400 uppercase">Duração</div>
-                                                <div className="text-sm font-bold text-green-700">{calculateDuration(rec.startTime, rec.endTime)}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                                {records.length === 0 && <div className="col-span-3 text-center py-8 text-slate-400 italic">Nenhum registro encontrado.</div>}
-                            </div>
-                            <div className="mt-8 pt-4 border-t border-slate-200 flex justify-between items-end text-xs text-slate-400">
-                                <div><p>Total de Registros: <b>{records.length}</b></p><p>Gerado automaticamente pelo App de Irrigação</p></div>
-                                <div className="flex flex-col items-center"><div className="font-script text-lg text-slate-800 border-b border-slate-400 pb-1 px-8 mb-1 min-w-[200px] text-center" style={{ fontFamily: 'Times New Roman, serif', fontStyle: 'italic' }}>{collaborator}</div><p className="text-center uppercase font-bold text-[10px] tracking-widest">Visto do Responsável (Digital)</p></div>
+                                <input type="number" id="valve" required placeholder="0" class="w-full bg-slate-50 border border-slate-300 rounded-lg py-2 pl-9 pr-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 font-medium text-center">
                             </div>
                         </div>
                     </div>
                 </div>
-            );
+
+                <!-- SEÇÃO TEMPO (COM CÁLCULO) -->
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Tempo de Execução</label>
+                    <div class="grid grid-cols-2 gap-4 mb-2">
+                        <div>
+                            <label class="block text-[10px] text-green-700 font-bold mb-1">INÍCIO</label>
+                            <input type="time" id="startTime" oninput="window.updateLiveDuration()" required class="w-full bg-white border border-slate-300 rounded-lg py-2 px-1 text-center font-mono text-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-red-700 font-bold mb-1">FIM</label>
+                            <input type="time" id="endTime" oninput="window.updateLiveDuration()" required class="w-full bg-white border border-slate-300 rounded-lg py-2 px-1 text-center font-mono text-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-800">
+                        </div>
+                    </div>
+                    <!-- Mostrador de Duração em Tempo Real -->
+                    <div class="flex justify-between items-center pt-2 border-t border-slate-200 mt-2">
+                        <span class="text-[10px] text-slate-400 uppercase tracking-wide">Duração Calculada:</span>
+                        <span id="liveDuration" class="text-xs font-bold text-slate-700 font-mono">--h --min</span>
+                    </div>
+                </div>
+
+                <!-- Botão Salvar -->
+                <button type="submit" id="submitBtn" class="w-full bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 active:scale-95 touch-manipulation mt-2">
+                    <i data-lucide="save" class="w-5 h-5"></i> <span id="submitBtnText">Registrar Irrigação</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- 3. LISTA DE REGISTROS -->
+        <section class="space-y-3">
+            <div class="flex justify-between items-center px-1">
+                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Relatório Diário de Irrigação</h3>
+                <button type="button" onclick="window.clearAll()" class="text-xs text-red-400 hover:text-red-600 font-semibold underline cursor-pointer">Limpar Tudo</button>
+            </div>
+            
+            <!-- Lista -->
+            <div id="recordsList" class="space-y-4"></div>
+            
+            <!-- Estado Vazio -->
+            <div id="emptyState" class="hidden text-center py-10 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+                <i data-lucide="droplet" class="w-12 h-12 mx-auto mb-2 opacity-20"></i>
+                <p>Nenhuma irrigação registrada.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- ÁREA OCULTA PARA GERAÇÃO DO PDF -->
+    <div style="position: absolute; top: 0; left: -9999px;">
+        <div id="pdf-report-grid" class="p-8 bg-white" style="font-family: Arial, sans-serif; width: 1200px;">
+            
+            <!-- CABEÇALHO DO PDF -->
+            <div class="flex flex-col items-center justify-center mb-6 border-b-2 border-green-700 pb-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <img src="https://i.imgur.com/S7Jzv77.png" class="h-16 w-auto" alt="Logo">
+                    <h1 class="text-3xl font-black text-green-800 uppercase tracking-widest">Relatório Diário de Irrigação</h1>
+                </div>
+                
+                <div class="w-full bg-slate-50 rounded-xl border border-slate-200 flex divide-x divide-slate-200 overflow-hidden shadow-sm">
+                    <div class="flex-1 p-3 flex flex-col items-center justify-center">
+                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Data de Referência</span>
+                        <span id="pdfDate" class="text-base font-mono font-bold text-slate-800 leading-none"></span>
+                    </div>
+                    <div class="flex-[2] p-3 flex flex-col items-center justify-center bg-white">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Responsável Técnico</span>
+                        <span id="pdfCollaborator" class="text-xs font-bold text-slate-800 uppercase leading-none text-center"></span>
+                    </div>
+                    <div class="flex-1 p-3 flex flex-col items-center justify-center">
+                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Registros</span>
+                        <span class="text-xl font-black text-green-700 leading-none flex items-center gap-1">
+                            <span id="pdfTotalCount">0</span> <span class="text-[10px] text-green-600 font-normal">itens</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid de Cards PDF -->
+            <div id="pdf-grid-container"></div>
+
+            <!-- Rodapé PDF -->
+            <div class="mt-8 pt-4 border-t border-slate-100 text-center">
+                <p class="text-[10px] text-slate-300 uppercase tracking-widest font-bold">Relatório Gerado Digitalmente • SPG OÁSIS</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT PURO -->
+    <script>
+        // --- 1. DEFINIÇÃO DE ESTADO ---
+        let records = JSON.parse(localStorage.getItem('irrigation_records')) || [];
+        let editingId = null;
+
+        // --- 2. FUNÇÕES GLOBAIS ---
+
+        window.saveCollaborator = function() {
+            localStorage.setItem('irrigation_collaborator', document.getElementById('collaborator').value);
         }
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<IrrigationApp />);
+
+        function saveData() {
+            localStorage.setItem('irrigation_records', JSON.stringify(records));
+            renderList();
+        }
+
+        function calculateDuration(start, end) {
+            if (!start || !end) return "--";
+            const [h1, m1] = start.split(':').map(Number);
+            const [h2, m2] = end.split(':').map(Number);
+            let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+            if (diff < 0) diff += 1440;
+            const h = Math.floor(diff / 60);
+            const m = diff % 60;
+            return `${h}h ${m}min`;
+        }
+
+        function formatDate(isoDate) {
+            if (!isoDate) return "";
+            const [y, m, d] = isoDate.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        window.updateLiveDuration = function() {
+            const s = document.getElementById('startTime').value;
+            const e = document.getElementById('endTime').value;
+            document.getElementById('liveDuration').innerText = calculateDuration(s, e);
+        }
+
+        window.resetFormState = function() {
+            editingId = null;
+            const formContainer = document.getElementById('formContainer');
+            if(formContainer) {
+                formContainer.classList.remove('ring-2', 'ring-blue-400', 'bg-blue-50');
+                formContainer.classList.add('bg-white');
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            if(submitBtn) {
+                submitBtn.className = "w-full bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 touch-manipulation mt-2";
+                submitBtn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> <span id="submitBtnText">Registrar Irrigação</span>`;
+            }
+            
+            const title = document.getElementById('formTitleText');
+            if(title) title.innerText = "Novo Registro";
+            
+            const cancelBtn = document.getElementById('cancelEditBtn');
+            if(cancelBtn) cancelBtn.classList.add('hidden');
+            
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            renderList();
+        }
+
+        window.cancelEdit = function() {
+            window.resetFormState();
+            document.getElementById('block').value = '';
+            document.getElementById('valve').value = '';
+            document.getElementById('startTime').value = '';
+            document.getElementById('endTime').value = '';
+            document.getElementById('liveDuration').innerText = "--h --min";
+        }
+
+        window.addRecord = function(e) {
+            e.preventDefault();
+            
+            const date = document.getElementById('date').value;
+            const block = document.getElementById('block').value.toUpperCase();
+            const valve = document.getElementById('valve').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+
+            if (editingId !== null) {
+                const index = records.findIndex(r => r.id === editingId);
+                if (index !== -1) {
+                    records[index] = { ...records[index], date, block, valve, startTime, endTime };
+                    const btn = document.getElementById('submitBtn');
+                    btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Alteração Salva!`;
+                    btn.className = "w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-2";
+                    setTimeout(() => window.resetFormState(), 1000);
+                }
+                editingId = null;
+            } else {
+                const newRecord = {
+                    id: Date.now(),
+                    date, block, valve, startTime, endTime
+                };
+                records.push(newRecord);
+                
+                const btn = document.getElementById('submitBtn');
+                btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Registro Salvo!`;
+                btn.classList.add('bg-green-800', 'ring-2', 'ring-green-300');
+                
+                setTimeout(() => {
+                    btn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> <span id="submitBtnText">Registrar Irrigação</span>`;
+                    btn.classList.remove('bg-green-800', 'ring-2', 'ring-green-300');
+                    if(typeof lucide !== 'undefined') lucide.createIcons();
+                }, 1500);
+            }
+
+            records.sort((a, b) => {
+                if (a.block !== b.block) {
+                    return a.block.localeCompare(b.block, undefined, {numeric: true});
+                }
+                const dateA = new Date(a.date + 'T' + a.startTime);
+                const dateB = new Date(b.date + 'T' + b.startTime);
+                return dateA - dateB;
+            });
+
+            saveData();
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.editRecord = function(id) {
+            const record = records.find(r => r.id === id);
+            if (!record) return;
+
+            document.getElementById('date').value = record.date;
+            document.getElementById('block').value = record.block;
+            document.getElementById('valve').value = record.valve;
+            document.getElementById('startTime').value = record.startTime;
+            document.getElementById('endTime').value = record.endTime;
+            
+            window.updateLiveDuration();
+
+            editingId = id;
+            
+            const formContainer = document.getElementById('formContainer');
+            formContainer.classList.add('ring-2', 'ring-blue-400', 'bg-blue-50');
+            formContainer.classList.remove('bg-white');
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-2";
+            submitBtn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> <span id="submitBtnText">Salvar Alterações</span>`;
+            
+            document.getElementById('formTitleText').innerText = "Editando Registro";
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            renderList();
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.deleteRecord = function(id) {
+            if(!confirm("Deseja apagar este registro?")) return;
+            records = records.filter(r => r.id !== id);
+            if (editingId === id) window.cancelEdit();
+            saveData();
+        }
+
+        window.clearAll = function() {
+            if(!confirm("Tem certeza que deseja apagar TODOS os registros?")) return;
+            records = [];
+            window.cancelEdit();
+            saveData();
+        }
+
+        function renderList() {
+            const list = document.getElementById('recordsList');
+            const empty = document.getElementById('emptyState');
+            const badge = document.getElementById('recordCountBadge');
+
+            if(badge) badge.innerText = records.length;
+
+            if (records.length === 0) {
+                list.innerHTML = '';
+                if(empty) empty.classList.remove('hidden');
+                return;
+            }
+
+            if(empty) empty.classList.add('hidden');
+
+            const grouped = {};
+            records.forEach(rec => {
+                const key = rec.block;
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(rec);
+            });
+
+            const sortedKeys = Object.keys(grouped).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
+
+            list.innerHTML = sortedKeys.map(blockKey => {
+                const blockRecords = grouped[blockKey];
+                
+                blockRecords.sort((a, b) => {
+                     const vA = parseInt(a.valve) || 0;
+                     const vB = parseInt(b.valve) || 0;
+                     if(vA !== vB) return vA - vB;
+                     return a.startTime.localeCompare(b.startTime);
+                });
+
+                const rowsHtml = blockRecords.map(rec => {
+                    const isEditing = rec.id === editingId;
+                    const bgClass = isEditing ? 'bg-blue-50' : 'hover:bg-slate-50';
+                    
+                    return `
+                    <div class="flex justify-between items-start p-3 border-b border-slate-100 last:border-0 ${bgClass} transition-colors">
+                        <div class="flex flex-col gap-1 w-full mr-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-slate-700">Válvula #${rec.valve}</span>
+                                <span class="text-[10px] text-slate-400 font-mono">${rec.startTime} - ${rec.endTime}</span>
+                            </div>
+                            <div class="text-[10px] text-green-700 font-bold flex items-center gap-1">
+                                <i data-lucide="clock" class="w-3 h-3"></i>
+                                ${calculateDuration(rec.startTime, rec.endTime)}
+                            </div>
+                        </div>
+                        <div class="flex gap-1 shrink-0">
+                            <button type="button" onclick="window.editRecord(${rec.id})" class="p-1.5 text-blue-400 hover:bg-blue-50 rounded" title="Editar">
+                                <i data-lucide="pencil" class="w-3 h-3"></i>
+                            </button>
+                            <button type="button" onclick="window.deleteRecord(${rec.id})" class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded" title="Excluir">
+                                <i data-lucide="trash-2" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+
+                return `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
+                        <span class="text-sm font-bold text-slate-800 uppercase">BLOCO ${blockKey}</span>
+                        <span class="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-200">${blockRecords.length} Regs</span>
+                    </div>
+                    <div class="flex flex-col">
+                        ${rowsHtml}
+                    </div>
+                </div>
+                `;
+            }).join('');
+            
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.downloadPDF = async function() {
+            if (records.length === 0) {
+                alert("Não há registros para gerar o PDF.");
+                return;
+            }
+
+            const btn = document.getElementById('btnDownload');
+            const icon = btn.querySelector('i') || btn.querySelector('svg');
+            
+            if(icon) icon.classList.add('animate-spin');
+
+            const pdfDateRef = records.length > 0 ? formatDate(records[0].date) : formatDate(new Date().toISOString().split('T')[0]);
+            document.getElementById('pdfDate').innerText = pdfDateRef;
+            document.getElementById('pdfTotalCount').innerText = records.length;
+            document.getElementById('pdfCollaborator').innerText = document.getElementById('collaborator').value;
+
+            const gridContainer = document.getElementById('pdf-grid-container');
+            
+            const grouped = {};
+            records.forEach(rec => {
+                const k = rec.block;
+                if(!grouped[k]) grouped[k] = [];
+                grouped[k].push(rec);
+            });
+
+            gridContainer.innerHTML = Object.keys(grouped).map(blockKey => {
+                const blockRecords = grouped[blockKey];
+                
+                blockRecords.sort((a, b) => {
+                     const valveDiff = parseInt(a.valve) - parseInt(b.valve);
+                     if(valveDiff !== 0) return valveDiff;
+                     return a.startTime.localeCompare(b.startTime);
+                });
+
+                const valvesHtml = blockRecords.map(r => `
+                    <div class="pdf-valve-row">
+                        <div class="flex items-center gap-1 w-1/4">
+                            <span class="text-[9px] text-slate-500">Val</span>
+                            <span class="text-xs font-bold text-slate-700">#${r.valve}</span>
+                        </div>
+                        <div class="flex items-center gap-1 w-2/4 justify-center">
+                            <span class="font-mono text-[10px] text-slate-600">${r.startTime}</span>
+                            <span class="text-[8px] text-slate-300">➜</span>
+                            <span class="font-mono text-[10px] text-slate-600">${r.endTime}</span>
+                        </div>
+                        <div class="w-1/4 text-right text-[10px] text-slate-500">
+                            ${calculateDuration(r.startTime, r.endTime)}
+                        </div>
+                    </div>
+                `).join('');
+
+                return `
+                <div class="pdf-card">
+                    <div class="flex justify-between items-center border-b border-slate-200 pb-2 mb-2 bg-slate-50 -mx-3 -mt-2 px-3 pt-2">
+                        <span class="text-sm font-bold text-slate-800 uppercase">BLOCO ${blockKey}</span>
+                        <span class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">${blockRecords.length > 1 ? blockRecords.length + ' REGISTROS' : '1 REGISTRO'}</span>
+                    </div>
+                    <div class="flex flex-col gap-0">
+                        ${valvesHtml}
+                    </div>
+                </div>
+            `}).join('');
+
+            try {
+                await new Promise(r => setTimeout(r, 100));
+
+                const { jsPDF } = window.jspdf;
+                const element = document.getElementById('pdf-report-grid');
+                
+                const canvas = await html2canvas(element, { 
+                    scale: 2, 
+                    useCORS: true, 
+                    allowTaint: true, 
+                    backgroundColor: '#ffffff'
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('l', 'mm', 'a4');
+                
+                const pageWidth = 297;  
+                const pageHeight = 210; 
+                const margin = 10;
+                const imgWidth = pageWidth - (margin * 2);
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                const usablePageHeight = pageHeight - (margin * 2);
+
+                let printedHeight = 0;
+                while (printedHeight < imgHeight) {
+                    if (printedHeight > 0) pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', margin, margin - printedHeight, imgWidth, imgHeight);
+                    printedHeight += usablePageHeight;
+                }
+
+                const today = new Date();
+                const day = String(today.getDate()).padStart(2, '0');
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const year = today.getFullYear();
+                
+                pdf.save(`Relatorio_de_Irrigacao_${day}-${month}-${year}_SPG_OASIS.pdf`);
+
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao gerar PDF.");
+            } finally {
+                if(icon) icon.classList.remove('animate-spin');
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
+        // --- 3. EXPOR FUNÇÕES PARA O HTML E INICIALIZAR ---
+        window.saveCollaborator = saveCollaborator;
+        window.addRecord = addRecord;
+        window.editRecord = editRecord;
+        window.cancelEdit = cancelEdit;
+        window.deleteRecord = deleteRecord;
+        window.clearAll = clearAll;
+        window.downloadPDF = downloadPDF;
+        window.updateLiveDuration = updateLiveDuration;
+        
+        window.lucide = lucide;
+
+        // INICIALIZAÇÃO
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('date').valueAsDate = new Date();
+            const savedCollab = localStorage.getItem('irrigation_collaborator');
+            if(savedCollab) {
+                const collabSelect = document.getElementById('collaborator');
+                if([...collabSelect.options].some(o => o.value === savedCollab)) {
+                    collabSelect.value = savedCollab;
+                }
+            }
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            renderList();
+        });
+
     </script>
 </body>
 </html>
