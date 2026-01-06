@@ -14,7 +14,7 @@
     <!-- Ícone -->
     <link rel="icon" type="image/png" href="https://i.imgur.com/S7Jzv77.png">
     <link rel="apple-touch-icon" href="https://i.imgur.com/S7Jzv77.png">
- 
+
     <!-- Bibliotecas Externas -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -709,15 +709,18 @@
                     <div class="flex flex-col ${borderClass}">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-1 w-1/4">
-                                <span class="text-[9px] text-slate-500">Val</span>
-                                <span class="text-xs font-bold text-slate-700">#${r.valve}</span>
+                                <span class="text-[10px] text-slate-500">Val</span>
+                                <!-- AUMENTADO PARA text-base (maior que sm) -->
+                                <span class="text-base font-bold text-slate-700">#${r.valve}</span>
                             </div>
                             <div class="flex items-center gap-1 w-2/4 justify-center">
-                                <span class="font-mono text-[10px] text-slate-600">${r.startTime}</span>
-                                <span class="text-[8px] text-slate-300">➜</span>
-                                <span class="font-mono text-[10px] text-slate-600">${r.endTime}</span>
+                                <!-- HORÁRIOS AUMENTADOS PARA text-base -->
+                                <span class="font-mono text-base font-bold text-slate-700">${r.startTime}</span>
+                                <span class="text-xs text-slate-300">➜</span>
+                                <span class="font-mono text-base font-bold text-slate-700">${r.endTime}</span>
                             </div>
-                            <div class="w-1/4 text-right text-[10px] text-slate-500">
+                            <!-- DURAÇÃO AUMENTADA PARA text-base -->
+                            <div class="w-1/4 text-right text-base font-bold text-slate-600">
                                 ${calculateDuration(r.startTime, r.endTime)}
                             </div>
                         </div>
