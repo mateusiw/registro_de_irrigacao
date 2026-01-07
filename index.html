@@ -71,17 +71,6 @@
                 <span id="recordCountBadge" class="text-sm font-mono font-bold text-white leading-none">0</span>
             </div>
             
-            <!-- Botão CSV (NOVO) -->
-            <button type="button" onclick="window.downloadCSV()" class="flex items-center justify-center gap-1 px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg shadow-md border border-slate-500 transition-all active:scale-95" title="Baixar CSV">
-                <!-- Ícone Google Sheets SVG -->
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M14.5 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V7.5L14.5 2Z" fill="#0F9D58"/>
-                    <path d="M14.5 2V7.5H20" fill="#0B8043"/>
-                    <path d="M7 11H17M7 15H17M7 19H13" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-                <span class="text-xs font-bold hidden sm:inline-block">CSV</span>
-            </button>
-
             <!-- Botão PDF -->
             <button type="button" id="btnDownload" onclick="window.downloadPDF()" class="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-md border border-red-500 transition-all active:scale-95">
                 <i data-lucide="file-down" class="w-4 h-4"></i>
@@ -282,9 +271,6 @@
         // --- 1. DEFINIÇÃO DE ESTADO ---
         let records = JSON.parse(localStorage.getItem('irrigation_records')) || [];
         let editingId = null;
-        
-        // NOVA VARIÁVEL DE CONTROLE
-        let csvDownloaded = false;
 
         // --- 2. FUNÇÕES GLOBAIS ---
 
@@ -294,8 +280,6 @@
 
         function saveData() {
             localStorage.setItem('irrigation_records', JSON.stringify(records));
-            // REGRA: Se os dados mudaram, obriga a baixar o CSV novamente
-            csvDownloaded = false; 
             renderList();
         }
 
@@ -320,73 +304,6 @@
             const s = document.getElementById('startTime').value;
             const e = document.getElementById('endTime').value;
             document.getElementById('liveDuration').innerText = calculateDuration(s, e);
-        }
-
-        // --- FUNÇÃO PARA EXPORTAR CSV ---
-        window.downloadCSV = function() {
-            if (records.length === 0) {
-                alert("Não há registros para exportar.");
-                return;
-            }
-
-            // Inicializa vazio (sem cabeçalho para evitar duplicidade na planilha)
-            let csvContent = "";
-            
-            const collab = document.getElementById('collaborator').value;
-
-            records.forEach(r => {
-                const dateFmt = formatDate(r.date);
-                const dur = calculateDuration(r.startTime, r.endTime);
-                // Sanitiza o campo de observação removendo quebras de linha e ponto-e-vírgula
-                const obs = r.observation ? r.observation.replace(/(\r\n|\n|\r)/gm, " ").replace(/;/g, ",") : "";
-                
-                // Monta a linha
-                const row = [
-                    dateFmt,
-                    collab,
-                    r.block,
-                    r.valve,
-                    r.startTime,
-                    r.endTime,
-                    dur,
-                    obs // Nova coluna
-                ].join(";");
-                
-                csvContent += row + "\n";
-            });
-
-            // Cria o arquivo Blob com BOM para caracteres especiais (Acentos)
-            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            
-            const today = new Date();
-            const dateStr = String(today.getDate()).padStart(2, '0') + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + today.getFullYear();
-            
-            // Adicionado sufixo _CSV
-            link.setAttribute("download", `Dados_Irrigacao_${dateStr}_CSV.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            // REGRA: Marca que o CSV foi baixado com sucesso
-            csvDownloaded = true;
-            
-            // Feedback visual rápido
-            const btn = document.querySelector('button[onclick="window.downloadCSV()"]');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> <span class="text-xs font-bold hidden sm:inline-block">Baixado!</span>`;
-            btn.classList.remove('bg-slate-600', 'hover:bg-slate-700');
-            btn.classList.add('bg-green-600', 'hover:bg-green-700');
-            if(typeof lucide !== 'undefined') lucide.createIcons(); // Renderiza o check
-            
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.classList.add('bg-slate-600', 'hover:bg-slate-700');
-                btn.classList.remove('bg-green-600', 'hover:bg-green-700');
-                if(typeof lucide !== 'undefined') lucide.createIcons();
-            }, 2000);
         }
 
         window.resetFormState = function() {
@@ -618,12 +535,6 @@
                 alert("Não há registros para gerar o PDF.");
                 return;
             }
-            
-            // REGRA DE SEGURANÇA: Verifica se o CSV já foi baixado
-            if (!csvDownloaded) {
-                alert("⚠️ AÇÃO NECESSÁRIA:\n\nPara garantir a segurança dos dados, é obrigatório baixar o arquivo CSV (Planilha) antes de gerar o PDF.\n\nPor favor, clique no botão CSV (ícone verde) primeiro.");
-                return;
-            }
 
             const btn = document.getElementById('btnDownload');
             const icon = btn.querySelector('i') || btn.querySelector('svg');
@@ -796,8 +707,8 @@
                 const month = String(today.getMonth() + 1).padStart(2, '0');
                 const year = today.getFullYear();
                 
-                // Adicionado sufixo _PDF
-                pdf.save(`Relatorio_de_Irrigacao_${day}-${month}-${year}_SPG_OASIS_PDF.pdf`);
+                // Removido sufixo _PDF
+                pdf.save(`Relatorio_de_Irrigacao_${day}-${month}-${year}_SPG_OASIS.pdf`);
 
             } catch (err) {
                 console.error(err);
@@ -816,7 +727,6 @@
         window.deleteRecord = deleteRecord;
         window.clearAll = clearAll;
         window.downloadPDF = downloadPDF;
-        window.downloadCSV = downloadCSV;
         window.updateLiveDuration = updateLiveDuration;
         
         window.lucide = lucide;
