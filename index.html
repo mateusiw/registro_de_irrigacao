@@ -188,9 +188,13 @@
 
         <!-- 3. LISTA DE REGISTROS -->
         <section class="space-y-3">
-            <div class="flex justify-between items-center px-1">
-                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Relatório Diário de Irrigação</h3>
-                <button type="button" onclick="window.clearAll()" class="text-xs text-red-400 hover:text-red-600 font-semibold underline cursor-pointer">Limpar Tudo</button>
+            <div class="flex justify-between items-end px-1">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Relatório Diário de Irrigação</h3>
+                    <!-- TIMER DE LIMPEZA AUTOMÁTICA -->
+                    <span id="autoCleanTimer" class="text-[10px] font-mono text-orange-500 font-bold block h-3 mt-1"></span>
+                </div>
+                <button type="button" onclick="window.clearAll()" class="text-xs text-red-400 hover:text-red-600 font-semibold underline cursor-pointer mb-1">Limpar Tudo</button>
             </div>
             
             <!-- Lista -->
@@ -268,7 +272,10 @@
 
         // --- 1. DEFINIÇÃO DE ESTADO ---
         let records = JSON.parse(localStorage.getItem('irrigation_records')) || [];
+        // Tenta recuperar o tempo de expiração do storage
+        let expirationTime = localStorage.getItem('irrigation_expiration');
         let editingId = null;
+        let csvDownloaded = false;
 
         // --- 2. FUNÇÕES GLOBAIS ---
 
@@ -278,6 +285,14 @@
 
         function saveData() {
             localStorage.setItem('irrigation_records', JSON.stringify(records));
+            
+            // SE A LISTA FICAR VAZIA, RESETAR O TIMER
+            if (records.length === 0) {
+                localStorage.removeItem('irrigation_expiration');
+                expirationTime = null;
+                updateTimerDisplay();
+            }
+            
             renderList();
         }
 
@@ -302,6 +317,36 @@
             const s = document.getElementById('startTime').value;
             const e = document.getElementById('endTime').value;
             document.getElementById('liveDuration').innerText = calculateDuration(s, e);
+        }
+
+        // FUNÇÃO PARA ATUALIZAR O CRONOGRAMA DE LIMPEZA
+        function updateTimerDisplay() {
+            const timerEl = document.getElementById('autoCleanTimer');
+            if (!timerEl) return;
+
+            if (!expirationTime || records.length === 0) {
+                timerEl.innerHTML = '';
+                return;
+            }
+
+            const now = Date.now();
+            const diff = expirationTime - now;
+
+            if (diff <= 0) {
+                // TEMPO ESGOTADO - LIMPAR TUDO
+                records = [];
+                saveData(); // Isso também vai limpar o expirationTime
+                alert("O período de 24h encerrou. O histórico foi limpo automaticamente.");
+                return;
+            }
+
+            const h = Math.floor(diff / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            
+            timerEl.innerHTML = `<span class="flex items-center gap-1"><i data-lucide="hourglass" class="w-3 h-3"></i> Auto-limpeza: ${h}h ${m}min</span>`;
+            
+            // Re-render icons for the new HTML injected
+            if(typeof lucide !== 'undefined') lucide.createIcons(); 
         }
 
         window.resetFormState = function() {
@@ -362,6 +407,12 @@
                 }
                 editingId = null;
             } else {
+                // SE A LISTA ESTIVER VAZIA (PRIMEIRO REGISTRO), INICIA O TIMER DE 24H
+                if (records.length === 0) {
+                    expirationTime = Date.now() + (24 * 60 * 60 * 1000); // 24 HORAS
+                    localStorage.setItem('irrigation_expiration', expirationTime);
+                }
+
                 const newRecord = {
                     id: Date.now(),
                     date, block, valve, startTime, endTime, observation
@@ -392,6 +443,7 @@
             });
 
             saveData();
+            updateTimerDisplay(); // Atualiza o timer imediatamente
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -767,6 +819,11 @@
                     collabSelect.value = savedCollab;
                 }
             }
+            
+            // Iniciar o intervalo do cronômetro (a cada 30 segundos é suficiente para atualizar minutos)
+            setInterval(updateTimerDisplay, 30000);
+            updateTimerDisplay(); // Chamada inicial
+
             if(typeof lucide !== 'undefined') lucide.createIcons();
             renderList();
         });
