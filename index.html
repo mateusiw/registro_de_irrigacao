@@ -46,8 +46,6 @@
             flex-direction: column;
             gap: 4px;
         }
-
-        /* REMOVIDO .pdf-valve-row fixo para usar Tailwind e permitir múltiplas linhas (obs) */
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen pb-24 safe-area-bottom">
@@ -206,7 +204,7 @@
                 <p>Nenhuma irrigação registrada.</p>
             </div>
         </section>
-    </main>
+    </div>
 
     <!-- ÁREA OCULTA PARA GERAÇÃO DO PDF -->
     <div style="position: absolute; top: 0; left: -9999px;">
@@ -304,6 +302,10 @@
             if (diff < 0) diff += 1440;
             const h = Math.floor(diff / 60);
             const m = diff % 60;
+            
+            if (h === 0) {
+                return `${m}min`;
+            }
             return `${h}h ${m}min`;
         }
 
@@ -542,7 +544,14 @@
                 });
                 const bHours = Math.floor(blockTotalMinutes / 60);
                 const bMins = blockTotalMinutes % 60;
-                const blockDurationText = `${bHours}h ${bMins}min`;
+                
+                // Formatação condicional para o cabeçalho da lista
+                let blockDurationText;
+                if (bHours === 0) {
+                    blockDurationText = `${bMins}min`;
+                } else {
+                    blockDurationText = `${bHours}h ${bMins}min`;
+                }
 
                 const rowsHtml = blockRecords.map(rec => {
                     const isEditing = rec.id === editingId;
@@ -633,7 +642,13 @@
             });
             const tHours = Math.floor(totalMinutes / 60);
             const tMins = totalMinutes % 60;
-            document.getElementById('pdfTotalDuration').innerText = `${tHours}h ${tMins}min`;
+            
+            // Formatação condicional para o total geral
+            if (tHours === 0) {
+                document.getElementById('pdfTotalDuration').innerText = `${tMins}min`;
+            } else {
+                document.getElementById('pdfTotalDuration').innerText = `${tHours}h ${tMins}min`;
+            }
 
             document.getElementById('pdfCollaborator').innerText = document.getElementById('collaborator').value;
 
@@ -672,7 +687,14 @@
                 });
                 const bHours = Math.floor(blockTotalMinutes / 60);
                 const bMins = blockTotalMinutes % 60;
-                const blockDurationText = `${bHours}h ${bMins}min`;
+                
+                // Formatação condicional para o rodapé do bloco no PDF
+                let blockDurationText;
+                if (bHours === 0) {
+                    blockDurationText = `${bMins}min`;
+                } else {
+                    blockDurationText = `${bHours}h ${bMins}min`;
+                }
 
                 // REGRA ESPECIAL: Se o bloco for "E", exibe "Tâmaras". Caso contrário, "BLOCO X"
                 const blockTitle = blockKey === 'E' ? 'Tâmaras' : `BLOCO ${blockKey}`;
