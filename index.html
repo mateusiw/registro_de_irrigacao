@@ -244,8 +244,11 @@
                     <i data-lucide="check" class="w-8 h-8"></i>
                 </div>
                 <h3 class="text-xl font-black text-[#1e293b] mb-3">Tudo Pronto!</h3>
-                <p class="text-[13px] text-slate-500 mb-8 font-medium leading-relaxed px-4">
-                    Os dados foram processados e registrados com sucesso.<br><br>Clique abaixo para abrir o WhatsApp.
+                <!-- Texto atualizado para guiar o usuário sobre a cópia do texto -->
+                <p id="successMessageDesc" class="text-[13px] text-slate-500 mb-8 font-medium leading-relaxed px-4">
+                    Os dados foram processados com sucesso.<br><br>
+                    <span class="text-[#0084c7] font-bold">O texto do resumo foi copiado!</span><br>
+                    Ao abrir o WhatsApp, basta colar a mensagem.
                 </p>
                 <div class="flex flex-col gap-3 w-full">
                     <button type="button" onclick="window.shareReport()" class="w-full bg-[#0084c7] hover:bg-[#0073ad] text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors shadow-md text-sm">
@@ -883,6 +886,27 @@
                 currentReportData.fileName = fileName;
                 currentReportData.text = textoResumoWhatsApp;
 
+                // --- SOLUÇÃO PARA O BUG DO WHATSAPP (COPIA O TEXTO AUTOMATICAMENTE) ---
+                const copyTextToClipboard = () => {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = textoResumoWhatsApp;
+                    // Posiciona o textarea fora da tela
+                    textArea.style.position = "fixed";
+                    textArea.style.opacity = "0";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                    } catch (err) {
+                        console.warn("Falha ao copiar texto automaticamente:", err);
+                    }
+                    document.body.removeChild(textArea);
+                };
+                
+                // Executa a cópia
+                copyTextToClipboard();
+
                 // Vai para o Passo 3: Sucesso
                 document.getElementById('step-loading').classList.add('hidden');
                 document.getElementById('step-loading').classList.remove('flex');
@@ -905,7 +929,7 @@
                 try {
                     await navigator.share({
                         title: 'Relatório de Irrigação',
-                        text: text,
+                        text: text, // Mantemos aqui por garantia, mas no WhatsApp costuma ser ignorado
                         files: [pdfFile]
                     });
                     window.closeFlowModal();
