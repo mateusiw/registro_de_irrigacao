@@ -19,14 +19,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
         input, select { user-select: text; }
         .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
         
-        /* Grid para o PDF - 3 COLUNAS */
+        /* Grid para o Relatório - 3 COLUNAS */
         #pdf-grid-container {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -34,7 +33,7 @@
             align-content: start;
         }
         
-        /* Estilo do Cartão no PDF */
+        /* Estilo do Cartão no Relatório */
         .pdf-card {
             background: #fff;
             border: 1px solid #cbd5e1;
@@ -248,7 +247,7 @@
                 <p id="successMessageDesc" class="text-[13px] text-slate-500 mb-8 font-medium leading-relaxed px-4">
                     Os dados foram processados com sucesso.<br><br>
                     <span class="text-[#0084c7] font-bold">O texto do resumo foi copiado!</span><br>
-                    Ao abrir o WhatsApp, basta colar a mensagem.
+                    Se o WhatsApp não anexar automaticamente, basta colar a mensagem na legenda.
                 </p>
                 <div class="flex flex-col gap-3 w-full">
                     <button type="button" onclick="window.shareReport()" class="w-full bg-[#0084c7] hover:bg-[#0073ad] text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors shadow-md text-sm">
@@ -263,11 +262,11 @@
         </div>
     </div>
 
-    <!-- ÁREA OCULTA PARA GERAÇÃO DO PDF -->
+    <!-- ÁREA OCULTA PARA GERAÇÃO DA IMAGEM -->
     <div style="position: absolute; top: 0; left: -9999px;">
         <div id="pdf-report-grid" class="px-5 pb-5 pt-0 bg-white" style="font-family: Arial, sans-serif; width: 1200px;">
             
-            <!-- CABEÇALHO DO PDF -->
+            <!-- CABEÇALHO DO RELATÓRIO -->
             <div class="flex flex-col items-center justify-center mb-2 border-b-2 border-green-700 pb-2">
                 <div class="flex items-center justify-between w-full mb-1 px-4 pt-2">
                     <h1 class="text-3xl font-black text-green-800 uppercase tracking-widest text-center flex-1">Relatório Diário de Irrigação</h1>
@@ -309,10 +308,10 @@
                 </div>
             </div>
 
-            <!-- Grid de Cards PDF -->
+            <!-- Grid de Cards do Relatório -->
             <div id="pdf-grid-container"></div>
 
-            <!-- Rodapé PDF -->
+            <!-- Rodapé Relatório -->
             <div class="mt-8 pt-4 border-t border-slate-100 text-center">
                 <p class="text-[10px] text-slate-300 uppercase tracking-widest font-bold">Relatório Gerado Digitalmente • SPG OÁSIS</p>
             </div>
@@ -327,9 +326,9 @@
         let expirationTime = localStorage.getItem('irrigation_expiration');
         let editingId = null;
         
-        // Armazena temporariamente os dados gerados do PDF e da Planilha
+        // Armazena temporariamente os dados gerados da Imagem e da Planilha
         let currentReportData = {
-            pdfFile: null,
+            file: null,
             fileName: "",
             text: ""
         };
@@ -687,7 +686,7 @@
             
             if(typeof lucide !== 'undefined') lucide.createIcons();
 
-            // Prepara a grid do PDF nos bastidores
+            // Prepara a grid do relatório nos bastidores
             const pdfDateRef = records.length > 0 ? formatDate(records[0].date) : formatDate(new Date().toISOString().split('T')[0]);
             document.getElementById('pdfDate').innerText = pdfDateRef;
             document.getElementById('pdfTotalCount').innerText = records.length;
@@ -841,11 +840,10 @@
                 console.error("Erro na comunicação com a planilha:", err);
             }
 
-            // --- GERAÇÃO DO PDF ---
+            // --- GERAÇÃO DA IMAGEM ---
             try {
                 await new Promise(r => setTimeout(r, 200)); 
 
-                const { jsPDF } = window.jspdf;
                 const element = document.getElementById('pdf-report-grid');
                 
                 const canvas = await html2canvas(element, { 
@@ -855,34 +853,15 @@
                     backgroundColor: '#ffffff'
                 });
 
-                const imgData = canvas.toDataURL('image/png');
-                
-                const pdfWidth = 297; 
-                const margin = 2; 
-                const imgWidth = pdfWidth - (margin * 2);
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                let pdfHeight = imgHeight + (margin * 2);
-                if (pdfHeight < 210) pdfHeight = 210;
-
-                const orientation = pdfHeight > pdfWidth ? 'p' : 'l';
-                
-                const pdf = new jsPDF({
-                    orientation: orientation,
-                    unit: 'mm',
-                    format: [pdfWidth, pdfHeight]
-                });
-
-                pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
-                
-                const fileName = `Relatorio_de_Irrigacao_${day}-${month}-${year}_SPG_OASIS.pdf`;
-                const pdfBlob = pdf.output('blob');
+                const imageBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const fileName = `Relatorio_de_Irrigacao_${day}-${month}-${year}_SPG_OASIS.png`;
                 
                 if(!textoResumoWhatsApp) {
                     textoResumoWhatsApp = `\`Relatório de Irrigação (${day}/${month}/${year})\`\n\n• Total de irrigações: ${records.length}\n\n*Responsável:* ${nomeResponsavel}`;
                 }
 
-                // Armazena no estado global
-                currentReportData.pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                // Armazena no estado global como arquivo de imagem (PNG)
+                currentReportData.file = new File([imageBlob], fileName, { type: 'image/png' });
                 currentReportData.fileName = fileName;
                 currentReportData.text = textoResumoWhatsApp;
 
@@ -923,23 +902,23 @@
         }
 
         window.shareReport = async function() {
-            const { pdfFile, fileName, text } = currentReportData;
+            const { file, fileName, text } = currentReportData;
             
-            if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
                     await navigator.share({
                         title: 'Relatório de Irrigação',
-                        text: text, // Mantemos aqui por garantia, mas no WhatsApp costuma ser ignorado
-                        files: [pdfFile]
+                        text: text, // O WhatsApp Mobile costuma aceitar a legenda nativamente quando é Imagem!
+                        files: [file]
                     });
                     window.closeFlowModal();
                 } catch (e) {
                     console.log("Compartilhamento cancelado ou não suportado", e);
                 }
             } else {
-                // Fallback PC: Baixa o arquivo e abre web.whatsapp
+                // Fallback PC: Baixa a imagem e abre web.whatsapp
                 const downloadLink = document.createElement('a');
-                downloadLink.href = URL.createObjectURL(pdfFile);
+                downloadLink.href = URL.createObjectURL(file);
                 downloadLink.download = fileName;
                 downloadLink.click();
                 
