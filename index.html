@@ -53,7 +53,6 @@
     <!-- Navbar -->
     <div class="bg-green-700 text-white px-4 py-3 flex justify-between items-center shadow-lg sticky top-0 z-40 pt-safe-top">
         <div class="flex items-center gap-3">
-            <!-- LOGO SEM FUNDO BRANCO -->
             <img src="https://i.imgur.com/S7Jzv77.png" alt="Logo" class="h-10 w-auto">
             <div>
                 <h1 class="text-lg font-bold leading-tight tracking-tight">Registro Irrigação</h1>
@@ -63,17 +62,16 @@
         
         <!-- Área da Direita: Contador e Botões -->
         <div class="flex gap-2 items-center">
-            <!-- Contador com Rótulo -->
             <div class="flex flex-col items-end mr-1">
                 <span class="text-[9px] text-green-200 font-bold uppercase tracking-wider">Irrigações Realizadas</span>
                 <span id="recordCountBadge" class="text-sm font-mono font-bold text-white leading-none">0</span>
             </div>
             
-            <!-- Botão PDF -->
-            <button type="button" id="btnDownload" onclick="window.downloadPDF()" class="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-md border border-red-500 transition-all active:scale-95">
-                <i data-lucide="file-down" class="w-4 h-4"></i>
-                <span class="text-xs font-bold hidden sm:inline-block">PDF</span>
-                <span class="text-xs font-bold sm:hidden">PDF</span>
+            <!-- Botão Enviar Relatório -->
+            <button type="button" id="btnSendReport" onclick="window.startReportFlow()" class="flex items-center justify-center gap-2 px-3 py-2 bg-[#0084c7] hover:bg-[#0073ad] text-white rounded-lg shadow-md border border-[#006ba1] transition-all active:scale-95">
+                <i data-lucide="send" class="w-4 h-4"></i>
+                <span class="text-xs font-bold hidden sm:inline-block">Enviar Relatório</span>
+                <span class="text-xs font-bold sm:hidden">Enviar</span>
             </button>
         </div>
     </div>
@@ -128,7 +126,6 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                     <i data-lucide="map-pin" class="w-4 h-4"></i>
                                 </div>
-                                <!-- INPUT COM RESTRIÇÃO (MAX 2 CARACTERES, UPPERCASE) -->
                                 <input type="text" id="block" required maxlength="2" placeholder="1 ou A" 
                                     oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"
                                     class="w-full bg-slate-50 border border-slate-300 rounded-lg py-2 pl-9 pr-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 uppercase text-slate-800 font-medium text-center">
@@ -206,9 +203,65 @@
         </section>
     </div>
 
+    <!-- MODAL DE FLUXO DE ENVIO (MULTI-STEP) -->
+    <div id="flowModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-8 text-center relative">
+            
+            <!-- STEP 1: CONFIRMAR ENVIO -->
+            <div id="step-confirm" class="hidden flex-col items-center">
+                <div class="w-16 h-16 bg-[#eef7fd] text-[#0084c7] rounded-full flex items-center justify-center mb-5 mx-auto">
+                    <i data-lucide="send" class="w-8 h-8 ml-1"></i>
+                </div>
+                <h3 class="text-xl font-black text-[#1e293b] mb-3">Confirmar Envio?</h3>
+                <p class="text-[13px] text-slate-500 mb-6 font-medium px-2 leading-relaxed">
+                    Verifique se os blocos e tempos<br>registrados estão corretos.
+                </p>
+                <p class="text-[13px] font-bold text-[#0084c7] mb-8">
+                    O relatório será preparado para o WhatsApp.
+                </p>
+                <div class="flex gap-3 w-full">
+                    <button type="button" onclick="window.closeFlowModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
+                        REVISAR
+                    </button>
+                    <button type="button" onclick="window.processReport()" class="flex-1 bg-[#0084c7] hover:bg-[#0073ad] text-white font-bold py-3.5 rounded-2xl transition-colors shadow-md text-sm">
+                        ENVIAR
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 2: CONSULTANDO DADOS (LOADING) -->
+            <div id="step-loading" class="hidden flex-col items-center py-6">
+                <i data-lucide="loader-circle" class="w-14 h-14 text-[#0084c7] animate-spin mb-6 mx-auto"></i>
+                <h3 class="text-xl font-black text-[#1e293b] mb-3">Consultando Dados...</h3>
+                <p class="text-[13px] text-slate-500 font-medium leading-relaxed">
+                    Aguarde, processando previsão e acumulado.
+                </p>
+            </div>
+
+            <!-- STEP 3: TUDO PRONTO (SUCCESS) -->
+            <div id="step-success" class="hidden flex-col items-center">
+                <div class="w-16 h-16 bg-[#f0fdf4] text-[#16a34a] rounded-full flex items-center justify-center mb-5 mx-auto border-4 border-[#dcfce7]">
+                    <i data-lucide="check" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-xl font-black text-[#1e293b] mb-3">Tudo Pronto!</h3>
+                <p class="text-[13px] text-slate-500 mb-8 font-medium leading-relaxed px-4">
+                    Os dados foram processados e registrados com sucesso.<br><br>Clique abaixo para abrir o WhatsApp.
+                </p>
+                <div class="flex flex-col gap-3 w-full">
+                    <button type="button" onclick="window.shareReport()" class="w-full bg-[#0084c7] hover:bg-[#0073ad] text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors shadow-md text-sm">
+                        <i data-lucide="share-2" class="w-4 h-4"></i> COMPARTILHAR
+                    </button>
+                    <button type="button" onclick="window.closeFlowModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
+                        FECHAR
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
     <!-- ÁREA OCULTA PARA GERAÇÃO DO PDF -->
     <div style="position: absolute; top: 0; left: -9999px;">
-        <!-- Padding top zerado (pt-0) para encostar no topo -->
         <div id="pdf-report-grid" class="px-5 pb-5 pt-0 bg-white" style="font-family: Arial, sans-serif; width: 1200px;">
             
             <!-- CABEÇALHO DO PDF -->
@@ -235,7 +288,7 @@
                         </span>
                     </div>
                     
-                    <!-- POSIÇÃO TROCADA: AGORA IRRIGAÇÕES VEM ANTES -->
+                    <!-- IRRIGAÇÕES -->
                     <div class="flex-1 p-3 flex flex-col items-center justify-center">
                         <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Irrigações Realizadas</span>
                         <span class="text-xl font-black text-green-700 leading-none flex items-center gap-1">
@@ -243,7 +296,7 @@
                         </span>
                     </div>
 
-                    <!-- POSIÇÃO TROCADA: AGORA HORAS VEM DEPOIS -->
+                    <!-- HORAS -->
                     <div class="flex-1 p-3 flex flex-col items-center justify-center">
                         <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Horas de irrigação</span>
                         <span class="text-xl font-black text-green-700 leading-none">
@@ -256,6 +309,14 @@
             <!-- Grid de Cards PDF -->
             <div id="pdf-grid-container"></div>
 
+            <!-- Resumo de Consumo (Apps Script) -->
+            <div id="pdf-summary-container" class="mt-4 pt-4 border-t border-green-700 hidden text-left">
+                <h3 class="text-sm font-black text-green-800 uppercase tracking-widest mb-1 flex items-center gap-1">
+                    Estimativa de Consumo
+                </h3>
+                <p id="pdf-summary-text" class="text-xs text-slate-800 font-medium whitespace-pre-line leading-relaxed"></p>
+            </div>
+
             <!-- Rodapé PDF -->
             <div class="mt-8 pt-4 border-t border-slate-100 text-center">
                 <p class="text-[10px] text-slate-300 uppercase tracking-widest font-bold">Relatório Gerado Digitalmente • SPG OÁSIS</p>
@@ -265,17 +326,18 @@
 
     <!-- JAVASCRIPT PURO -->
     <script>
-        // Confirmação no console
         console.log("Console pronto para edição!");
 
-        // --- 1. DEFINIÇÃO DE ESTADO ---
         let records = JSON.parse(localStorage.getItem('irrigation_records')) || [];
-        // Tenta recuperar o tempo de expiração do storage
         let expirationTime = localStorage.getItem('irrigation_expiration');
         let editingId = null;
-        let csvDownloaded = false;
-
-        // --- 2. FUNÇÕES GLOBAIS ---
+        
+        // Armazena temporariamente os dados gerados do PDF e da Planilha
+        let currentReportData = {
+            pdfFile: null,
+            fileName: "",
+            text: ""
+        };
 
         window.saveCollaborator = function() {
             localStorage.setItem('irrigation_collaborator', document.getElementById('collaborator').value);
@@ -283,14 +345,11 @@
 
         function saveData() {
             localStorage.setItem('irrigation_records', JSON.stringify(records));
-            
-            // SE A LISTA FICAR VAZIA, RESETAR O TIMER
             if (records.length === 0) {
                 localStorage.removeItem('irrigation_expiration');
                 expirationTime = null;
                 updateTimerDisplay();
             }
-            
             renderList();
         }
 
@@ -303,9 +362,7 @@
             const h = Math.floor(diff / 60);
             const m = diff % 60;
             
-            if (h === 0) {
-                return `${m}min`;
-            }
+            if (h === 0) return `${m}min`;
             return `${h}h ${m}min`;
         }
 
@@ -321,7 +378,6 @@
             document.getElementById('liveDuration').innerText = calculateDuration(s, e);
         }
 
-        // FUNÇÃO PARA ATUALIZAR O CRONOGRAMA DE LIMPEZA
         function updateTimerDisplay() {
             const timerEl = document.getElementById('autoCleanTimer');
             if (!timerEl) return;
@@ -335,9 +391,8 @@
             const diff = expirationTime - now;
 
             if (diff <= 0) {
-                // TEMPO ESGOTADO - LIMPAR TUDO
                 records = [];
-                saveData(); // Isso também vai limpar o expirationTime
+                saveData();
                 alert("O período de 24h encerrou. O histórico foi limpo automaticamente.");
                 return;
             }
@@ -346,8 +401,6 @@
             const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             
             timerEl.innerHTML = `<span class="flex items-center gap-1"><i data-lucide="hourglass" class="w-3 h-3"></i> Auto-limpeza: ${h}h ${m}min</span>`;
-            
-            // Re-render icons for the new HTML injected
             if(typeof lucide !== 'undefined') lucide.createIcons(); 
         }
 
@@ -368,7 +421,6 @@
             const title = document.getElementById('formTitleText');
             if(title) title.innerText = "Novo Registro";
             
-            // Limpa observação
             document.getElementById('observation').value = '';
             
             const cancelBtn = document.getElementById('cancelEditBtn');
@@ -409,9 +461,8 @@
                 }
                 editingId = null;
             } else {
-                // SE A LISTA ESTIVER VAZIA (PRIMEIRO REGISTRO), INICIA O TIMER DE 24H
                 if (records.length === 0) {
-                    expirationTime = Date.now() + (24 * 60 * 60 * 1000); // 24 HORAS
+                    expirationTime = Date.now() + (24 * 60 * 60 * 1000);
                     localStorage.setItem('irrigation_expiration', expirationTime);
                 }
 
@@ -421,7 +472,6 @@
                 };
                 records.push(newRecord);
                 
-                // LIMPA O CAMPO OBSERVAÇÃO APÓS REGISTRAR
                 document.getElementById('observation').value = '';
                 
                 const btn = document.getElementById('submitBtn');
@@ -445,7 +495,7 @@
             });
 
             saveData();
-            updateTimerDisplay(); // Atualiza o timer imediatamente
+            updateTimerDisplay();
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -521,7 +571,6 @@
             list.innerHTML = sortedKeys.map(blockKey => {
                 const blockRecords = grouped[blockKey];
                 
-                // ALTERADO: Ordenar PRIMEIRO pelo horário de início, DEPOIS pela válvula
                 blockRecords.sort((a, b) => {
                      const timeDiff = a.startTime.localeCompare(b.startTime);
                      if(timeDiff !== 0) return timeDiff;
@@ -531,7 +580,6 @@
                      return vA - vB;
                 });
 
-                // CÁLCULO DO TEMPO TOTAL DO BLOCO (PARA EXIBIR NO CABEÇALHO)
                 let blockTotalMinutes = 0;
                 blockRecords.forEach(r => {
                     if (r.startTime && r.endTime) {
@@ -545,7 +593,6 @@
                 const bHours = Math.floor(blockTotalMinutes / 60);
                 const bMins = blockTotalMinutes % 60;
                 
-                // Formatação condicional para o cabeçalho da lista
                 let blockDurationText;
                 if (bHours === 0) {
                     blockDurationText = `${bMins}min`;
@@ -593,7 +640,6 @@
                     <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
                         <div class="flex items-center gap-2">
                             <span class="text-sm font-bold text-slate-800 uppercase">BLOCO ${blockKey}</span>
-                            <!-- TOTAL DE HORAS DO BLOCO AQUI -->
                             <span class="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full border border-green-200 flex items-center gap-1">
                                 <i data-lucide="clock" class="w-3 h-3"></i> ${blockDurationText}
                             </span>
@@ -610,26 +656,50 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        window.downloadPDF = async function() {
+        // --- SISTEMA DE MODAL MULTI-STEP ---
+
+        window.startReportFlow = function() {
             if (records.length === 0) {
-                alert("Não há registros para gerar o PDF.");
+                alert("Não há registros para enviar.");
                 return;
             }
-
-            const btn = document.getElementById('btnDownload');
-            const icon = btn.querySelector('i') || btn.querySelector('svg');
             
-            if(icon) icon.classList.add('animate-spin');
+            // Mostra o modal e esconde os outros passos, deixando só o Passo 1
+            document.getElementById('flowModal').classList.remove('hidden');
+            document.getElementById('step-confirm').classList.remove('hidden');
+            document.getElementById('step-confirm').classList.add('flex');
+            
+            document.getElementById('step-loading').classList.add('hidden');
+            document.getElementById('step-loading').classList.remove('flex');
+            
+            document.getElementById('step-success').classList.add('hidden');
+            document.getElementById('step-success').classList.remove('flex');
+            
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
 
+        window.closeFlowModal = function() {
+            document.getElementById('flowModal').classList.add('hidden');
+        }
+
+        window.processReport = async function() {
+            // Vai para o Passo 2: Carregando
+            document.getElementById('step-confirm').classList.add('hidden');
+            document.getElementById('step-confirm').classList.remove('flex');
+            
+            document.getElementById('step-loading').classList.remove('hidden');
+            document.getElementById('step-loading').classList.add('flex');
+            
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            // Prepara a grid do PDF nos bastidores
             const pdfDateRef = records.length > 0 ? formatDate(records[0].date) : formatDate(new Date().toISOString().split('T')[0]);
             document.getElementById('pdfDate').innerText = pdfDateRef;
             document.getElementById('pdfTotalCount').innerText = records.length;
             
-            // LÓGICA PARA CONTAR BLOCOS ÚNICOS
             const uniqueBlocks = new Set(records.map(r => r.block)).size;
             document.getElementById('pdfBlockCount').innerText = uniqueBlocks;
 
-            // CÁLCULO DO TEMPO TOTAL
             let totalMinutes = 0;
             records.forEach(r => {
                 if (r.startTime && r.endTime) {
@@ -643,7 +713,6 @@
             const tHours = Math.floor(totalMinutes / 60);
             const tMins = totalMinutes % 60;
             
-            // Formatação condicional para o total geral
             if (tHours === 0) {
                 document.getElementById('pdfTotalDuration').innerText = `${tMins}min`;
             } else {
@@ -653,7 +722,6 @@
             document.getElementById('pdfCollaborator').innerText = document.getElementById('collaborator').value;
 
             const gridContainer = document.getElementById('pdf-grid-container');
-            
             const grouped = {};
             records.forEach(rec => {
                 const k = rec.block;
@@ -664,17 +732,14 @@
             gridContainer.innerHTML = Object.keys(grouped).map(blockKey => {
                 const blockRecords = grouped[blockKey];
                 
-                // ALTERADO (PDF): Ordenar PRIMEIRO pelo horário de início, DEPOIS pela válvula
                 blockRecords.sort((a, b) => {
                      const timeDiff = a.startTime.localeCompare(b.startTime);
                      if(timeDiff !== 0) return timeDiff;
-
                      const vA = parseInt(a.valve) || 0;
                      const vB = parseInt(b.valve) || 0;
                      return vA - vB;
                 });
 
-                // CÁLCULO DO TEMPO TOTAL DO BLOCO
                 let blockTotalMinutes = 0;
                 blockRecords.forEach(r => {
                     if (r.startTime && r.endTime) {
@@ -688,7 +753,6 @@
                 const bHours = Math.floor(blockTotalMinutes / 60);
                 const bMins = blockTotalMinutes % 60;
                 
-                // Formatação condicional para o rodapé do bloco no PDF
                 let blockDurationText;
                 if (bHours === 0) {
                     blockDurationText = `${bMins}min`;
@@ -696,15 +760,11 @@
                     blockDurationText = `${bHours}h ${bMins}min`;
                 }
 
-                // REGRA ESPECIAL: Se o bloco for "E", exibe "Tâmaras". Caso contrário, "BLOCO X"
                 const blockTitle = blockKey === 'E' ? 'Tâmaras' : `BLOCO ${blockKey}`;
 
                 const valvesHtml = blockRecords.map((r, index) => {
-                    // Verifica se é o último item para não colocar borda embaixo
                     const isLast = index === blockRecords.length - 1;
                     const borderClass = isLast ? '' : 'border-b border-dashed border-slate-200 pb-1 mb-1';
-                    
-                    // HTML da Observação (se existir)
                     const obsHtml = r.observation ? `
                         <div class="flex items-start gap-1 mt-0.5 ml-1">
                             <span class="text-[8px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Obs:</span>
@@ -717,16 +777,13 @@
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-1 w-1/4">
                                 <span class="text-[10px] text-slate-500">Val</span>
-                                <!-- AUMENTADO PARA text-base (maior que sm) -->
                                 <span class="text-base font-bold text-slate-700">#${r.valve}</span>
                             </div>
                             <div class="flex items-center gap-1 w-2/4 justify-center">
-                                <!-- HORÁRIOS AUMENTADOS PARA text-base -->
                                 <span class="font-mono text-base font-bold text-slate-700">${r.startTime}</span>
                                 <span class="text-xs text-slate-300">➜</span>
                                 <span class="font-mono text-base font-bold text-slate-700">${r.endTime}</span>
                             </div>
-                            <!-- DURAÇÃO AUMENTADA PARA text-base -->
                             <div class="w-1/4 text-right text-base font-bold text-slate-600">
                                 ${calculateDuration(r.startTime, r.endTime)}
                             </div>
@@ -746,8 +803,6 @@
                             ${valvesHtml}
                         </div>
                     </div>
-                    
-                    <!-- RODAPÉ DO BLOCO COM TOTAL DE HORAS -->
                     <div class="mt-3 pt-2 border-t border-slate-300 flex justify-between items-center bg-green-50 -mx-3 -mb-2 px-3 py-2 rounded-b">
                         <span class="text-[9px] font-bold text-green-800 uppercase tracking-wide">Tempo Total Bloco</span>
                         <span class="text-xs font-black text-green-700">${blockDurationText}</span>
@@ -755,8 +810,51 @@
                 </div>
             `}).join('');
 
+            // --- INTEGRAÇÃO APPS SCRIPT ---
+            const summaryContainer = document.getElementById('pdf-summary-container');
+            const summaryText = document.getElementById('pdf-summary-text');
+            summaryContainer.classList.add('hidden'); 
+            
+            let textoResumoWhatsApp = ""; 
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = today.getFullYear();
+
+            // Formatação do nome abreviado
+            let nomeResponsavel = document.getElementById('collaborator').value;
+            if (nomeResponsavel === "ANTONIO AIRTON CORDEIRO DE BRITO") {
+                nomeResponsavel = "Airton Cordeiro";
+            } else if (nomeResponsavel === "ALEXANDRO RIBEIRO LIMA") {
+                nomeResponsavel = "Alexandro Ribeiro";
+            }
+
             try {
-                await new Promise(r => setTimeout(r, 100));
+                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec";
+                const response = await fetch(scriptUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        registros: records,
+                        responsavel: nomeResponsavel 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.sucesso && data.resumo) {
+                    textoResumoWhatsApp = data.resumo;
+                    summaryText.innerText = data.resumo;
+                    summaryContainer.classList.remove('hidden');
+                } else {
+                    console.warn("Aviso do Apps Script:", data.erro);
+                }
+            } catch (err) {
+                console.error("Erro na comunicação com a planilha:", err);
+            }
+
+            // --- GERAÇÃO DO PDF ---
+            try {
+                await new Promise(r => setTimeout(r, 200)); 
 
                 const { jsPDF } = window.jspdf;
                 const element = document.getElementById('pdf-report-grid');
@@ -770,23 +868,13 @@
 
                 const imgData = canvas.toDataURL('image/png');
                 
-                // --- MODO PÁGINA INFINITA ---
-                // Define a largura fixa (baseada em A4 Paisagem para manter a escala)
                 const pdfWidth = 297; 
-                const margin = 2; // Margem pequena (2mm)
-                
-                // Calcula a altura necessária proporcionalmente
+                const margin = 2; 
                 const imgWidth = pdfWidth - (margin * 2);
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                
-                // Altura final do PDF = Altura da Imagem + Margens
                 let pdfHeight = imgHeight + (margin * 2);
-                
-                // Garante altura mínima de um A4 (210mm) para não ficar estranho se tiver pouco item
                 if (pdfHeight < 210) pdfHeight = 210;
 
-                // Cria o PDF com tamanho personalizado [largura, altura]
-                // A orientação é ajustada automaticamente baseada nas dimensões, mas forçamos 'p' se for muito comprido
                 const orientation = pdfHeight > pdfWidth ? 'p' : 'l';
                 
                 const pdf = new jsPDF({
@@ -795,41 +883,74 @@
                     format: [pdfWidth, pdfHeight]
                 });
 
-                // Adiciona a imagem completa em uma única página
                 pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
-
-                const today = new Date();
-                const day = String(today.getDate()).padStart(2, '0');
-                const month = String(today.getMonth() + 1).padStart(2, '0');
-                const year = today.getFullYear();
                 
-                // Removido sufixo _PDF
-                pdf.save(`Relatorio_de_Irrigacao_${day}-${month}-${year}_SPG_OASIS.pdf`);
+                const fileName = `Relatorio_de_Irrigacao_${day}-${month}-${year}_SPG_OASIS.pdf`;
+                const pdfBlob = pdf.output('blob');
+                
+                if(!textoResumoWhatsApp) {
+                    textoResumoWhatsApp = `\`Relatório de Irrigação (${day}/${month}/${year})\`\n\n• Total de irrigações: ${records.length}\n\n*Responsável:* ${nomeResponsavel}`;
+                }
+
+                // Armazena no estado global
+                currentReportData.pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                currentReportData.fileName = fileName;
+                currentReportData.text = textoResumoWhatsApp;
+
+                // Vai para o Passo 3: Sucesso
+                document.getElementById('step-loading').classList.add('hidden');
+                document.getElementById('step-loading').classList.remove('flex');
+                
+                document.getElementById('step-success').classList.remove('hidden');
+                document.getElementById('step-success').classList.add('flex');
+                if(typeof lucide !== 'undefined') lucide.createIcons();
 
             } catch (err) {
                 console.error(err);
-                alert("Erro ao gerar PDF.");
-            } finally {
-                if(icon) icon.classList.remove('animate-spin');
-                if(typeof lucide !== 'undefined') lucide.createIcons();
+                alert("Erro ao processar relatório.");
+                window.closeFlowModal();
             }
         }
 
-        // --- 3. EXPOR FUNÇÕES PARA O HTML E INICIALIZAR ---
+        window.shareReport = async function() {
+            const { pdfFile, fileName, text } = currentReportData;
+            
+            if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                try {
+                    await navigator.share({
+                        title: 'Relatório de Irrigação',
+                        text: text,
+                        files: [pdfFile]
+                    });
+                    window.closeFlowModal();
+                } catch (e) {
+                    console.log("Compartilhamento cancelado ou não suportado", e);
+                }
+            } else {
+                // Fallback PC: Baixa o arquivo e abre web.whatsapp
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(pdfFile);
+                downloadLink.download = fileName;
+                downloadLink.click();
+                
+                const whatsUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                window.open(whatsUrl, '_blank');
+                window.closeFlowModal();
+            }
+        }
+
+        // --- INICIALIZAÇÃO E EXPOSIÇÃO GERAL ---
         window.saveCollaborator = saveCollaborator;
         window.addRecord = addRecord;
         window.editRecord = editRecord;
         window.cancelEdit = cancelEdit;
         window.deleteRecord = deleteRecord;
         window.clearAll = clearAll;
-        window.downloadPDF = downloadPDF;
         window.updateLiveDuration = updateLiveDuration;
         
         window.lucide = lucide;
 
-        // INICIALIZAÇÃO
         document.addEventListener('DOMContentLoaded', () => {
-            // Ajuste para pegar a data local correta do dispositivo (evita bug de fuso horário UTC)
             const today = new Date();
             const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
             document.getElementById('date').value = localDate;
@@ -842,9 +963,8 @@
                 }
             }
             
-            // Iniciar o intervalo do cronômetro (a cada 30 segundos é suficiente para atualizar minutos)
             setInterval(updateTimerDisplay, 30000);
-            updateTimerDisplay(); // Chamada inicial
+            updateTimerDisplay();
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
             renderList();
