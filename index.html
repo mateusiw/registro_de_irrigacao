@@ -203,6 +203,43 @@
         </section>
     </div>
 
+    <!-- MODAL DE CONFIRMAÇÃO (EXCLUSÃO / LIMPAR TUDO) -->
+    <div id="confirmModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-6 text-center relative">
+            <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4 mx-auto">
+                <i data-lucide="trash-2" class="w-8 h-8"></i>
+            </div>
+            <h3 id="confirmModalTitle" class="text-xl font-black text-slate-800 mb-2">Excluir?</h3>
+            <p id="confirmModalText" class="text-[13px] text-slate-500 mb-6 font-medium leading-relaxed px-2">
+                Esta ação não pode ser desfeita.
+            </p>
+            <div class="flex gap-3 w-full">
+                <button type="button" onclick="window.closeConfirmModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
+                    CANCELAR
+                </button>
+                <button type="button" id="confirmModalBtn" onclick="window.executeConfirmAction()" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-2xl transition-colors shadow-md text-sm">
+                    EXCLUIR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ALERTA GERAL -->
+    <div id="alertModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-6 text-center relative">
+            <div class="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mb-4 mx-auto">
+                <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+            </div>
+            <h3 id="alertModalTitle" class="text-xl font-black text-slate-800 mb-2">Atenção</h3>
+            <p id="alertModalText" class="text-[13px] text-slate-500 mb-6 font-medium leading-relaxed px-2">
+                Mensagem de alerta.
+            </p>
+            <button type="button" onclick="window.closeAlertModal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-2xl transition-colors shadow-md text-sm">
+                ENTENDI
+            </button>
+        </div>
+    </div>
+
     <!-- MODAL DE FLUXO DE ENVIO (MULTI-STEP) -->
     <div id="flowModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-8 text-center relative">
@@ -334,6 +371,10 @@
         let expirationTime = localStorage.getItem('irrigation_expiration');
         let editingId = null;
         
+        // Variáveis para o modal de exclusão
+        let pendingDeleteId = null;
+        let pendingClearAll = false;
+        
         // Armazena temporariamente os dados gerados da Imagem e da Planilha
         let currentReportData = {
             file: null,
@@ -395,7 +436,7 @@
             if (diff <= 0) {
                 records = [];
                 saveData();
-                alert("O período de 24h encerrou. O histórico foi limpo automaticamente.");
+                window.showAlert("Tempo Esgotado", "O período de 24h encerrou. O histórico foi limpo automaticamente.");
                 return;
             }
 
@@ -532,18 +573,69 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
+        // --- SISTEMA DE MODAIS MODERNOS PARA EXCLUSÃO E ALERTA ---
+
+        window.showAlert = function(title, text) {
+            document.getElementById('alertModalTitle').innerText = title;
+            document.getElementById('alertModalText').innerText = text;
+            document.getElementById('alertModal').classList.remove('hidden');
+            document.getElementById('alertModal').classList.add('flex');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.closeAlertModal = function() {
+            document.getElementById('alertModal').classList.add('hidden');
+            document.getElementById('alertModal').classList.remove('flex');
+        }
+
+        window.showConfirmModal = function(title, text, btnText) {
+            document.getElementById('confirmModalTitle').innerText = title;
+            document.getElementById('confirmModalText').innerText = text;
+            document.getElementById('confirmModalBtn').innerText = btnText;
+            document.getElementById('confirmModal').classList.remove('hidden');
+            document.getElementById('confirmModal').classList.add('flex');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.closeConfirmModal = function() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            document.getElementById('confirmModal').classList.remove('flex');
+            pendingDeleteId = null;
+            pendingClearAll = false;
+        }
+
+        window.executeConfirmAction = function() {
+            if (pendingDeleteId !== null) {
+                records = records.filter(r => r.id !== pendingDeleteId);
+                if (editingId === pendingDeleteId) window.cancelEdit();
+                saveData();
+            } else if (pendingClearAll) {
+                records = [];
+                window.cancelEdit();
+                saveData();
+            }
+            window.closeConfirmModal();
+        }
+
         window.deleteRecord = function(id) {
-            if(!confirm("Deseja apagar este registro?")) return;
-            records = records.filter(r => r.id !== id);
-            if (editingId === id) window.cancelEdit();
-            saveData();
+            pendingDeleteId = id;
+            pendingClearAll = false;
+            window.showConfirmModal(
+                "Excluir Registro?", 
+                "Tem certeza que deseja apagar este registro?", 
+                "EXCLUIR"
+            );
         }
 
         window.clearAll = function() {
-            if(!confirm("Tem certeza que deseja apagar TODOS os registros?")) return;
-            records = [];
-            window.cancelEdit();
-            saveData();
+            if (records.length === 0) return;
+            pendingDeleteId = null;
+            pendingClearAll = true;
+            window.showConfirmModal(
+                "Limpar Tudo?", 
+                "Tem certeza que deseja apagar TODOS os registros? Esta ação não pode ser desfeita.", 
+                "LIMPAR TUDO"
+            );
         }
 
         function renderList() {
@@ -662,7 +754,7 @@
 
         window.startReportFlow = function() {
             if (records.length === 0) {
-                alert("Não há registros para enviar.");
+                window.showAlert("Lista Vazia", "Não há registros para enviar no momento.");
                 return;
             }
             
@@ -902,7 +994,7 @@
 
             } catch (err) {
                 console.error(err);
-                alert("Erro ao processar relatório.");
+                window.showAlert("Erro de Processamento", "Ocorreu um erro inesperado ao gerar o relatório.");
                 window.closeFlowModal();
             }
         }
