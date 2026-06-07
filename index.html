@@ -11,66 +11,59 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Irrigação">
 
-    <!-- Ícone -->
+    <!-- Ícone e Manifesto PWA -->
     <link rel="icon" type="image/png" href="https://i.imgur.com/S7Jzv77.png">
     <link rel="apple-touch-icon" href="https://i.imgur.com/S7Jzv77.png">
+    <link rel="manifest" href="manifest.json">
 
     <!-- Bibliotecas Externas -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js"></script>
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
-        input, select { user-select: text; }
+        input, select, textarea { user-select: text; }
         .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        
-        /* Grid para o Relatório - 3 COLUNAS */
-        #pdf-grid-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            align-content: start;
-        }
-        
-        /* Estilo do Cartão no Relatório */
-        .pdf-card {
-            background: #fff;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            padding: 8px 12px;
-            box-shadow: none;
-            break-inside: avoid;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
+
+        /* Turno — cor distinta por período */
+        .turno-btn-manha input:checked + span { border-color: #f59e0b; background-color: #fffbeb; color: #92400e; }
+        .turno-btn-tarde  input:checked + span { border-color: #f97316; background-color: #fff7ed; color: #9a3412; }
+        .turno-btn-noite  input:checked + span { border-color: #8b5cf6; background-color: #f5f3ff; color: #5b21b6; }
+
+        /* Input focus com ring verde */
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #4ade80 !important; background-color: #fff !important; box-shadow: 0 0 0 3px rgba(74,222,128,0.15); }
+
+        /* Botão Registrar — escala ao toque */
+        .btn-primary { transition: transform 0.1s, background-color 0.15s; }
+        .btn-primary:active { transform: scale(0.97); }
+
+        #img-grid-container { display: flex; flex-direction: column; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen pb-24 safe-area-bottom">
 
     <!-- Navbar -->
     <div class="bg-green-700 text-white px-4 py-3 flex justify-between items-center shadow-lg sticky top-0 z-40 pt-safe-top">
-        <div class="flex items-center gap-3">
-            <img src="https://i.imgur.com/S7Jzv77.png" alt="Logo" class="h-10 w-auto">
+        <div class="flex items-center gap-2">
             <div>
-                <h1 class="text-lg font-bold leading-tight tracking-tight">Registro Irrigação</h1>
+                <h1 class="text-sm font-bold leading-tight tracking-tight">Registro Irrigação</h1>
                 <p class="text-[10px] text-green-100 font-medium">SPG Oásis</p>
             </div>
         </div>
-        
+
         <!-- Área da Direita: Contador e Botões -->
         <div class="flex gap-2 items-center">
-            <div class="flex flex-col items-end mr-1">
-                <span class="text-[9px] text-green-200 font-bold uppercase tracking-wider">Irrigações Realizadas</span>
-                <span id="recordCountBadge" class="text-sm font-mono font-bold text-white leading-none">0</span>
+            <div class="flex flex-col items-center bg-white/15 rounded-lg px-3 py-1.5 min-w-[56px]">
+                <span class="text-[8px] text-green-200 font-bold uppercase tracking-wider leading-tight text-center">Irrigações</span>
+                <span id="recordCountBadge" class="text-base font-mono font-bold text-white leading-none">0</span>
             </div>
             
             <!-- Botão Enviar Relatório -->
-            <button type="button" id="btnSendReport" onclick="window.startReportFlow()" class="flex items-center justify-center gap-2 px-3 py-2 bg-[#0084c7] hover:bg-[#0073ad] text-white rounded-lg shadow-md border border-[#006ba1] transition-all active:scale-95">
+            <button type="button" id="btnSendReport" onclick="window.startReportFlow()" class="flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-green-700 rounded-xl shadow border border-green-100 transition-all active:scale-95 font-bold text-xs">
                 <i data-lucide="send" class="w-4 h-4"></i>
-                <span class="text-xs font-bold hidden sm:inline-block">Enviar Relatório</span>
-                <span class="text-xs font-bold sm:hidden">Enviar</span>
+                <span class="hidden sm:inline-block">Enviar Relatório</span>
+                <span class="sm:hidden">Enviar</span>
             </button>
         </div>
     </div>
@@ -78,13 +71,15 @@
     <div class="container mx-auto p-4 space-y-6 max-w-md">
         
         <!-- 1. RESPONSÁVEL -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex items-center gap-3">
-            <div class="bg-green-100 p-2 rounded-lg text-green-700">
-                <i data-lucide="user" class="w-5 h-5"></i>
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-green-50 px-4 py-2.5 border-b border-green-100 flex items-center gap-2">
+                <div class="bg-green-100 p-1.5 rounded-lg">
+                    <i data-lucide="user" class="w-4 h-4 text-green-700"></i>
+                </div>
+                <label class="text-xs font-bold text-green-800 uppercase tracking-wider">Responsável</label>
             </div>
-            <div class="flex-1">
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Responsável</label>
-                <select id="collaborator" onchange="window.saveCollaborator()" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-2 outline-none">
+            <div class="px-4 py-3">
+                <select id="collaborator" onchange="window.saveCollaborator()" class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all">
                     <option value="ANTONIO AIRTON CORDEIRO DE BRITO">ANTONIO AIRTON CORDEIRO DE BRITO</option>
                     <option value="ALEXANDRO RIBEIRO LIMA">ALEXANDRO RIBEIRO LIMA</option>
                     <option value="RAFAEL SARAIVA DE LIMA">RAFAEL SARAIVA DE LIMA</option>
@@ -93,91 +88,100 @@
         </div>
 
         <!-- 2. FORMULÁRIO DETALHADO -->
-        <div id="formContainer" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 transition-colors duration-300">
-            <div class="flex justify-between items-center mb-4">
-                <h2 id="formTitle" class="text-lg font-semibold text-green-800 flex items-center gap-2">
-                    <i data-lucide="activity" class="w-5 h-5"></i> <span id="formTitleText">Novo Registro</span>
+        <div id="formContainer" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden transition-all duration-300">
+
+            <!-- Cabeçalho do formulário -->
+            <div class="bg-gradient-to-r from-green-600 to-green-700 px-5 py-4 flex justify-between items-center">
+                <h2 id="formTitle" class="text-base font-bold text-white flex items-center gap-2">
+                    <i data-lucide="activity" class="w-5 h-5 opacity-90"></i>
+                    <span id="formTitleText">Novo Registro</span>
                 </h2>
-                <button id="cancelEditBtn" type="button" onclick="window.cancelEdit()" class="hidden text-xs text-red-500 font-bold hover:text-red-700 underline">
-                    Cancelar
+                <button id="cancelEditBtn" type="button" onclick="window.cancelEdit()" class="hidden items-center gap-1 text-xs font-bold text-white/80 hover:text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-all">
+                    <i data-lucide="x" class="w-3 h-3"></i> Cancelar
                 </button>
             </div>
-            
-            <form onsubmit="window.addRecord(event)" class="space-y-4">
-                
+
+            <form onsubmit="window.addRecord(event)" class="divide-y divide-slate-100">
+
                 <!-- DATA -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Data do Registro</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                            <i data-lucide="calendar" class="w-5 h-5"></i>
-                        </div>
-                        <input type="date" id="date" required class="w-full bg-slate-50 border border-slate-300 rounded-lg py-2.5 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800">
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-green-500"></i> Data do Registro
+                    </label>
+                    <input type="date" id="date" required
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                </div>
+
+                <!-- TURNO -->
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                        <i data-lucide="clock-4" class="w-3.5 h-3.5 text-green-500"></i> Turno
+                    </label>
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <label class="turno-btn-manha cursor-pointer">
+                            <input type="radio" name="turno" id="turno-manha" value="Manhã" required class="sr-only">
+                            <span class="flex flex-col items-center gap-2 w-full py-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-400 transition-all text-xs font-bold select-none">
+                                <i data-lucide="sunrise" class="w-6 h-6"></i> Manhã
+                            </span>
+                        </label>
+                        <label class="turno-btn-tarde cursor-pointer">
+                            <input type="radio" name="turno" id="turno-tarde" value="Tarde" class="sr-only">
+                            <span class="flex flex-col items-center gap-2 w-full py-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-400 transition-all text-xs font-bold select-none">
+                                <i data-lucide="sun" class="w-6 h-6"></i> Tarde
+                            </span>
+                        </label>
+                        <label class="turno-btn-noite cursor-pointer">
+                            <input type="radio" name="turno" id="turno-noite" value="Noite" class="sr-only">
+                            <span class="flex flex-col items-center gap-2 w-full py-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-400 transition-all text-xs font-bold select-none">
+                                <i data-lucide="moon" class="w-6 h-6"></i> Noite
+                            </span>
+                        </label>
                     </div>
                 </div>
 
-                <!-- SEÇÃO LOCALIZAÇÃO -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Localização</label>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-[10px] text-slate-500 mb-1">Bloco / Setor</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                    <i data-lucide="map-pin" class="w-4 h-4"></i>
-                                </div>
-                                <input type="text" id="block" required maxlength="2" placeholder="1 ou A" 
-                                    oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"
-                                    class="w-full bg-slate-50 border border-slate-300 rounded-lg py-2 pl-9 pr-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 uppercase text-slate-800 font-medium text-center">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] text-slate-500 mb-1">Nº Válvula</label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                    <i data-lucide="hash" class="w-4 h-4"></i>
-                                </div>
-                                <input type="number" id="valve" required placeholder="0" class="w-full bg-slate-50 border border-slate-300 rounded-lg py-2 pl-9 pr-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 font-medium text-center">
-                            </div>
-                        </div>
+                <!-- LOCALIZAÇÃO -->
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-green-500"></i> Localização
+                    </label>
+                    <input type="text" id="block" required maxlength="2" placeholder="Bloco / Setor  (ex: A ou 1)"
+                        oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-base font-bold uppercase text-slate-800 tracking-widest transition-all">
+                </div>
+
+                <!-- TEMPO -->
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="timer" class="w-3.5 h-3.5 text-green-500"></i> Tempo de Execução
+                    </label>
+                    <input type="number" id="minutes" required min="1" placeholder="Minutos  (ex: 45)"
+                        oninput="window.updateMinutesHelper()"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                    <div id="minutesHelper" class="hidden mt-2 flex items-center gap-1.5 text-sm font-bold text-green-700 pl-1">
+                        <i data-lucide="clock" class="w-4 h-4"></i>
+                        <span id="minutesHelperText"></span>
                     </div>
                 </div>
 
-                <!-- SEÇÃO TEMPO (COM CÁLCULO) -->
-                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Tempo de Execução</label>
-                    <div class="grid grid-cols-2 gap-4 mb-2">
-                        <div>
-                            <label class="block text-[10px] text-green-700 font-bold mb-1">INÍCIO</label>
-                            <input type="time" id="startTime" oninput="window.updateLiveDuration()" required class="w-full bg-white border border-slate-300 rounded-lg py-2 px-1 text-center font-mono text-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] text-red-700 font-bold mb-1">FIM</label>
-                            <input type="time" id="endTime" oninput="window.updateLiveDuration()" required class="w-full bg-white border border-slate-300 rounded-lg py-2 px-1 text-center font-mono text-sm focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-800">
-                        </div>
-                    </div>
-                    <!-- Mostrador de Duração em Tempo Real -->
-                    <div class="flex justify-between items-center pt-2 border-t border-slate-200 mt-2">
-                        <span class="text-[10px] text-slate-400 uppercase tracking-wide">Duração Calculada:</span>
-                        <span id="liveDuration" class="text-xs font-bold text-slate-700 font-mono">--h --min</span>
-                    </div>
+                <!-- OBSERVAÇÕES -->
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="message-square" class="w-3.5 h-3.5 text-green-500"></i> Observações
+                        <span class="normal-case font-normal text-slate-300 ml-1">(opcional)</span>
+                    </label>
+                    <textarea id="observation" rows="2"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-800 resize-none transition-all"
+                        placeholder="Alguma observação..."></textarea>
                 </div>
 
-                <!-- NOVO CAMPO: OBSERVAÇÕES -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Observações</label>
-                    <div class="relative">
-                        <div class="absolute top-2.5 left-0 pl-3 flex items-start pointer-events-none text-slate-400">
-                            <i data-lucide="message-square" class="w-5 h-5"></i>
-                        </div>
-                        <textarea id="observation" rows="2" class="w-full bg-slate-50 border border-slate-300 rounded-lg py-2 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-slate-800 resize-none" placeholder="Opcional..."></textarea>
-                    </div>
+                <!-- BOTÃO SALVAR -->
+                <div class="px-5 py-4">
+                    <button type="submit" id="submitBtn"
+                        class="btn-primary w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base">
+                        <i data-lucide="save" class="w-5 h-5"></i>
+                        <span id="submitBtnText">Registrar Irrigação</span>
+                    </button>
                 </div>
-
-                <!-- Botão Salvar -->
-                <button type="submit" id="submitBtn" class="w-full bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 active:scale-95 touch-manipulation mt-2">
-                    <i data-lucide="save" class="w-5 h-5"></i> <span id="submitBtnText">Registrar Irrigação</span>
-                </button>
             </form>
         </div>
 
@@ -196,9 +200,10 @@
             <div id="recordsList" class="space-y-4"></div>
             
             <!-- Estado Vazio -->
-            <div id="emptyState" class="hidden text-center py-10 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
-                <i data-lucide="droplet" class="w-12 h-12 mx-auto mb-2 opacity-20"></i>
-                <p>Nenhuma irrigação registrada.</p>
+            <div id="emptyState" class="hidden text-center py-12 text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                <i data-lucide="droplets" class="w-12 h-12 mx-auto mb-3 text-green-200"></i>
+                <p class="text-sm font-medium text-slate-400">Nenhuma irrigação registrada.</p>
+                <p class="text-xs text-slate-300 mt-1">Preencha o formulário acima para começar.</p>
             </div>
         </section>
     </div>
@@ -291,12 +296,12 @@
                 </div>
                 <h3 class="text-xl font-black text-[#1e293b] mb-3">Tudo Pronto!</h3>
                 <p id="successMessageDesc" class="text-[13px] text-slate-500 mb-8 font-medium leading-relaxed px-4">
-                    Os dados foram processados com sucesso.<br><br>
-                    Clique abaixo para compartilhar a imagem e o resumo no WhatsApp.
+                    Relatório gerado com sucesso.<br><br>
+                    Clique abaixo para baixar a imagem.
                 </p>
                 <div class="flex flex-col gap-3 w-full">
-                    <button type="button" onclick="window.shareReport()" class="w-full bg-[#0084c7] hover:bg-[#0073ad] text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors shadow-md text-sm">
-                        <i data-lucide="share-2" class="w-4 h-4"></i> COMPARTILHAR
+                    <button type="button" onclick="window.downloadReport()" class="w-full bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors shadow-md text-sm">
+                        <i data-lucide="download" class="w-4 h-4"></i> BAIXAR IMAGEM
                     </button>
                     <button type="button" onclick="window.closeFlowModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
                         FECHAR
@@ -309,57 +314,68 @@
 
     <!-- ÁREA OCULTA PARA GERAÇÃO DA IMAGEM -->
     <div style="position: absolute; top: 0; left: -9999px;">
-        <div id="pdf-report-grid" class="px-5 pb-5 pt-0 bg-white" style="font-family: Arial, sans-serif; width: 1200px; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;">
-            
-            <!-- CABEÇALHO DO RELATÓRIO -->
-            <div class="flex flex-col items-center justify-center mb-2 border-b-2 border-green-700 pb-2">
-                <div class="flex items-center justify-between w-full mb-1 px-4 pt-2">
-                    <h1 class="text-3xl font-black text-green-800 uppercase tracking-widest text-center flex-1">Relatório Diário de Irrigação</h1>
-                    <img src="https://i.imgur.com/S7Jzv77.png" class="h-24 w-auto" alt="Logo" style="image-rendering: -webkit-optimize-contrast;">
-                </div>
-                
-                <div class="w-full bg-slate-50 rounded-xl border border-slate-200 flex divide-x divide-slate-200 overflow-hidden shadow-sm">
-                    <div class="flex-1 p-3 flex flex-col items-center justify-center">
-                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Data de Referência</span>
-                        <span id="pdfDate" class="text-base font-mono font-bold text-slate-800 leading-none"></span>
-                    </div>
-                    <div class="flex-[2] p-3 flex flex-col items-center justify-center bg-white">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Responsável Técnico</span>
-                        <span id="pdfCollaborator" class="text-xs font-bold text-slate-800 uppercase leading-none text-center"></span>
-                    </div>
-                    <!-- CONTADOR DE BLOCOS -->
-                    <div class="flex-1 p-3 flex flex-col items-center justify-center">
-                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Blocos Irrigados</span>
-                        <span class="text-xl font-black text-green-700 leading-none">
-                            <span id="pdfBlockCount">0</span>
-                        </span>
-                    </div>
-                    
-                    <!-- IRRIGAÇÕES -->
-                    <div class="flex-1 p-3 flex flex-col items-center justify-center">
-                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Irrigações Realizadas</span>
-                        <span class="text-xl font-black text-green-700 leading-none flex items-center gap-1">
-                            <span id="pdfTotalCount">0</span>
-                        </span>
-                    </div>
+        <div id="img-report-grid" style="font-family: Arial, Helvetica, sans-serif; width: 1200px; background: #ffffff; color: #1f2937; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; padding: 0;">
 
-                    <!-- HORAS -->
-                    <div class="flex-1 p-3 flex flex-col items-center justify-center">
-                        <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Horas de irrigação</span>
-                        <span class="text-xl font-black text-green-700 leading-none">
-                            <span id="pdfTotalDuration">0h 0min</span>
-                        </span>
-                    </div>
+            <!-- CABEÇALHO -->
+            <div style="display:flex; align-items:stretch; background:#ffffff; border:1px solid #d1d5db; overflow:hidden;">
+                <!-- Logo -->
+                <div style="padding:16px 20px; display:flex; align-items:center; justify-content:center; background:#f9fafb; border-right:1px solid #d1d5db; min-width:110px;">
+                    <img src="https://i.imgur.com/S7Jzv77.png" style="height:56px; width:auto; image-rendering:-webkit-optimize-contrast;" alt="Logo">
+                </div>
+                <!-- Título -->
+                <div style="flex:1; padding:16px 28px; display:flex; flex-direction:column; justify-content:center; text-align:center;">
+                    <div style="font-size:18px; font-weight:900; color:#1f2937; letter-spacing:2px; text-transform:uppercase;">Relatório de Irrigação</div>
+                </div>
+                <!-- Emissão -->
+                <div style="padding:16px 24px; display:flex; flex-direction:column; justify-content:center; align-items:center; border-left:1px solid #d1d5db; min-width:180px; background:#f9fafb; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:4px; text-transform:uppercase; margin-bottom:4px;">EMISSÃO</div>
+                    <div id="reportDate" style="font-size:20px; font-weight:900; color:#16a34a; letter-spacing:1px;"></div>
                 </div>
             </div>
 
-            <!-- Grid de Cards do Relatório -->
-            <div id="pdf-grid-container"></div>
-
-            <!-- Rodapé Relatório -->
-            <div class="mt-8 pt-4 border-t border-slate-100 text-center">
-                <p class="text-[10px] text-slate-300 uppercase tracking-widest font-bold">Relatório Gerado Digitalmente • SPG OÁSIS</p>
+            <!-- FAIXA DE STATS -->
+            <div style="display:flex; background:#ffffff; border-left:1px solid #d1d5db; border-right:1px solid #d1d5db; border-bottom:1px solid #d1d5db;">
+                <div style="flex:2; padding:10px 20px; border-right:1px solid #e5e7eb;">
+                    <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Responsável Técnico</div>
+                    <div id="reportCollaborator" style="font-size:13px; font-weight:700; color:#1f2937;"></div>
+                </div>
+                <div style="flex:1; padding:10px 16px; border-right:1px solid #e5e7eb; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Blocos</div>
+                    <div id="reportBlockCount" style="font-size:24px; font-weight:900; color:#16a34a; line-height:1;">0</div>
+                </div>
+                <div style="flex:1; padding:10px 16px; border-right:1px solid #e5e7eb; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Irrigações</div>
+                    <div id="reportTotalCount" style="font-size:24px; font-weight:900; color:#16a34a; line-height:1;">0</div>
+                </div>
+                <div style="flex:1; padding:10px 16px; border-right:1px solid #e5e7eb; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Tempo Total</div>
+                    <div id="reportTotalDuration" style="font-size:18px; font-weight:900; color:#16a34a; line-height:1;">--</div>
+                </div>
+                <div style="flex:1; padding:10px 16px; text-align:center; background:#166534;">
+                    <div style="font-size:8px; font-weight:700; color:#bbf7d0; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Volume Total</div>
+                    <div style="font-size:18px; font-weight:900; color:#ffffff; line-height:1;"><span id="reportTotalVolume">--</span></div>
+                    <div style="font-size:8px; color:#86efac; margin-top:2px;">mil litros</div>
+                </div>
             </div>
+
+            <!-- CABEÇALHO DA TABELA -->
+            <div style="display:flex; align-items:center; padding:8px 20px; background:#f0fdf4; border-left:1px solid #d1d5db; border-right:1px solid #d1d5db; border-bottom:2px solid #16a34a;">
+                <div style="width:190px; font-size:8px; font-weight:700; color:#15803d; letter-spacing:4px; text-transform:uppercase;">Bloco / Setor</div>
+                <div style="width:160px; font-size:8px; font-weight:700; color:#15803d; letter-spacing:4px; text-transform:uppercase;">Tempo</div>
+                <div style="width:200px; font-size:8px; font-weight:700; color:#6b7280; letter-spacing:4px; text-transform:uppercase;">Volume Água</div>
+                <div style="width:140px; font-size:8px; font-weight:700; color:#6b7280; letter-spacing:4px; text-transform:uppercase;">Turno</div>
+                <div style="flex:1; font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:4px; text-transform:uppercase;">Aspersores</div>
+                <div style="width:110px; font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:3px; text-transform:uppercase; text-align:right;">Atualizado</div>
+            </div>
+
+            <!-- LINHAS DOS BLOCOS (geradas por JS) -->
+            <div id="img-grid-container" style="border-left:1px solid #d1d5db; border-right:1px solid #d1d5db;"></div>
+
+            <!-- RODAPÉ -->
+            <div style="padding:10px 20px; background:#ffffff; display:flex; justify-content:center; align-items:center; border:1px solid #d1d5db; border-top:1px solid #e5e7eb;">
+                <div style="font-size:8px; color:#16a34a; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
+            </div>
+
         </div>
     </div>
 
@@ -415,10 +431,24 @@
             return `${d}/${m}/${y}`;
         }
 
-        window.updateLiveDuration = function() {
-            const s = document.getElementById('startTime').value;
-            const e = document.getElementById('endTime').value;
-            document.getElementById('liveDuration').innerText = calculateDuration(s, e);
+        window.updateMinutesHelper = function() {
+            const val = parseInt(document.getElementById('minutes').value);
+            const helper = document.getElementById('minutesHelper');
+            const helperText = document.getElementById('minutesHelperText');
+            if (!val || val <= 0) { helper.classList.add('hidden'); return; }
+            const h = Math.floor(val / 60);
+            const m = val % 60;
+            helperText.innerText = h === 0 ? `${m} minutos` : m === 0 ? `${h}h` : `${h}h ${m}min`;
+            helper.classList.remove('hidden');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function formatDuration(minutes) {
+            if (!minutes || minutes <= 0) return "--";
+            const h = Math.floor(minutes / 60);
+            const m = minutes % 60;
+            if (h === 0) return `${m}min`;
+            return `${h}h ${m}min`;
         }
 
         function updateTimerDisplay() {
@@ -451,24 +481,25 @@
             editingId = null;
             const formContainer = document.getElementById('formContainer');
             if(formContainer) {
-                formContainer.classList.remove('ring-2', 'ring-blue-400', 'bg-blue-50');
-                formContainer.classList.add('bg-white');
+                formContainer.classList.remove('ring-2', 'ring-amber-400');
+                const header = formContainer.querySelector('.bg-gradient-to-r');
+                if(header) { header.classList.remove('from-amber-500','to-amber-600'); header.classList.add('from-green-600','to-green-700'); }
             }
 
             const submitBtn = document.getElementById('submitBtn');
             if(submitBtn) {
-                submitBtn.className = "w-full bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 touch-manipulation mt-2";
+                submitBtn.className = "btn-primary w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
                 submitBtn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> <span id="submitBtnText">Registrar Irrigação</span>`;
             }
-            
+
             const title = document.getElementById('formTitleText');
             if(title) title.innerText = "Novo Registro";
-            
+
             document.getElementById('observation').value = '';
-            
+
             const cancelBtn = document.getElementById('cancelEditBtn');
-            if(cancelBtn) cancelBtn.classList.add('hidden');
-            
+            if(cancelBtn) { cancelBtn.classList.add('hidden'); cancelBtn.classList.remove('flex'); }
+
             if(typeof lucide !== 'undefined') lucide.createIcons();
             renderList();
         }
@@ -476,30 +507,29 @@
         window.cancelEdit = function() {
             window.resetFormState();
             document.getElementById('block').value = '';
-            document.getElementById('valve').value = '';
-            document.getElementById('startTime').value = '';
-            document.getElementById('endTime').value = '';
+            document.getElementById('minutes').value = '';
             document.getElementById('observation').value = '';
-            document.getElementById('liveDuration').innerText = "--h --min";
+            document.querySelectorAll('input[name="turno"]').forEach(r => r.checked = false);
+            document.getElementById('minutesHelper').classList.add('hidden');
         }
 
         window.addRecord = function(e) {
             e.preventDefault();
-            
+
             const date = document.getElementById('date').value;
             const block = document.getElementById('block').value.toUpperCase();
-            const valve = document.getElementById('valve').value;
-            const startTime = document.getElementById('startTime').value;
-            const endTime = document.getElementById('endTime').value;
+            const minutes = parseInt(document.getElementById('minutes').value) || 0;
             const observation = document.getElementById('observation').value;
+            const turnoEl = document.querySelector('input[name="turno"]:checked');
+            const turno = turnoEl ? turnoEl.value : '';
 
             if (editingId !== null) {
                 const index = records.findIndex(r => r.id === editingId);
                 if (index !== -1) {
-                    records[index] = { ...records[index], date, block, valve, startTime, endTime, observation };
+                    records[index] = { ...records[index], date, block, minutes, turno, observation };
                     const btn = document.getElementById('submitBtn');
                     btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Alteração Salva!`;
-                    btn.className = "w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-2";
+                    btn.className = "btn-primary w-full bg-green-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
                     setTimeout(() => window.resetFormState(), 1000);
                 }
                 editingId = null;
@@ -511,31 +541,25 @@
 
                 const newRecord = {
                     id: Date.now(),
-                    date, block, valve, startTime, endTime, observation
+                    date, block, minutes, turno, observation
                 };
                 records.push(newRecord);
-                
+
                 document.getElementById('observation').value = '';
-                
+                document.querySelectorAll('input[name="turno"]').forEach(r => r.checked = false);
+
                 const btn = document.getElementById('submitBtn');
                 btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Registro Salvo!`;
-                btn.classList.add('bg-green-800', 'ring-2', 'ring-green-300');
-                
+                btn.className = "btn-primary w-full bg-green-800 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
+
                 setTimeout(() => {
                     btn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> <span id="submitBtnText">Registrar Irrigação</span>`;
-                    btn.classList.remove('bg-green-800', 'ring-2', 'ring-green-300');
+                    btn.className = "btn-primary w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
                     if(typeof lucide !== 'undefined') lucide.createIcons();
                 }, 1500);
             }
 
-            records.sort((a, b) => {
-                if (a.block !== b.block) {
-                    return a.block.localeCompare(b.block, undefined, {numeric: true});
-                }
-                const dateA = new Date(a.date + 'T' + a.startTime);
-                const dateB = new Date(b.date + 'T' + b.startTime);
-                return dateA - dateB;
-            });
+            records.sort((a, b) => a.block.localeCompare(b.block, undefined, {numeric: true}));
 
             saveData();
             updateTimerDisplay();
@@ -548,25 +572,26 @@
 
             document.getElementById('date').value = record.date;
             document.getElementById('block').value = record.block;
-            document.getElementById('valve').value = record.valve;
-            document.getElementById('startTime').value = record.startTime;
-            document.getElementById('endTime').value = record.endTime;
+            document.getElementById('minutes').value = record.minutes || '';
             document.getElementById('observation').value = record.observation || '';
-            
-            window.updateLiveDuration();
+            document.querySelectorAll('input[name="turno"]').forEach(r => { r.checked = r.value === record.turno; });
+            window.updateMinutesHelper();
 
             editingId = id;
-            
+
             const formContainer = document.getElementById('formContainer');
-            formContainer.classList.add('ring-2', 'ring-blue-400', 'bg-blue-50');
-            formContainer.classList.remove('bg-white');
+            formContainer.classList.add('ring-2', 'ring-amber-400');
+            const header = formContainer.querySelector('.bg-gradient-to-r');
+            if(header) { header.classList.remove('from-green-600','to-green-700'); header.classList.add('from-amber-500','to-amber-600'); }
 
             const submitBtn = document.getElementById('submitBtn');
-            submitBtn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-2";
+            submitBtn.className = "btn-primary w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
             submitBtn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> <span id="submitBtnText">Salvar Alterações</span>`;
-            
+
             document.getElementById('formTitleText').innerText = "Editando Registro";
-            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            const cancelBtn = document.getElementById('cancelEditBtn');
+            cancelBtn.classList.remove('hidden');
+            cancelBtn.classList.add('flex');
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
             renderList();
@@ -665,25 +690,8 @@
             list.innerHTML = sortedKeys.map(blockKey => {
                 const blockRecords = grouped[blockKey];
                 
-                blockRecords.sort((a, b) => {
-                     const timeDiff = a.startTime.localeCompare(b.startTime);
-                     if(timeDiff !== 0) return timeDiff;
-                     
-                     const vA = parseInt(a.valve) || 0;
-                     const vB = parseInt(b.valve) || 0;
-                     return vA - vB;
-                });
-
                 let blockTotalMinutes = 0;
-                blockRecords.forEach(r => {
-                    if (r.startTime && r.endTime) {
-                        const [h1, m1] = r.startTime.split(':').map(Number);
-                        const [h2, m2] = r.endTime.split(':').map(Number);
-                        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-                        if (diff < 0) diff += 1440;
-                        blockTotalMinutes += diff;
-                    }
-                });
+                blockRecords.forEach(r => { blockTotalMinutes += r.minutes || 0; });
                 const bHours = Math.floor(blockTotalMinutes / 60);
                 const bMins = blockTotalMinutes % 60;
                 
@@ -696,33 +704,42 @@
 
                 const rowsHtml = blockRecords.map(rec => {
                     const isEditing = rec.id === editingId;
-                    const bgClass = isEditing ? 'bg-blue-50' : 'hover:bg-slate-50';
+                    const bgClass = isEditing ? 'bg-amber-50 border-l-4 border-l-amber-400' : '';
                     const obsHtml = rec.observation ? `
-                        <div class="mt-1 flex items-start gap-1 text-[10px] text-slate-500 italic bg-slate-50 p-1 rounded border border-slate-100">
-                            <i data-lucide="message-square" class="w-3 h-3 shrink-0 mt-0.5"></i>
-                            <span class="break-words">${rec.observation}</span>
+                        <div class="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500 italic bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                            <i data-lucide="message-square" class="w-3 h-3 shrink-0 mt-0.5 text-slate-400"></i>
+                            <span class="break-words leading-relaxed">${rec.observation}</span>
                         </div>
                     ` : '';
-                    
+
+                    const turnoIcon  = rec.turno === 'Manhã' ? 'sunrise' : rec.turno === 'Tarde' ? 'sun' : rec.turno === 'Noite' ? 'moon' : 'clock';
+                    const turnoBg    = rec.turno === 'Manhã' ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                     : rec.turno === 'Tarde' ? 'bg-orange-50 text-orange-700 border-orange-200'
+                                     : rec.turno === 'Noite' ? 'bg-violet-50 text-violet-700 border-violet-200'
+                                     : 'bg-slate-50 text-slate-500 border-slate-200';
+                    const turnoBadge = rec.turno
+                        ? `<span class="text-[11px] font-bold ${turnoBg} border flex items-center gap-1 px-2 py-0.5 rounded-full"><i data-lucide="${turnoIcon}" class="w-3 h-3"></i>${rec.turno}</span>`
+                        : '';
                     return `
-                    <div class="flex justify-between items-start p-3 border-b border-slate-100 last:border-0 ${bgClass} transition-colors">
-                        <div class="flex flex-col gap-1 w-full mr-2">
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-bold text-slate-700">Válvula #${rec.valve}</span>
-                                <span class="text-[10px] text-slate-400 font-mono">${rec.startTime} - ${rec.endTime}</span>
-                            </div>
-                            <div class="text-[10px] text-green-700 font-bold flex items-center gap-1">
-                                <i data-lucide="clock" class="w-3 h-3"></i>
-                                ${calculateDuration(rec.startTime, rec.endTime)}
+                    <div class="flex justify-between items-start px-4 py-3.5 border-b border-slate-100 last:border-0 ${bgClass} transition-colors">
+                        <div class="flex flex-col gap-1.5 w-full mr-3">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-bold text-green-700 flex items-center gap-1">
+                                    <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                                    ${formatDuration(rec.minutes)}
+                                </span>
+                                ${turnoBadge}
                             </div>
                             ${obsHtml}
                         </div>
                         <div class="flex gap-1 shrink-0">
-                            <button type="button" onclick="window.editRecord(${rec.id})" class="p-1.5 text-blue-400 hover:bg-blue-50 rounded" title="Editar">
-                                <i data-lucide="pencil" class="w-3 h-3"></i>
+                            <button type="button" onclick="window.editRecord(${rec.id})"
+                                class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Editar">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
                             </button>
-                            <button type="button" onclick="window.deleteRecord(${rec.id})" class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded" title="Excluir">
-                                <i data-lucide="trash-2" class="w-3 h-3"></i>
+                            <button type="button" onclick="window.deleteRecord(${rec.id})"
+                                class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </div>
                     </div>
@@ -730,17 +747,22 @@
                 }).join('');
 
                 return `
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                    <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm font-bold text-slate-800 uppercase">BLOCO ${blockKey}</span>
-                            <span class="text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full border border-green-200 flex items-center gap-1">
-                                <i data-lucide="clock" class="w-3 h-3"></i> ${blockDurationText}
-                            </span>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="bg-gradient-to-r from-green-700 to-green-600 px-4 py-3 flex justify-between items-center">
+                        <div class="flex items-center gap-2.5">
+                            <div class="bg-white/20 rounded-lg p-1.5">
+                                <i data-lucide="layers" class="w-4 h-4 text-white"></i>
+                            </div>
+                            <div>
+                                <span class="text-sm font-bold text-white uppercase tracking-wide">BLOCO ${blockKey}</span>
+                                <span class="ml-2 text-xs font-bold text-green-200 bg-white/15 px-2 py-0.5 rounded-full">
+                                    ${blockDurationText}
+                                </span>
+                            </div>
                         </div>
-                        <span class="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-full border border-slate-200">${blockRecords.length} Regs</span>
+                        <span class="text-xs font-bold text-green-100 bg-white/15 px-2.5 py-1 rounded-full">${blockRecords.length} reg${blockRecords.length > 1 ? 's' : ''}</span>
                     </div>
-                    <div class="flex flex-col">
+                    <div class="flex flex-col divide-y divide-slate-50">
                         ${rowsHtml}
                     </div>
                 </div>
@@ -787,125 +809,29 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
 
             // Prepara a grid do relatório nos bastidores
-            const pdfDateRef = records.length > 0 ? formatDate(records[0].date) : formatDate(new Date().toISOString().split('T')[0]);
-            document.getElementById('pdfDate').innerText = pdfDateRef;
-            document.getElementById('pdfTotalCount').innerText = records.length;
-            
+            const reportDateRef = records.length > 0 ? formatDate(records[0].date) : formatDate(new Date().toISOString().split('T')[0]);
+            document.getElementById('reportDate').innerText = reportDateRef;
+            document.getElementById('reportTotalCount').innerText = records.length;
+
             const uniqueBlocks = new Set(records.map(r => r.block)).size;
-            document.getElementById('pdfBlockCount').innerText = uniqueBlocks;
+            document.getElementById('reportBlockCount').innerText = uniqueBlocks;
 
             let totalMinutes = 0;
-            records.forEach(r => {
-                if (r.startTime && r.endTime) {
-                    const [h1, m1] = r.startTime.split(':').map(Number);
-                    const [h2, m2] = r.endTime.split(':').map(Number);
-                    let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-                    if (diff < 0) diff += 1440;
-                    totalMinutes += diff;
-                }
-            });
+            records.forEach(r => { totalMinutes += r.minutes || 0; });
             const tHours = Math.floor(totalMinutes / 60);
             const tMins = totalMinutes % 60;
             
             if (tHours === 0) {
-                document.getElementById('pdfTotalDuration').innerText = `${tMins}min`;
+                document.getElementById('reportTotalDuration').innerText = `${tMins}min`;
             } else {
-                document.getElementById('pdfTotalDuration').innerText = `${tHours}h ${tMins}min`;
+                document.getElementById('reportTotalDuration').innerText = `${tHours}h ${tMins}min`;
             }
 
-            document.getElementById('pdfCollaborator').innerText = document.getElementById('collaborator').value;
-
-            const gridContainer = document.getElementById('pdf-grid-container');
-            const grouped = {};
-            records.forEach(rec => {
-                const k = rec.block;
-                if(!grouped[k]) grouped[k] = [];
-                grouped[k].push(rec);
-            });
-
-            gridContainer.innerHTML = Object.keys(grouped).map(blockKey => {
-                const blockRecords = grouped[blockKey];
-                
-                blockRecords.sort((a, b) => {
-                     const timeDiff = a.startTime.localeCompare(b.startTime);
-                     if(timeDiff !== 0) return timeDiff;
-                     const vA = parseInt(a.valve) || 0;
-                     const vB = parseInt(b.valve) || 0;
-                     return vA - vB;
-                });
-
-                let blockTotalMinutes = 0;
-                blockRecords.forEach(r => {
-                    if (r.startTime && r.endTime) {
-                        const [h1, m1] = r.startTime.split(':').map(Number);
-                        const [h2, m2] = r.endTime.split(':').map(Number);
-                        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-                        if (diff < 0) diff += 1440;
-                        blockTotalMinutes += diff;
-                    }
-                });
-                const bHours = Math.floor(blockTotalMinutes / 60);
-                const bMins = blockTotalMinutes % 60;
-                
-                let blockDurationText;
-                if (bHours === 0) {
-                    blockDurationText = `${bMins}min`;
-                } else {
-                    blockDurationText = `${bHours}h ${bMins}min`;
-                }
-
-                const blockTitle = blockKey === 'E' ? 'Tâmaras' : `BLOCO ${blockKey}`;
-
-                const valvesHtml = blockRecords.map((r, index) => {
-                    const isLast = index === blockRecords.length - 1;
-                    const borderClass = isLast ? '' : 'border-b border-dashed border-slate-200 pb-1 mb-1';
-                    const obsHtml = r.observation ? `
-                        <div class="flex items-start gap-1 mt-0.5 ml-1">
-                            <span class="text-[8px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Obs:</span>
-                            <span class="text-[8px] text-slate-500 italic leading-tight">${r.observation}</span>
-                        </div>
-                    ` : '';
-
-                    return `
-                    <div class="flex flex-col ${borderClass}">
-                        <div class="flex justify-between items-center">
-                            <div class="flex items-center gap-1 w-1/4">
-                                <span class="text-[10px] text-slate-500">Val</span>
-                                <span class="text-base font-bold text-slate-700">#${r.valve}</span>
-                            </div>
-                            <div class="flex items-center gap-1 w-2/4 justify-center">
-                                <span class="font-mono text-base font-bold text-slate-700">${r.startTime}</span>
-                                <span class="text-xs text-slate-300">➜</span>
-                                <span class="font-mono text-base font-bold text-slate-700">${r.endTime}</span>
-                            </div>
-                            <div class="w-1/4 text-right text-base font-bold text-slate-600">
-                                ${calculateDuration(r.startTime, r.endTime)}
-                            </div>
-                        </div>
-                        ${obsHtml}
-                    </div>
-                `}).join('');
-
-                return `
-                <div class="pdf-card flex flex-col justify-between h-full">
-                    <div>
-                        <div class="flex justify-between items-center border-b border-slate-200 pb-2 mb-2 bg-slate-50 -mx-3 -mt-2 px-3 pt-2">
-                            <span class="text-sm font-bold text-slate-800 uppercase">${blockTitle}</span>
-                            <span class="text-[9px] text-slate-400 uppercase font-bold tracking-wider">${blockRecords.length > 1 ? blockRecords.length + ' REGISTROS' : '1 REGISTRO'}</span>
-                        </div>
-                        <div class="flex flex-col gap-0">
-                            ${valvesHtml}
-                        </div>
-                    </div>
-                    <div class="mt-3 pt-2 border-t border-slate-300 flex justify-between items-center bg-green-50 -mx-3 -mb-2 px-3 py-2 rounded-b">
-                        <span class="text-[9px] font-bold text-green-800 uppercase tracking-wide">Tempo Total Bloco</span>
-                        <span class="text-xs font-black text-green-700">${blockDurationText}</span>
-                    </div>
-                </div>
-            `}).join('');
+            document.getElementById('reportCollaborator').innerText = document.getElementById('collaborator').value;
 
             // --- INTEGRAÇÃO APPS SCRIPT ---
-            let textoResumoWhatsApp = ""; 
+            let textoResumoWhatsApp = "";
+            let infoBlocosImagem = {};
             const today = new Date();
             const day = String(today.getDate()).padStart(2, '0');
             const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -925,16 +851,20 @@
                 const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec";
                 const response = await fetch(scriptUrl, {
                     method: 'POST',
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         registros: records,
-                        responsavel: nomeResponsavel 
+                        responsavel: nomeResponsavel
                     })
                 });
-                
+
                 const data = await response.json();
-                
-                if (data.sucesso && data.resumo) {
-                    textoResumoWhatsApp = data.resumo;
+
+                if (data.sucesso) {
+                    if (data.resumo) textoResumoWhatsApp = data.resumo;
+                    if (data.blocos) infoBlocosImagem = data.blocos;
+                    if (data.totalLitrosMil) {
+                        document.getElementById('reportTotalVolume').innerText = data.totalLitrosMil.replace(',', '.');
+                    }
                 } else {
                     console.warn("Aviso do Apps Script:", data.erro);
                 }
@@ -942,11 +872,78 @@
                 console.error("Erro na comunicação com a planilha:", err);
             }
 
+            // --- GERAÇÃO DAS LINHAS DO RELATÓRIO (após fetch para ter infoBlocosImagem) ---
+            const gridContainer = document.getElementById('img-grid-container');
+
+            // Agrupa por bloco+turno para gerar uma linha por combinação
+            const turnoOrder = { 'Manhã': 0, 'Tarde': 1, 'Noite': 2 };
+            const groupedRows = [];
+            const groupedByBlock = {};
+            records.forEach(rec => {
+                const k = rec.block;
+                if (!groupedByBlock[k]) groupedByBlock[k] = {};
+                const t = rec.turno || '—';
+                if (!groupedByBlock[k][t]) groupedByBlock[k][t] = [];
+                groupedByBlock[k][t].push(rec);
+            });
+
+            Object.keys(groupedByBlock)
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+                .forEach(blockKey => {
+                    const turnoMap = groupedByBlock[blockKey];
+                    Object.keys(turnoMap)
+                        .sort((a, b) => (turnoOrder[a] ?? 99) - (turnoOrder[b] ?? 99))
+                        .forEach(turno => {
+                            groupedRows.push({ blockKey, turno, recs: turnoMap[turno] });
+                        });
+                });
+
+            gridContainer.innerHTML = groupedRows.map(({ blockKey, turno, recs }, idx) => {
+                    const totalMinutes = recs.reduce((s, r) => s + (r.minutes || 0), 0);
+                    const bH = Math.floor(totalMinutes / 60);
+                    const bM = totalMinutes % 60;
+                    const tempoTexto = bH === 0 ? `${bM} min` : `${bH}h ${bM}min`;
+
+                    // Calcula água proporcional ao tempo deste turno
+                    const blocoInfo = infoBlocosImagem[blockKey];
+                    let aguaTexto = '—';
+                    if (blocoInfo) {
+                        // Pega total de minutos do bloco inteiro para calcular proporção
+                        const totalBlocoMin = records
+                            .filter(r => r.block === blockKey)
+                            .reduce((s, r) => s + (r.minutes || 0), 0);
+                        if (totalBlocoMin > 0) {
+                            const litrosTotaisBloco = parseFloat(blocoInfo.litrosMil.replace(',', '.')) * 1000;
+                            const litrosTurno = (litrosTotaisBloco * totalMinutes) / totalBlocoMin;
+                            aguaTexto = (litrosTurno / 1000).toFixed(3) + ' mil L';
+                        } else {
+                            aguaTexto = blocoInfo.litrosMil.replace(',', '.') + ' mil L';
+                        }
+                    }
+
+                    const aspTexto   = blocoInfo ? blocoInfo.aspersoresTexto : '—';
+                    const dataAtualiz = blocoInfo ? blocoInfo.dataAtualizacao : '—';
+                    const blockTitle = blockKey === 'E' ? 'TÂMARAS' : `BLOCO ${blockKey}`;
+                    const obs = recs.filter(r => r.observation).map(r => r.observation).join(' | ');
+
+                    const isOdd = (idx % 2 === 0);
+                    const rowBg = isOdd ? '#ffffff' : '#f9fafb';
+                    return `
+                    <div class="report-row" style="display:flex; align-items:center; padding:12px 20px; border-bottom:1px solid #e5e7eb; background:${rowBg};">
+                        <div style="width:190px; font-size:14px; font-weight:900; color:#15803d; letter-spacing:0.5px; text-transform:uppercase;">${blockTitle}</div>
+                        <div style="width:160px; font-size:17px; font-weight:700; color:#1f2937;">${tempoTexto}</div>
+                        <div style="width:200px; font-size:17px; font-weight:700; color:#374151;">${aguaTexto}</div>
+                        <div style="width:140px; font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:1px;">${turno !== '—' ? turno : '—'}</div>
+                        <div style="flex:1; font-size:10px; color:#6b7280; line-height:1.5;">${aspTexto}${obs ? `<br><span style="color:#9ca3af; font-style:italic;">${obs}</span>` : ''}</div>
+                        <div style="width:110px; font-size:10px; color:#9ca3af; text-align:right;">${dataAtualiz}</div>
+                    </div>`;
+                }).join('');
+
             // --- GERAÇÃO DA IMAGEM EM ALTA RESOLUÇÃO ---
             try {
                 await new Promise(r => setTimeout(r, 200)); 
 
-                const element = document.getElementById('pdf-report-grid');
+                const element = document.getElementById('img-report-grid');
                 
                 // OTIMIZAÇÃO DE RENDERIZAÇÃO - PRELOAD DE IMAGENS E ANTIALIASING
                 const images = element.querySelectorAll('img');
@@ -955,25 +952,23 @@
                     return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; }); 
                 }));
 
-                const canvas = await html2canvas(element, { 
-                    scale: 5, 
-                    useCORS: true, 
-                    allowTaint: true,
-                    scrollY: -window.scrollY,
+                const originalStyle = { margin: element.style.margin, boxShadow: element.style.boxShadow, borderRadius: element.style.borderRadius, border: element.style.border };
+                element.style.margin = '0';
+                element.style.boxShadow = 'none';
+                element.style.borderRadius = '0';
+                element.style.border = 'none';
+
+                const imageBlob = await htmlToImage.toBlob(element, {
+                    pixelRatio: 5,
+                    useCORS: true,
                     backgroundColor: '#ffffff',
-                    onclone: (doc) => {
-                        const el = doc.getElementById('pdf-report-grid');
-                        if (el) { 
-                            el.style.margin = '0'; 
-                            el.style.boxShadow = 'none';
-                            el.style.borderRadius = '0';
-                            el.style.border = 'none';
-                        }
-                    }
                 });
 
-                const imageBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-                const fileName = `Relatorio_de_Irrigacao_${day}-${month}-${year}_SPG_OASIS.png`;
+                element.style.margin = originalStyle.margin;
+                element.style.boxShadow = originalStyle.boxShadow;
+                element.style.borderRadius = originalStyle.borderRadius;
+                element.style.border = originalStyle.border;
+                const fileName = `Irrigação - ${day}-${month}-${year}.png`;
                 
                 if(!textoResumoWhatsApp) {
                     textoResumoWhatsApp = `\`Relatório de Irrigação (${day}/${month}/${year})\`\n\n• Total de irrigações: ${records.length}\n\n*Responsável:* ${nomeResponsavel}`;
@@ -999,31 +994,13 @@
             }
         }
 
-        window.shareReport = async function() {
-            const { file, fileName, text } = currentReportData;
-            
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({
-                        title: 'Relatório de Irrigação',
-                        text: text, // O WhatsApp Mobile costuma aceitar a legenda nativamente quando é Imagem!
-                        files: [file]
-                    });
-                    window.closeFlowModal();
-                } catch (e) {
-                    console.log("Compartilhamento cancelado ou não suportado", e);
-                }
-            } else {
-                // Fallback PC: Baixa a imagem e abre web.whatsapp
-                const downloadLink = document.createElement('a');
-                downloadLink.href = URL.createObjectURL(file);
-                downloadLink.download = fileName;
-                downloadLink.click();
-                
-                const whatsUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-                window.open(whatsUrl, '_blank');
-                window.closeFlowModal();
-            }
+        window.downloadReport = function() {
+            const { file, fileName } = currentReportData;
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(file);
+            link.download = fileName;
+            link.click();
+            window.closeFlowModal();
         }
 
         // --- INICIALIZAÇÃO E EXPOSIÇÃO GERAL ---
@@ -1033,7 +1010,6 @@
         window.cancelEdit = cancelEdit;
         window.deleteRecord = deleteRecord;
         window.clearAll = clearAll;
-        window.updateLiveDuration = updateLiveDuration;
         
         window.lucide = lucide;
 
@@ -1057,6 +1033,14 @@
             renderList();
         });
 
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
     </script>
 </body>
 </html>
