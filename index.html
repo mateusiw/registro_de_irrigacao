@@ -12,9 +12,9 @@
     <meta name="apple-mobile-web-app-title" content="Irrigação">
 
     <!-- Ícone e Manifesto PWA -->
-    <link rel="icon" type="image/png" href="https://i.imgur.com/S7Jzv77.png">
-    <link rel="apple-touch-icon" href="https://i.imgur.com/S7Jzv77.png">
-    <link rel="manifest" href="manifest.json">
+    <link id="siteFavicon" rel="icon" type="image/png" href="https://i.imgur.com/S7Jzv77.png">
+    <link id="siteAppleTouchIcon" rel="apple-touch-icon" href="https://i.imgur.com/S7Jzv77.png">
+    <link id="siteManifest" rel="manifest">
 
     <!-- Bibliotecas Externas -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -1012,6 +1012,39 @@
         window.clearAll = clearAll;
         
         window.lucide = lucide;
+
+        function getBrandLogoDataUri() {
+            return 'https://i.imgur.com/S7Jzv77.png';
+        }
+
+        function applyBrandAssets() {
+            const logoUri = getBrandLogoDataUri();
+            const favicon        = document.getElementById('siteFavicon');
+            const appleTouchIcon = document.getElementById('siteAppleTouchIcon');
+            const manifestLink   = document.getElementById('siteManifest');
+
+            if (favicon)        favicon.href        = logoUri;
+            if (appleTouchIcon) appleTouchIcon.href = logoUri;
+            if (manifestLink) {
+                const manifest = {
+                    name: 'Registro Irrigação',
+                    short_name: 'Irrigação',
+                    description: 'Registro diário de irrigação - SPG Oásis',
+                    start_url: '.',
+                    display: 'standalone',
+                    background_color: '#ffffff',
+                    theme_color: '#15803d',
+                    orientation: 'portrait-primary',
+                    icons: [
+                        { src: logoUri, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+                        { src: logoUri, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+                    ]
+                };
+                manifestLink.href = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
+            }
+        }
+
+        applyBrandAssets();
 
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date();
