@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="Irrigação">
 
     <!-- Ícone e Manifesto PWA -->
-    <link id="siteFavicon" rel="icon" type="image/svg+xml">
+    <link id="siteFavicon" rel="icon" type="image/png">
     <link id="siteAppleTouchIcon" rel="apple-touch-icon">
     <link id="siteManifest" rel="manifest">
 
@@ -1013,57 +1013,8 @@
         
         window.lucide = lucide;
 
-        const BRAND_LOGO_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#22c55e"/>
-      <stop offset="100%" stop-color="#14532d"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Fundo arredondado -->
-  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-
-  <!-- Haste vertical do aspersor -->
-  <rect x="238" y="308" width="36" height="112" rx="14" fill="white"/>
-
-  <!-- Barra horizontal do aspersor -->
-  <rect x="140" y="290" width="232" height="36" rx="18" fill="white"/>
-
-  <!-- Bicos dos extremos (destaque) -->
-  <circle cx="156" cy="308" r="20" fill="#bbf7d0"/>
-  <circle cx="356" cy="308" r="20" fill="#bbf7d0"/>
-
-  <!-- Arcos de água — lado esquerdo -->
-  <path d="M156 288 C108 222 78 150 60 88" stroke="white" stroke-width="22" fill="none" stroke-linecap="round"/>
-  <path d="M156 288 C148 210 160 136 184 76" stroke="white" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.65"/>
-  <path d="M156 288 C172 212 214 148 252 94" stroke="white" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.38"/>
-
-  <!-- Arcos de água — lado direito -->
-  <path d="M356 288 C404 222 434 150 452 88" stroke="white" stroke-width="22" fill="none" stroke-linecap="round"/>
-  <path d="M356 288 C364 210 352 136 328 76" stroke="white" stroke-width="16" fill="none" stroke-linecap="round" opacity="0.65"/>
-  <path d="M356 288 C340 212 298 148 260 94" stroke="white" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.38"/>
-
-  <!-- Gotículas nas pontas dos arcos -->
-  <circle cx="60"  cy="88" r="20" fill="white"/>
-  <circle cx="184" cy="76" r="15" fill="white" opacity="0.65"/>
-  <circle cx="252" cy="94" r="10" fill="white" opacity="0.38"/>
-  <circle cx="452" cy="88" r="20" fill="white"/>
-  <circle cx="328" cy="76" r="15" fill="white" opacity="0.65"/>
-  <circle cx="260" cy="94" r="10" fill="white" opacity="0.38"/>
-
-  <!-- Solo / grama estilizada -->
-  <rect x="88" y="432" width="336" height="14" rx="7" fill="white" opacity="0.25"/>
-  <path d="M136 432 Q142 402 148 378" stroke="white" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.45"/>
-  <path d="M196 432 Q198 406 202 384" stroke="white" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.45"/>
-  <path d="M256 432 Q256 404 258 380" stroke="white" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.45"/>
-  <path d="M316 432 Q314 406 310 384" stroke="white" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.45"/>
-  <path d="M376 432 Q370 402 364 378" stroke="white" stroke-width="11" fill="none" stroke-linecap="round" opacity="0.45"/>
-</svg>`.trim();
-
         function getBrandLogoDataUri() {
-            return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(BRAND_LOGO_SVG)}`;
+            return 'https://i.imgur.com/8BU5TZl.png';
         }
 
         function applyBrandAssets() {
@@ -1087,8 +1038,8 @@
                     theme_color: '#15803d',
                     orientation: 'portrait-primary',
                     icons: [
-                        { src: logoUri, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
-                        { src: logoUri, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+                        { src: logoUri, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+                        { src: logoUri, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
                     ]
                 };
                 manifestLink.href = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
