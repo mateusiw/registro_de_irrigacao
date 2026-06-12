@@ -928,14 +928,18 @@
 
                     const isOdd = (idx % 2 === 0);
                     const rowBg = isOdd ? '#ffffff' : '#f9fafb';
+                    const aspFormatado = aspTexto === '—' ? '<span style="color:#9ca3af;">—</span>' :
+                        aspTexto.split(/\s*-\s*(?=\()/).map(grupo =>
+                            `<span style="display:inline-block; background:#dcfce7; color:#166534; border:1px solid #86efac; border-radius:5px; padding:2px 7px; font-size:10px; font-weight:700; white-space:nowrap; margin:2px 2px 2px 0;">${grupo.trim()}</span>`
+                        ).join('');
                     return `
                     <div class="report-row" style="display:flex; align-items:center; padding:12px 20px; border-bottom:1px solid #e5e7eb; background:${rowBg};">
                         <div style="width:190px; font-size:14px; font-weight:900; color:#15803d; letter-spacing:0.5px; text-transform:uppercase;">${blockTitle}</div>
                         <div style="width:160px; font-size:17px; font-weight:700; color:#1f2937;">${tempoTexto}</div>
                         <div style="width:200px; font-size:17px; font-weight:700; color:#374151;">${aguaTexto}</div>
                         <div style="width:140px; font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:1px;">${turno !== '—' ? turno : '—'}</div>
-                        <div style="flex:1; font-size:10px; color:#6b7280; line-height:1.5;">${aspTexto}${obs ? `<br><span style="color:#9ca3af; font-style:italic;">${obs}</span>` : ''}</div>
-                        <div style="width:110px; font-size:10px; color:#9ca3af; text-align:right;">${dataAtualiz}</div>
+                        <div style="flex:1; line-height:1.8;">${aspFormatado}${obs ? `<br><span style="color:#9ca3af; font-size:10px; font-style:italic;">${obs}</span>` : ''}</div>
+                        <div style="width:110px; text-align:right;"><span style="display:inline-block; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:5px; padding:2px 7px; font-size:10px; font-weight:600; white-space:nowrap;">${dataAtualiz}</span></div>
                     </div>`;
                 }).join('');
 
