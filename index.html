@@ -27,6 +27,7 @@
         .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
         /* Turno — cor distinta por período */
+        .turno-btn-madrugada input:checked + span { border-color: #6366f1; background-color: #eef2ff; color: #3730a3; }
         .turno-btn-manha input:checked + span { border-color: #f59e0b; background-color: #fffbeb; color: #92400e; }
         .turno-btn-tarde  input:checked + span { border-color: #f97316; background-color: #fff7ed; color: #9a3412; }
         .turno-btn-noite  input:checked + span { border-color: #8b5cf6; background-color: #f5f3ff; color: #5b21b6; }
@@ -38,7 +39,7 @@
         .btn-primary { transition: transform 0.1s, background-color 0.15s; }
         .btn-primary:active { transform: scale(0.97); }
 
-        #img-grid-container { display: flex; flex-direction: column; }
+        #img-grid-container, #img-grid-container-prog { display: flex; flex-wrap: wrap; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen pb-24 safe-area-bottom">
@@ -53,12 +54,12 @@
         </div>
 
         <!-- Área da Direita: Contador e Botões -->
-        <div class="flex gap-2 items-center">
+        <div id="navbarRegistroActions" class="flex gap-2 items-center">
             <div class="flex flex-col items-center bg-white/15 rounded-lg px-3 py-1.5 min-w-[56px]">
                 <span class="text-[8px] text-green-200 font-bold uppercase tracking-wider leading-tight text-center">Irrigações</span>
                 <span id="recordCountBadge" class="text-base font-mono font-bold text-white leading-none">0</span>
             </div>
-            
+
             <!-- Botão Enviar Relatório -->
             <button type="button" id="btnSendReport" onclick="window.startReportFlow()" class="flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-green-700 rounded-xl shadow border border-green-100 transition-all active:scale-95 font-bold text-xs">
                 <i data-lucide="send" class="w-4 h-4"></i>
@@ -66,10 +67,34 @@
                 <span class="sm:hidden">Enviar</span>
             </button>
         </div>
+
+        <!-- Área da Direita: Bloqueio da Programação -->
+        <div id="navbarProgAction" class="hidden">
+            <button type="button" id="progLockToggleBtn" onclick="window.toggleProgLock()"
+                class="flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-sky-700 rounded-xl shadow border border-sky-100 transition-all active:scale-95 font-bold text-xs">
+                <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                <span class="hidden sm:inline-block">Desbloquear Edição</span>
+                <span class="sm:hidden">Desbloquear</span>
+            </button>
+        </div>
     </div>
 
-    <div class="container mx-auto p-4 space-y-6 max-w-md">
-        
+    <!-- ABAS DE NAVEGAÇÃO -->
+    <div class="max-w-md mx-auto px-4 pt-4">
+        <div class="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1 gap-1">
+            <button type="button" id="tabBtnRegistro" onclick="window.switchTab('registro')"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all bg-green-600 text-white shadow-sm">
+                <i data-lucide="droplets" class="w-3.5 h-3.5"></i> Registro
+            </button>
+            <button type="button" id="tabBtnProgramacao" onclick="window.switchTab('programacao')"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i> Programação
+            </button>
+        </div>
+    </div>
+
+    <div id="tabRegistro" class="container mx-auto p-4 space-y-6 max-w-md">
+
         <!-- 1. RESPONSÁVEL -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="bg-green-50 px-4 py-2.5 border-b border-green-100 flex items-center gap-2">
@@ -83,6 +108,7 @@
                     <option value="ANTONIO AIRTON CORDEIRO DE BRITO">ANTONIO AIRTON CORDEIRO DE BRITO</option>
                     <option value="ALEXANDRO RIBEIRO LIMA">ALEXANDRO RIBEIRO LIMA</option>
                     <option value="RAFAEL SARAIVA DE LIMA">RAFAEL SARAIVA DE LIMA</option>
+                    <option value="FRANCISCO FÁBIO TEXEIRA PEREIRA">FRANCISCO FÁBIO TEXEIRA PEREIRA</option>
                 </select>
             </div>
         </div>
@@ -117,9 +143,15 @@
                     <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
                         <i data-lucide="clock-4" class="w-3.5 h-3.5 text-green-500"></i> Turno
                     </label>
-                    <div class="grid grid-cols-3 gap-2.5">
+                    <div class="grid grid-cols-4 gap-2">
+                        <label class="turno-btn-madrugada cursor-pointer">
+                            <input type="radio" name="turno" id="turno-madrugada" value="Madrugada" required class="sr-only">
+                            <span class="flex flex-col items-center gap-2 w-full py-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-400 transition-all text-xs font-bold select-none">
+                                <i data-lucide="cloud-moon" class="w-6 h-6"></i> Madrugada
+                            </span>
+                        </label>
                         <label class="turno-btn-manha cursor-pointer">
-                            <input type="radio" name="turno" id="turno-manha" value="Manhã" required class="sr-only">
+                            <input type="radio" name="turno" id="turno-manha" value="Manhã" class="sr-only">
                             <span class="flex flex-col items-center gap-2 w-full py-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-400 transition-all text-xs font-bold select-none">
                                 <i data-lucide="sunrise" class="w-6 h-6"></i> Manhã
                             </span>
@@ -208,6 +240,247 @@
         </section>
     </div>
 
+    <!-- ABA 2: PROGRAMAÇÃO SEMANAL -->
+    <div id="tabProgramacao" class="hidden container mx-auto p-4 space-y-6 max-w-md">
+
+        <!-- BOTÃO HISTÓRICO (SOMENTE NO MODO EDIÇÃO) -->
+        <button type="button" id="progHistoryBtn" onclick="window.toggleHistoryCard()"
+            class="hidden bg-white border-2 border-slate-200 hover:border-sky-300 text-slate-600 font-bold py-3 px-4 rounded-xl shadow-sm items-center justify-center gap-2 touch-manipulation text-xs uppercase tracking-wide transition-colors w-full">
+            <i data-lucide="history" class="w-3.5 h-3.5"></i> Histórico
+        </button>
+
+        <!-- BARRA DE COLAR PROGRAMAÇÃO COPIADA DO HISTÓRICO -->
+        <div id="pasteProgBar" class="hidden bg-sky-50 border-2 border-dashed border-sky-300 rounded-2xl px-4 py-3.5">
+            <div class="flex items-center gap-2 mb-2.5">
+                <i data-lucide="clipboard-paste" class="w-4 h-4 text-sky-600 shrink-0"></i>
+                <p id="pasteProgText" class="text-xs font-bold text-sky-700"></p>
+            </div>
+            <div class="flex gap-2">
+                <select id="pasteProgDaySelect" class="flex-1 bg-white border-2 border-sky-200 text-slate-700 text-xs font-bold rounded-lg py-2.5 px-2 outline-none">
+                    <option value="Segunda">Segunda-feira</option>
+                    <option value="Terça">Terça-feira</option>
+                    <option value="Quarta">Quarta-feira</option>
+                    <option value="Quinta">Quinta-feira</option>
+                    <option value="Sexta">Sexta-feira</option>
+                    <option value="Sábado">Sábado</option>
+                    <option value="Domingo">Domingo</option>
+                </select>
+                <button type="button" onclick="window.pasteProgramacaoCopiada()"
+                    class="flex items-center gap-1 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 px-3 py-2.5 rounded-lg transition-colors shrink-0">
+                    <i data-lucide="clipboard-paste" class="w-3.5 h-3.5"></i> Colar
+                </button>
+                <button type="button" onclick="window.cancelPasteProgramacao()"
+                    class="text-slate-400 hover:text-slate-600 px-2 shrink-0" title="Cancelar cópia">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- CONSULTA AO HISTÓRICO DE PROGRAMAÇÕES (SOMENTE NO MODO EDIÇÃO) -->
+        <div id="historyCard" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-gradient-to-r from-sky-600 to-sky-700 px-5 py-4 flex items-center gap-2">
+                <i data-lucide="history" class="w-5 h-5 text-white"></i>
+                <h3 class="text-base font-bold text-white">Consultar Histórico</h3>
+            </div>
+
+            <div class="p-5">
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Irrigador (Responsável)</label>
+                        <select id="historyResponsavel" onchange="window.loadHistorico()" class="w-full p-3 border-2 border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:border-sky-500 outline-none font-bold text-slate-700 transition-all">
+                            <option value="">Todos</option>
+                            <option value="ANTONIO AIRTON CORDEIRO DE BRITO">ANTONIO AIRTON CORDEIRO DE BRITO</option>
+                            <option value="ALEXANDRO RIBEIRO LIMA">ALEXANDRO RIBEIRO LIMA</option>
+                            <option value="RAFAEL SARAIVA DE LIMA">RAFAEL SARAIVA DE LIMA</option>
+                            <option value="FRANCISCO FÁBIO TEXEIRA PEREIRA">FRANCISCO FÁBIO TEXEIRA PEREIRA</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Período (Turno)</label>
+                        <select id="historyTurno" onchange="window.loadHistorico()" class="w-full p-3 border-2 border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:border-sky-500 outline-none font-bold text-slate-700 transition-all">
+                            <option value="">Todos</option>
+                            <option value="Madrugada">Madrugada</option>
+                            <option value="Manhã">Manhã</option>
+                            <option value="Tarde">Tarde</option>
+                            <option value="Noite">Noite</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="historySummaryBar" class="hidden flex items-center justify-between mb-2 px-1">
+                    <span id="historySummaryText" class="text-[11px] font-black text-slate-500 uppercase tracking-wider"></span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="window.expandAllHistory()" class="text-[10px] font-black text-sky-600 hover:text-sky-700 uppercase tracking-wider">Expandir todos</button>
+                        <span class="text-slate-300 font-bold">|</span>
+                        <button type="button" onclick="window.collapseAllHistory()" class="text-[10px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-wider">Recolher todos</button>
+                    </div>
+                </div>
+
+                <div id="historyModalBody" class="max-h-[50vh] overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
+                    <div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-8 px-4 text-center">
+                        <i data-lucide="search" class="w-4 h-4 text-sky-300 shrink-0"></i> Selecione os filtros acima para consultar.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FORMULÁRIO DE PROGRAMAÇÃO -->
+        <div id="progFormContainer" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden transition-all duration-300">
+            <div class="bg-gradient-to-r from-sky-600 to-sky-700 px-5 py-4 flex justify-between items-center">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <i data-lucide="calendar-clock" class="w-5 h-5 opacity-90"></i>
+                    <span id="progFormTitleText">Nova Programação</span>
+                </h2>
+                <button id="progCancelEditBtn" type="button" onclick="window.cancelProgEdit()" class="hidden items-center gap-1 text-xs font-bold text-white/80 hover:text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-all">
+                    <i data-lucide="x" class="w-3 h-3"></i> Cancelar
+                </button>
+            </div>
+
+            <form onsubmit="window.addProgramacao(event)" class="divide-y divide-slate-100">
+
+                <!-- IRRIGADOR (RESPONSÁVEL) -->
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="user" class="w-3.5 h-3.5 text-sky-500"></i> Irrigador (Responsável)
+                    </label>
+                    <select id="progResponsavel" onchange="window.saveProgResponsavel()" class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all">
+                        <option value="ANTONIO AIRTON CORDEIRO DE BRITO">ANTONIO AIRTON CORDEIRO DE BRITO</option>
+                        <option value="ALEXANDRO RIBEIRO LIMA">ALEXANDRO RIBEIRO LIMA</option>
+                        <option value="RAFAEL SARAIVA DE LIMA">RAFAEL SARAIVA DE LIMA</option>
+                        <option value="FRANCISCO FÁBIO TEXEIRA PEREIRA">FRANCISCO FÁBIO TEXEIRA PEREIRA</option>
+                    </select>
+                </div>
+
+                <!-- DIA DA SEMANA -->
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="calendar-days" class="w-3.5 h-3.5 text-sky-500"></i> Dia da Semana
+                    </label>
+                    <select id="progDia" required class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all">
+                        <option value="Segunda">Segunda-feira</option>
+                        <option value="Terça">Terça-feira</option>
+                        <option value="Quarta">Quarta-feira</option>
+                        <option value="Quinta">Quinta-feira</option>
+                        <option value="Sexta">Sexta-feira</option>
+                        <option value="Sábado">Sábado</option>
+                        <option value="Domingo">Domingo</option>
+                    </select>
+                </div>
+
+                <!-- BLOCO -->
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-sky-500"></i> Bloco / Setor
+                    </label>
+                    <input type="text" id="progBlock" required maxlength="2" placeholder="(ex: A ou 1)"
+                        oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-base font-bold uppercase text-slate-800 tracking-widest transition-all">
+                </div>
+
+                <!-- TEMPO -->
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="timer" class="w-3.5 h-3.5 text-sky-500"></i> Tempo de Irrigação
+                    </label>
+                    <input type="number" id="progMinutes" required min="1" placeholder="Minutos (ex: 45)"
+                        oninput="window.updateProgMinutesHelper()"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                    <div id="progMinutesHelper" class="hidden mt-2 flex items-center gap-1.5 text-sm font-bold text-sky-700 pl-1">
+                        <i data-lucide="clock" class="w-4 h-4"></i>
+                        <span id="progMinutesHelperText"></span>
+                    </div>
+                </div>
+
+                <!-- TURNO -->
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                        <i data-lucide="clock-4" class="w-3.5 h-3.5 text-sky-500"></i> Turno
+                        <span class="normal-case font-normal text-slate-300 ml-1">(opcional)</span>
+                    </label>
+                    <select id="progTurno" class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all">
+                        <option value="">Qualquer turno</option>
+                        <option value="Madrugada">Madrugada</option>
+                        <option value="Manhã">Manhã</option>
+                        <option value="Tarde">Tarde</option>
+                        <option value="Noite">Noite</option>
+                    </select>
+                </div>
+
+                <!-- OBSERVAÇÕES -->
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="message-square" class="w-3.5 h-3.5 text-sky-500"></i> Observações
+                        <span class="normal-case font-normal text-slate-300 ml-1">(opcional)</span>
+                    </label>
+                    <textarea id="progObservation" rows="2"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-800 resize-none transition-all"
+                        placeholder="Alguma observação..."></textarea>
+                </div>
+
+                <!-- BOTÃO SALVAR -->
+                <div class="px-5 py-4">
+                    <button type="submit" id="progSubmitBtn"
+                        class="btn-primary w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base">
+                        <i data-lucide="save" class="w-5 h-5"></i>
+                        <span id="progSubmitBtnText">Adicionar à Programação</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- BOTÃO ENVIAR RELATÓRIO DA PROGRAMAÇÃO -->
+        <button type="button" id="progSendReportBtn" onclick="window.startProgReportFlow()"
+            class="hidden btn-primary w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3.5 rounded-xl shadow-md items-center justify-center gap-2 touch-manipulation text-sm">
+            <i data-lucide="send" class="w-4 h-4"></i> Enviar Relatório da Programação
+        </button>
+
+        <!-- LISTA DA PROGRAMAÇÃO -->
+        <section class="space-y-3">
+            <div class="flex justify-between items-end px-1">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Programação da Semana</h3>
+                    <p class="text-[10px] text-slate-400 font-medium">Consulta para o irrigador</p>
+                </div>
+                <button type="button" id="progClearBtn" onclick="window.clearProgramacao()" class="hidden text-xs text-red-400 hover:text-red-600 font-semibold underline cursor-pointer mb-1">Limpar Tudo</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div class="bg-white rounded-xl border border-slate-200 px-3 py-2.5 flex items-center gap-2">
+                    <i data-lucide="calendar-check" class="w-4 h-4 text-sky-500 shrink-0"></i>
+                    <select id="progListDiaFiltro" onchange="renderProgramacao()" class="w-full bg-transparent text-sm font-bold text-slate-700 outline-none">
+                        <option value="__hoje__">Hoje</option>
+                        <option value="Segunda">Segunda-feira</option>
+                        <option value="Terça">Terça-feira</option>
+                        <option value="Quarta">Quarta-feira</option>
+                        <option value="Quinta">Quinta-feira</option>
+                        <option value="Sexta">Sexta-feira</option>
+                        <option value="Sábado">Sábado</option>
+                        <option value="Domingo">Domingo</option>
+                        <option value="__todos__">Todos os dias</option>
+                    </select>
+                </div>
+                <div class="bg-white rounded-xl border border-slate-200 px-3 py-2.5 flex items-center gap-2">
+                    <i data-lucide="clock-4" class="w-4 h-4 text-sky-500 shrink-0"></i>
+                    <select id="progListTurnoFiltro" onchange="renderProgramacao()" class="w-full bg-transparent text-sm font-bold text-slate-700 outline-none">
+                        <option value="__todos__">Todos turnos</option>
+                        <option value="Madrugada">Madrugada</option>
+                        <option value="Manhã">Manhã</option>
+                        <option value="Tarde">Tarde</option>
+                        <option value="Noite">Noite</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="progList" class="space-y-4"></div>
+
+            <div id="progEmptyState" class="hidden text-center py-12 text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                <i data-lucide="calendar-clock" class="w-12 h-12 mx-auto mb-3 text-sky-200"></i>
+                <p class="text-sm font-medium text-slate-400">Nenhuma programação definida.</p>
+                <p class="text-xs text-slate-300 mt-1">Preencha o formulário acima para começar.</p>
+            </div>
+        </section>
+    </div>
+
     <!-- MODAL DE CONFIRMAÇÃO (EXCLUSÃO / LIMPAR TUDO) -->
     <div id="confirmModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-6 text-center relative">
@@ -229,6 +502,12 @@
         </div>
     </div>
 
+    <!-- OVERLAY DE SINCRONIZAÇÃO (pré-carrega o histórico ao entrar no modo edição) -->
+    <div id="syncOverlay" class="hidden fixed inset-0 bg-white/70 backdrop-blur-sm z-[60] flex-col items-center justify-center gap-3">
+        <i data-lucide="loader-circle" class="w-9 h-9 text-sky-600 animate-spin"></i>
+        <p class="text-sm font-bold text-slate-600">Sincronizando dados...</p>
+    </div>
+
     <!-- MODAL DE ALERTA GERAL -->
     <div id="alertModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-6 text-center relative">
@@ -242,6 +521,31 @@
             <button type="button" onclick="window.closeAlertModal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-2xl transition-colors shadow-md text-sm">
                 ENTENDI
             </button>
+        </div>
+    </div>
+
+    <!-- MODAL DE SENHA DA PROGRAMAÇÃO -->
+    <div id="passwordModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-6 text-center relative">
+            <div class="w-16 h-16 bg-sky-50 text-sky-600 rounded-full flex items-center justify-center mb-4 mx-auto">
+                <i data-lucide="lock-keyhole" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-xl font-black text-slate-800 mb-2">Desbloquear Edição</h3>
+            <p class="text-[13px] text-slate-500 mb-5 font-medium leading-relaxed px-2">
+                Digite a senha do responsável para editar a programação.
+            </p>
+            <input type="password" id="progPasswordInput" inputmode="numeric" placeholder="Senha"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); window.confirmPasswordUnlock();}"
+                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-center text-sm font-bold text-slate-800 tracking-widest transition-all mb-2">
+            <p id="progPasswordError" class="hidden text-xs font-bold text-red-500 mb-3">Senha incorreta. Tente novamente.</p>
+            <div class="flex gap-3 w-full mt-3">
+                <button type="button" onclick="window.closePasswordModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
+                    CANCELAR
+                </button>
+                <button type="button" onclick="window.confirmPasswordUnlock()" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-bold py-3.5 rounded-2xl transition-colors shadow-md text-sm">
+                    ENTRAR
+                </button>
+            </div>
         </div>
     </div>
 
@@ -312,6 +616,73 @@
         </div>
     </div>
 
+    <!-- MODAL DE FLUXO DE ENVIO DA PROGRAMAÇÃO (MULTI-STEP) -->
+    <div id="flowModalProg" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-8 text-center relative">
+
+            <!-- STEP 1: CONFIRMAR ENVIO -->
+            <div id="step-prog-confirm" class="hidden flex-col items-center">
+                <div class="w-16 h-16 bg-[#eef7fd] text-[#0084c7] rounded-full flex items-center justify-center mb-5 mx-auto">
+                    <i data-lucide="send" class="w-8 h-8 ml-1"></i>
+                </div>
+                <h3 class="text-xl font-black text-[#1e293b] mb-3">Confirmar Envio?</h3>
+                <p class="text-[13px] text-slate-500 mb-6 font-medium px-2 leading-relaxed">
+                    Verifique se os blocos e tempos<br>da programação estão corretos.
+                </p>
+                <p class="text-[13px] font-bold text-[#0084c7] mb-4">
+                    O relatório da semana será preparado para o WhatsApp.
+                </p>
+
+                <!-- AVISO DE INTERNET EM VERMELHO -->
+                <div class="bg-red-50 border border-red-100 rounded-xl p-3 mb-6 w-full flex items-start gap-2 text-left">
+                    <i data-lucide="wifi" class="w-5 h-5 text-red-500 shrink-0"></i>
+                    <p class="text-[11px] font-bold text-red-600 leading-tight mt-0.5">
+                        ATENÇÃO: Certifique-se de estar em um local com internet para consultar o banco de dados antes de enviar.
+                    </p>
+                </div>
+
+                <div class="flex gap-3 w-full">
+                    <button type="button" onclick="window.closeProgFlowModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
+                        REVISAR
+                    </button>
+                    <button type="button" onclick="window.processProgReport()" class="flex-1 bg-[#0084c7] hover:bg-[#0073ad] text-white font-bold py-3.5 rounded-2xl transition-colors shadow-md text-sm">
+                        ENVIAR
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 2: CONSULTANDO DADOS (LOADING) -->
+            <div id="step-prog-loading" class="hidden flex-col items-center py-6">
+                <i data-lucide="loader-circle" class="w-14 h-14 text-[#0084c7] animate-spin mb-6 mx-auto"></i>
+                <h3 class="text-xl font-black text-[#1e293b] mb-3">Consultando Dados...</h3>
+                <p class="text-[13px] text-slate-500 font-medium leading-relaxed">
+                    Aguarde, processando vazão e consumo de água.
+                </p>
+            </div>
+
+            <!-- STEP 3: TUDO PRONTO (SUCCESS) -->
+            <div id="step-prog-success" class="hidden flex-col items-center">
+                <div class="w-16 h-16 bg-[#f0fdf4] text-[#16a34a] rounded-full flex items-center justify-center mb-5 mx-auto border-4 border-[#dcfce7]">
+                    <i data-lucide="check" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-xl font-black text-[#1e293b] mb-3">Tudo Pronto!</h3>
+                <p class="text-[13px] text-slate-500 mb-8 font-medium leading-relaxed px-4">
+                    Relatório da programação gerado com sucesso.<br><br>
+                    Clique abaixo para baixar a imagem.
+                </p>
+                <div class="flex flex-col gap-3 w-full">
+                    <button type="button" onclick="window.downloadProgReport()" class="w-full bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors shadow-md text-sm">
+                        <i data-lucide="download" class="w-4 h-4"></i> BAIXAR IMAGEM
+                    </button>
+                    <button type="button" onclick="window.closeProgFlowModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
+                        FECHAR
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
     <!-- ÁREA OCULTA PARA GERAÇÃO DA IMAGEM -->
     <div style="position: absolute; top: 0; left: -9999px;">
         <div id="img-report-grid" style="font-family: Arial, Helvetica, sans-serif; width: 1200px; background: #ffffff; color: #1f2937; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; padding: 0;">
@@ -333,47 +704,90 @@
                 </div>
             </div>
 
-            <!-- FAIXA DE STATS -->
-            <div style="display:flex; background:#ffffff; border-left:1px solid #d1d5db; border-right:1px solid #d1d5db; border-bottom:1px solid #d1d5db;">
-                <div style="flex:2; padding:10px 20px; border-right:1px solid #e5e7eb;">
-                    <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Responsável Técnico</div>
-                    <div id="reportCollaborator" style="font-size:13px; font-weight:700; color:#1f2937;"></div>
-                </div>
-                <div style="flex:1; padding:10px 16px; border-right:1px solid #e5e7eb; text-align:center;">
-                    <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Blocos</div>
+            <!-- RESPONSÁVEL TÉCNICO -->
+            <div style="padding:14px 20px 4px; text-align:center;">
+                <span style="font-size:11px; color:#6b7280;">Responsável Técnico: </span><span id="reportCollaborator" style="font-size:11px; color:#374151;"></span>
+            </div>
+
+            <!-- FAIXA DE STATS: CARTÕES SOLTOS -->
+            <div style="display:flex; gap:14px; padding:10px 20px 18px;">
+                <div style="flex:1; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:10px 16px; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#15803d; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Blocos</div>
                     <div id="reportBlockCount" style="font-size:24px; font-weight:900; color:#16a34a; line-height:1;">0</div>
                 </div>
-                <div style="flex:1; padding:10px 16px; border-right:1px solid #e5e7eb; text-align:center;">
-                    <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Irrigações</div>
+                <div style="flex:1; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:10px 16px; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#15803d; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Irrigações</div>
                     <div id="reportTotalCount" style="font-size:24px; font-weight:900; color:#16a34a; line-height:1;">0</div>
                 </div>
-                <div style="flex:1; padding:10px 16px; border-right:1px solid #e5e7eb; text-align:center;">
-                    <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Tempo Total</div>
+                <div style="flex:1; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:10px 16px; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#15803d; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Tempo Total</div>
                     <div id="reportTotalDuration" style="font-size:18px; font-weight:900; color:#16a34a; line-height:1;">--</div>
                 </div>
-                <div style="flex:1; padding:10px 16px; text-align:center; background:#166534;">
-                    <div style="font-size:8px; font-weight:700; color:#bbf7d0; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Volume Total</div>
-                    <div style="font-size:18px; font-weight:900; color:#ffffff; line-height:1;"><span id="reportTotalVolume">--</span></div>
-                    <div style="font-size:8px; color:#86efac; margin-top:2px;">mil litros</div>
+                <div style="flex:1; background:#dcfce7; border:1px solid #86efac; border-radius:12px; padding:10px 16px; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#15803d; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Volume Total</div>
+                    <div style="font-size:18px; font-weight:900; color:#14532d; line-height:1;"><span id="reportTotalVolume">--</span></div>
+                    <div style="font-size:8px; color:#166534; margin-top:2px;">mil litros</div>
                 </div>
             </div>
 
-            <!-- CABEÇALHO DA TABELA -->
-            <div style="display:flex; align-items:center; padding:8px 20px; background:#f0fdf4; border-left:1px solid #d1d5db; border-right:1px solid #d1d5db; border-bottom:2px solid #16a34a;">
-                <div style="width:190px; font-size:8px; font-weight:700; color:#15803d; letter-spacing:4px; text-transform:uppercase;">Bloco / Setor</div>
-                <div style="width:160px; font-size:8px; font-weight:700; color:#15803d; letter-spacing:4px; text-transform:uppercase;">Tempo</div>
-                <div style="width:200px; font-size:8px; font-weight:700; color:#6b7280; letter-spacing:4px; text-transform:uppercase;">Volume Água</div>
-                <div style="width:140px; font-size:8px; font-weight:700; color:#6b7280; letter-spacing:4px; text-transform:uppercase;">Turno</div>
-                <div style="flex:1; font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:4px; text-transform:uppercase;">Aspersores</div>
-                <div style="width:110px; font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:3px; text-transform:uppercase; text-align:right;">Atualizado</div>
-            </div>
-
-            <!-- LINHAS DOS BLOCOS (geradas por JS) -->
-            <div id="img-grid-container" style="border-left:1px solid #d1d5db; border-right:1px solid #d1d5db;"></div>
+            <!-- CARTÕES POR BLOCO (gerados por JS) -->
+            <div id="img-grid-container" style="padding:0 16px 16px;"></div>
 
             <!-- RODAPÉ -->
-            <div style="padding:10px 20px; background:#ffffff; display:flex; justify-content:center; align-items:center; border:1px solid #d1d5db; border-top:1px solid #e5e7eb;">
+            <div style="padding:10px 20px; background:#ffffff; display:flex; justify-content:center; align-items:center; border-top:1px solid #e5e7eb;">
                 <div style="font-size:8px; color:#16a34a; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
+            </div>
+
+        </div>
+
+        <!-- GRID DA IMAGEM: PROGRAMAÇÃO SEMANAL -->
+        <div id="img-report-grid-prog" style="font-family: Arial, Helvetica, sans-serif; width: 1200px; background: #ffffff; color: #1f2937; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; padding: 0;">
+
+            <!-- CABEÇALHO -->
+            <div style="display:flex; align-items:stretch; background:#ffffff; border:1px solid #d1d5db; overflow:hidden;">
+                <!-- Logo -->
+                <div style="padding:16px 20px; display:flex; align-items:center; justify-content:center; background:#f9fafb; border-right:1px solid #d1d5db; min-width:110px;">
+                    <img id="reportLogoProg" src="" style="height:56px; width:auto;" alt="Logo">
+                </div>
+                <!-- Título -->
+                <div style="flex:1; padding:16px 28px; display:flex; flex-direction:column; justify-content:center; text-align:center;">
+                    <div style="font-size:18px; font-weight:900; color:#1f2937; letter-spacing:2px; text-transform:uppercase;">Programação Semanal de Irrigação</div>
+                </div>
+                <!-- Emissão -->
+                <div style="padding:16px 24px; display:flex; flex-direction:column; justify-content:center; align-items:center; border-left:1px solid #d1d5db; min-width:180px; background:#f9fafb; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:4px; text-transform:uppercase; margin-bottom:4px;">EMISSÃO</div>
+                    <div id="reportDateProg" style="font-size:20px; font-weight:900; color:#0284c7; letter-spacing:1px;"></div>
+                    <div id="reportDiaLabelProg" style="font-size:10px; font-weight:700; color:#0369a1; text-transform:uppercase; letter-spacing:1px; margin-top:2px;"></div>
+                </div>
+            </div>
+
+            <!-- FAIXA DE STATS: CARTÕES SOLTOS -->
+            <div style="display:flex; gap:14px; padding:18px 20px 18px;">
+                <div style="flex:1; background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; padding:10px 16px; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#0369a1; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Blocos</div>
+                    <div id="reportBlockCountProg" style="font-size:24px; font-weight:900; color:#0284c7; line-height:1;">0</div>
+                </div>
+                <div style="flex:1; background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; padding:10px 16px; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#0369a1; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Pulsos</div>
+                    <div id="reportTotalCountProg" style="font-size:24px; font-weight:900; color:#0284c7; line-height:1;">0</div>
+                </div>
+                <div style="flex:1; background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; padding:10px 16px; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#0369a1; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Tempo Total</div>
+                    <div id="reportTotalDurationProg" style="font-size:18px; font-weight:900; color:#0284c7; line-height:1;">--</div>
+                </div>
+                <div style="flex:1; background:#e0f2fe; border:1px solid #7dd3fc; border-radius:12px; padding:10px 16px; text-align:center;">
+                    <div style="font-size:8px; font-weight:700; color:#0369a1; letter-spacing:3px; text-transform:uppercase; margin-bottom:3px;">Volume Total</div>
+                    <div style="font-size:18px; font-weight:900; color:#0c4a6e; line-height:1;"><span id="reportTotalVolumeProg">--</span></div>
+                    <div style="font-size:8px; color:#0369a1; margin-top:2px;">mil litros</div>
+                </div>
+            </div>
+
+            <!-- CARTÕES POR BLOCO (gerados por JS) -->
+            <div id="img-grid-container-prog" style="padding:0 16px 16px;"></div>
+
+            <!-- RODAPÉ -->
+            <div style="padding:10px 20px; background:#ffffff; display:flex; justify-content:center; align-items:center; border-top:1px solid #e5e7eb;">
+                <div style="font-size:8px; color:#0284c7; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
             </div>
 
         </div>
@@ -383,23 +797,48 @@
     <script>
         console.log("Console pronto para edição!");
 
+        // Ordem de exibição dos turnos em todas as listas e relatórios
+        const TURNO_ORDER = { 'Madrugada': 0, 'Manhã': 1, 'Tarde': 2, 'Noite': 3 };
+
         let records = JSON.parse(localStorage.getItem('irrigation_records')) || [];
         let expirationTime = localStorage.getItem('irrigation_expiration');
         let editingId = null;
-        
+
+        let programacao = JSON.parse(localStorage.getItem('irrigation_programacao')) || [];
+        let editingProgId = null;
+
+        // Senha para liberar edição da Programação (troque o valor abaixo se quiser outra senha)
+        const PROG_PASSWORD = "1234@";
+        let progUnlocked = false;
+
+        // Dados de consumo de água por bloco, usados para exibir os litros junto do tempo na lista
+        let consumoBlocosData = {};
+        let consumoTotalMil = null;
+        let consumoStatus = 'idle'; // idle | loading | done | error
+
         // Variáveis para o modal de exclusão
         let pendingDeleteId = null;
         let pendingClearAll = false;
+        let pendingDeleteProgId = null;
+        let pendingClearProgramacao = false;
         
         // Armazena temporariamente os dados gerados da Imagem e da Planilha
         let currentReportData = {
             file: null,
-            fileName: "",
-            text: ""
+            fileName: ""
+        };
+
+        let currentProgReportData = {
+            file: null,
+            fileName: ""
         };
 
         window.saveCollaborator = function() {
             localStorage.setItem('irrigation_collaborator', document.getElementById('collaborator').value);
+        }
+
+        window.saveProgResponsavel = function() {
+            localStorage.setItem('irrigation_prog_responsavel', document.getElementById('progResponsavel').value);
         }
 
         function saveData() {
@@ -627,6 +1066,8 @@
             document.getElementById('confirmModal').classList.remove('flex');
             pendingDeleteId = null;
             pendingClearAll = false;
+            pendingDeleteProgId = null;
+            pendingClearProgramacao = false;
         }
 
         window.executeConfirmAction = function() {
@@ -638,6 +1079,18 @@
                 records = [];
                 window.cancelEdit();
                 saveData();
+            } else if (pendingDeleteProgId !== null) {
+                if (progUnlocked) {
+                    programacao = programacao.filter(p => p.id !== pendingDeleteProgId);
+                    if (editingProgId === pendingDeleteProgId) window.cancelProgEdit();
+                    saveProgramacao();
+                }
+            } else if (pendingClearProgramacao) {
+                if (progUnlocked) {
+                    programacao = [];
+                    window.cancelProgEdit();
+                    saveProgramacao();
+                }
             }
             window.closeConfirmModal();
         }
@@ -688,8 +1141,8 @@
             const sortedKeys = Object.keys(grouped).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
 
             list.innerHTML = sortedKeys.map(blockKey => {
-                const blockRecords = grouped[blockKey];
-                
+                const blockRecords = grouped[blockKey].slice().sort((a, b) => (TURNO_ORDER[a.turno] ?? 99) - (TURNO_ORDER[b.turno] ?? 99));
+
                 let blockTotalMinutes = 0;
                 blockRecords.forEach(r => { blockTotalMinutes += r.minutes || 0; });
                 const bHours = Math.floor(blockTotalMinutes / 60);
@@ -712,8 +1165,9 @@
                         </div>
                     ` : '';
 
-                    const turnoIcon  = rec.turno === 'Manhã' ? 'sunrise' : rec.turno === 'Tarde' ? 'sun' : rec.turno === 'Noite' ? 'moon' : 'clock';
-                    const turnoBg    = rec.turno === 'Manhã' ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    const turnoIcon  = rec.turno === 'Madrugada' ? 'cloud-moon' : rec.turno === 'Manhã' ? 'sunrise' : rec.turno === 'Tarde' ? 'sun' : rec.turno === 'Noite' ? 'moon' : 'clock';
+                    const turnoBg    = rec.turno === 'Madrugada' ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                     : rec.turno === 'Manhã' ? 'bg-amber-50 text-amber-700 border-amber-200'
                                      : rec.turno === 'Tarde' ? 'bg-orange-50 text-orange-700 border-orange-200'
                                      : rec.turno === 'Noite' ? 'bg-violet-50 text-violet-700 border-violet-200'
                                      : 'bg-slate-50 text-slate-500 border-slate-200';
@@ -769,6 +1223,823 @@
                 `;
             }).join('');
             
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // --- SISTEMA DE ABAS ---
+
+        window.switchTab = function(tab) {
+            const registroTab = document.getElementById('tabRegistro');
+            const progTab = document.getElementById('tabProgramacao');
+            const btnRegistro = document.getElementById('tabBtnRegistro');
+            const btnProgramacao = document.getElementById('tabBtnProgramacao');
+            const navbarRegistroActions = document.getElementById('navbarRegistroActions');
+            const navbarProgAction = document.getElementById('navbarProgAction');
+
+            const activeClasses = ['bg-green-600', 'text-white', 'shadow-sm'];
+            const inactiveClasses = ['text-slate-400'];
+
+            if (tab === 'programacao') {
+                registroTab.classList.add('hidden');
+                progTab.classList.remove('hidden');
+                btnRegistro.classList.remove(...activeClasses);
+                btnRegistro.classList.add(...inactiveClasses);
+                btnProgramacao.classList.remove(...inactiveClasses);
+                btnProgramacao.classList.add('bg-sky-600', 'text-white', 'shadow-sm');
+                navbarRegistroActions.classList.add('hidden');
+                navbarProgAction.classList.remove('hidden');
+            } else {
+                progTab.classList.add('hidden');
+                registroTab.classList.remove('hidden');
+                btnProgramacao.classList.remove('bg-sky-600', 'text-white', 'shadow-sm');
+                btnProgramacao.classList.add(...inactiveClasses);
+                btnRegistro.classList.remove(...inactiveClasses);
+                btnRegistro.classList.add(...activeClasses);
+                navbarProgAction.classList.add('hidden');
+                navbarRegistroActions.classList.remove('hidden');
+            }
+
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // --- SISTEMA DE PROGRAMAÇÃO SEMANAL ---
+
+        // --- BLOQUEIO POR SENHA DA PROGRAMAÇÃO ---
+
+        window.updateProgLockUI = function() {
+            const formContainer = document.getElementById('progFormContainer');
+            const lockBtn = document.getElementById('progLockToggleBtn');
+            const clearBtn = document.getElementById('progClearBtn');
+            const sendReportBtn = document.getElementById('progSendReportBtn');
+            const historyBtn = document.getElementById('progHistoryBtn');
+            const historyCard = document.getElementById('historyCard');
+
+            if (progUnlocked) {
+                formContainer.classList.remove('hidden');
+                clearBtn.classList.remove('hidden');
+                sendReportBtn.classList.remove('hidden');
+                sendReportBtn.classList.add('flex');
+                historyBtn.classList.remove('hidden');
+                historyBtn.classList.add('flex');
+                lockBtn.innerHTML = `<i data-lucide="lock-open" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline-block">Bloquear Edição</span><span class="sm:hidden">Bloquear</span>`;
+                lockBtn.classList.remove('text-sky-700', 'border-sky-100');
+                lockBtn.classList.add('text-slate-700', 'border-slate-200');
+            } else {
+                formContainer.classList.add('hidden');
+                clearBtn.classList.add('hidden');
+                sendReportBtn.classList.add('hidden');
+                sendReportBtn.classList.remove('flex');
+                historyBtn.classList.add('hidden');
+                historyBtn.classList.remove('flex');
+                historyCard.classList.add('hidden');
+                lockBtn.innerHTML = `<i data-lucide="lock" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline-block">Desbloquear Edição</span><span class="sm:hidden">Desbloquear</span>`;
+                lockBtn.classList.remove('text-slate-700', 'border-slate-200');
+                lockBtn.classList.add('text-sky-700', 'border-sky-100');
+            }
+
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            renderProgramacao();
+        }
+
+        window.toggleHistoryCard = function() {
+            const historyCard = document.getElementById('historyCard');
+            historyCard.classList.toggle('hidden');
+            if (!historyCard.classList.contains('hidden')) {
+                historyCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                window.loadHistorico();
+            }
+        }
+
+        window.toggleProgLock = function() {
+            if (progUnlocked) {
+                progUnlocked = false;
+                historicoCarregado = false;
+                window.cancelProgEdit();
+                window.updateProgLockUI();
+                window.updatePasteBarVisibility();
+            } else {
+                window.showPasswordModal();
+            }
+        }
+
+        window.showPasswordModal = function() {
+            const input = document.getElementById('progPasswordInput');
+            input.value = '';
+            document.getElementById('progPasswordError').classList.add('hidden');
+            document.getElementById('passwordModal').classList.remove('hidden');
+            document.getElementById('passwordModal').classList.add('flex');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            setTimeout(() => input.focus(), 100);
+        }
+
+        window.closePasswordModal = function() {
+            document.getElementById('passwordModal').classList.add('hidden');
+            document.getElementById('passwordModal').classList.remove('flex');
+        }
+
+        window.confirmPasswordUnlock = function() {
+            const input = document.getElementById('progPasswordInput');
+            if (input.value === PROG_PASSWORD) {
+                progUnlocked = true;
+                window.closePasswordModal();
+                window.updateProgLockUI();
+                window.updatePasteBarVisibility();
+                window.presyncHistorico();
+            } else {
+                document.getElementById('progPasswordError').classList.remove('hidden');
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        window.showSyncOverlay = function() {
+            const el = document.getElementById('syncOverlay');
+            el.classList.remove('hidden');
+            el.classList.add('flex');
+        }
+
+        window.hideSyncOverlay = function() {
+            const el = document.getElementById('syncOverlay');
+            el.classList.add('hidden');
+            el.classList.remove('flex');
+        }
+
+        let historicoCarregado = false;
+
+        // Roda em segundo plano assim que a programação é desbloqueada, para que o
+        // histórico já esteja em cache quando o irrigador tocar em "Histórico".
+        window.presyncHistorico = async function() {
+            window.showSyncOverlay();
+            const inicio = Date.now();
+            try {
+                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec?action=historico";
+                const response = await fetch(scriptUrl);
+                const data = await response.json();
+                if (data.sucesso) {
+                    historicoProgramacoes = data.historico || [];
+                    historicoCarregado = true;
+                }
+            } catch (err) {
+                console.error("Erro ao sincronizar histórico:", err);
+            } finally {
+                // Garante um tempo mínimo de exibição para o overlay não só "piscar" na tela
+                const decorrido = Date.now() - inicio;
+                const espera = Math.max(0, 400 - decorrido);
+                setTimeout(() => window.hideSyncOverlay(), espera);
+            }
+        }
+
+        function saveProgramacao() {
+            localStorage.setItem('irrigation_programacao', JSON.stringify(programacao));
+            renderProgramacao();
+            window.calcularConsumoProgramacao();
+        }
+
+        // Envia apenas o item editado para o Apps Script, que atualiza a linha
+        // correspondente na planilha "Programações" (pelo ID) em vez de duplicar.
+        // Só tem efeito se o item já havia sido enviado antes via "Enviar Relatório";
+        // caso contrário o Apps Script simplesmente cria a linha na próxima vez.
+        async function syncProgramacaoItemToSheet(item) {
+            const minutosPorBloco = {};
+            programacao.forEach(p => {
+                minutosPorBloco[p.block] = (minutosPorBloco[p.block] || 0) + (p.minutes || 0);
+            });
+            const registrosSimulados = Object.keys(minutosPorBloco).map(block => ({ block, minutes: minutosPorBloco[block] }));
+
+            let nomeResponsavel = document.getElementById('progResponsavel').value;
+            if (nomeResponsavel === "ANTONIO AIRTON CORDEIRO DE BRITO") {
+                nomeResponsavel = "Airton Cordeiro";
+            } else if (nomeResponsavel === "ALEXANDRO RIBEIRO LIMA") {
+                nomeResponsavel = "Alexandro Ribeiro";
+            } else if (nomeResponsavel === "RAFAEL SARAIVA DE LIMA") {
+                nomeResponsavel = "Rafael Saraiva";
+            } else if (nomeResponsavel === "FRANCISCO FÁBIO TEXEIRA PEREIRA") {
+                nomeResponsavel = "Francisco Fábio";
+            }
+
+            try {
+                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec";
+                await fetch(scriptUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        registros: registrosSimulados,
+                        programacao: [item],
+                        responsavel: nomeResponsavel
+                    })
+                });
+            } catch (err) {
+                console.error("Erro ao sincronizar edição com a planilha:", err);
+            }
+        }
+
+        window.updateProgMinutesHelper = function() {
+            const val = parseInt(document.getElementById('progMinutes').value);
+            const helper = document.getElementById('progMinutesHelper');
+            const helperText = document.getElementById('progMinutesHelperText');
+            if (!val || val <= 0) { helper.classList.add('hidden'); return; }
+            const h = Math.floor(val / 60);
+            const m = val % 60;
+            helperText.innerText = h === 0 ? `${m} minutos` : m === 0 ? `${h}h` : `${h}h ${m}min`;
+            helper.classList.remove('hidden');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.resetProgFormState = function() {
+            editingProgId = null;
+            const formContainer = document.getElementById('progFormContainer');
+            if(formContainer) {
+                formContainer.classList.remove('ring-2', 'ring-amber-400');
+                const header = formContainer.querySelector('.bg-gradient-to-r');
+                if(header) { header.classList.remove('from-amber-500','to-amber-600'); header.classList.add('from-sky-600','to-sky-700'); }
+            }
+
+            const submitBtn = document.getElementById('progSubmitBtn');
+            if(submitBtn) {
+                submitBtn.className = "btn-primary w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
+                submitBtn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> <span id="progSubmitBtnText">Adicionar à Programação</span>`;
+            }
+
+            const title = document.getElementById('progFormTitleText');
+            if(title) title.innerText = "Nova Programação";
+
+            const cancelBtn = document.getElementById('progCancelEditBtn');
+            if(cancelBtn) { cancelBtn.classList.add('hidden'); cancelBtn.classList.remove('flex'); }
+
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            renderProgramacao();
+        }
+
+        window.cancelProgEdit = function() {
+            window.resetProgFormState();
+            document.getElementById('progBlock').value = '';
+            document.getElementById('progMinutes').value = '';
+            document.getElementById('progObservation').value = '';
+            document.getElementById('progTurno').value = '';
+            document.getElementById('progMinutesHelper').classList.add('hidden');
+        }
+
+        window.addProgramacao = function(e) {
+            e.preventDefault();
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de editar."); return; }
+
+            const dia = document.getElementById('progDia').value;
+            const block = document.getElementById('progBlock').value.toUpperCase();
+            const minutes = parseInt(document.getElementById('progMinutes').value) || 0;
+            const turno = document.getElementById('progTurno').value;
+            const observation = document.getElementById('progObservation').value;
+
+            if (editingProgId !== null) {
+                const index = programacao.findIndex(p => p.id === editingProgId);
+                if (index !== -1) {
+                    programacao[index] = { ...programacao[index], dia, block, minutes, turno, observation };
+                    syncProgramacaoItemToSheet(programacao[index]);
+                    const btn = document.getElementById('progSubmitBtn');
+                    btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Alteração Salva!`;
+                    btn.className = "btn-primary w-full bg-sky-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
+                    setTimeout(() => window.resetProgFormState(), 1000);
+                }
+                editingProgId = null;
+            } else {
+                const newItem = { id: Date.now(), dia, block, minutes, turno, observation };
+                programacao.push(newItem);
+
+                document.getElementById('progObservation').value = '';
+                document.getElementById('progTurno').value = '';
+                document.getElementById('progMinutesHelper').classList.add('hidden');
+
+                const btn = document.getElementById('progSubmitBtn');
+                btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Adicionado!`;
+                btn.className = "btn-primary w-full bg-sky-800 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
+
+                setTimeout(() => {
+                    btn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> <span id="progSubmitBtnText">Adicionar à Programação</span>`;
+                    btn.className = "btn-primary w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
+                    if(typeof lucide !== 'undefined') lucide.createIcons();
+                }, 1200);
+            }
+
+            saveProgramacao();
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.editProgramacaoItem = function(id) {
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de editar."); return; }
+            const item = programacao.find(p => p.id === id);
+            if (!item) return;
+
+            document.getElementById('progDia').value = item.dia;
+            document.getElementById('progBlock').value = item.block;
+            document.getElementById('progMinutes').value = item.minutes || '';
+            document.getElementById('progTurno').value = item.turno || '';
+            document.getElementById('progObservation').value = item.observation || '';
+            window.updateProgMinutesHelper();
+
+            editingProgId = id;
+
+            const formContainer = document.getElementById('progFormContainer');
+            formContainer.classList.add('ring-2', 'ring-amber-400');
+            const header = formContainer.querySelector('.bg-gradient-to-r');
+            if(header) { header.classList.remove('from-sky-600','to-sky-700'); header.classList.add('from-amber-500','to-amber-600'); }
+
+            const submitBtn = document.getElementById('progSubmitBtn');
+            submitBtn.className = "btn-primary w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
+            submitBtn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> <span id="progSubmitBtnText">Salvar Alterações</span>`;
+
+            document.getElementById('progFormTitleText').innerText = "Editando Programação";
+            const cancelBtn = document.getElementById('progCancelEditBtn');
+            cancelBtn.classList.remove('hidden');
+            cancelBtn.classList.add('flex');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            renderProgramacao();
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.deleteProgramacaoItem = function(id) {
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de apagar itens."); return; }
+            pendingDeleteProgId = id;
+            pendingClearProgramacao = false;
+            window.showConfirmModal(
+                "Excluir Programação?",
+                "Tem certeza que deseja apagar este item da programação?",
+                "EXCLUIR"
+            );
+        }
+
+        window.clearProgramacao = function() {
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de apagar a programação."); return; }
+            if (programacao.length === 0) return;
+            pendingDeleteProgId = null;
+            pendingClearProgramacao = true;
+            window.showConfirmModal(
+                "Limpar Programação?",
+                "Tem certeza que deseja apagar TODA a programação da semana? Esta ação não pode ser desfeita.",
+                "LIMPAR TUDO"
+            );
+        }
+
+        // --- HISTÓRICO DE PROGRAMAÇÕES ENVIADAS (PLANILHA) ---
+
+        let historicoProgramacoes = [];
+        let _copiedProgramacaoItens = null;
+        let _copiedProgramacaoOrigem = '';
+
+        window.loadHistorico = async function() {
+            const body = document.getElementById('historyModalBody');
+            const summaryBar = document.getElementById('historySummaryBar');
+            summaryBar.classList.add('hidden');
+
+            // Já sincronizado em segundo plano ao desbloquear a edição: usa o cache, sem esperar a rede
+            if (historicoCarregado) {
+                renderHistorico();
+                return;
+            }
+
+            body.innerHTML = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-8">
+                <i data-lucide="loader-circle" class="w-4 h-4 animate-spin text-sky-500"></i> Carregando histórico...
+            </div>`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            try {
+                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec?action=historico";
+                const response = await fetch(scriptUrl);
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    historicoProgramacoes = data.historico || [];
+                    historicoCarregado = true;
+                    renderHistorico();
+                } else {
+                    body.innerHTML = `<p class="text-xs font-medium text-red-500 text-center py-8">Erro ao carregar histórico: ${data.erro || 'tente novamente.'}</p>`;
+                }
+            } catch (err) {
+                console.error("Erro ao carregar histórico:", err);
+                body.innerHTML = `<p class="text-xs font-medium text-red-500 text-center py-8">Erro de conexão. Verifique sua internet e tente novamente.</p>`;
+            }
+        }
+
+        let historicoFiltrado = [];
+
+        function renderHistorico() {
+            const body = document.getElementById('historyModalBody');
+            const summaryBar = document.getElementById('historySummaryBar');
+            const summaryText = document.getElementById('historySummaryText');
+            if (!body) return;
+
+            const responsavelVal = document.getElementById('historyResponsavel').value;
+            const turnoVal = document.getElementById('historyTurno').value;
+
+            const grupos = historicoProgramacoes
+                .filter(g => !responsavelVal || g.responsavel === responsavelVal)
+                .map(g => ({
+                    dataEnvio: g.dataEnvio,
+                    responsavel: g.responsavel,
+                    itens: turnoVal ? g.itens.filter(item => item.turno === turnoVal) : g.itens
+                }))
+                .filter(g => g.itens.length > 0);
+
+            historicoFiltrado = grupos;
+
+            if (grupos.length === 0) {
+                summaryBar.classList.add('hidden');
+                body.innerHTML = `<p class="text-xs text-slate-400 text-center py-8 px-4">Nenhuma programação encontrada para os filtros selecionados.</p>`;
+                return;
+            }
+
+            const totalItens = grupos.reduce((s, g) => s + g.itens.length, 0);
+            summaryText.innerText = `${totalItens} ${totalItens === 1 ? 'item' : 'itens'} em ${grupos.length} ${grupos.length === 1 ? 'dia' : 'dias'}`;
+            summaryBar.classList.remove('hidden');
+
+            body.innerHTML = grupos.map((grupo, idx) => {
+                const groupId = `histGroup_${idx}`;
+                const itensHtml = grupo.itens.map(item => `
+                    <div class="flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-0">
+                        <span class="font-bold text-slate-600">BLOCO ${item.block} <span class="font-normal text-slate-400">(${item.dia})</span></span>
+                        <span class="font-bold text-sky-700">${formatDuration(item.minutes)}${item.turno ? ' · ' + item.turno : ''}</span>
+                    </div>
+                `).join('');
+
+                return `
+                <div>
+                    <div class="flex items-center justify-between gap-2 px-3.5 py-3 hover:bg-slate-50 transition-colors">
+                        <div class="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer" onclick="window.toggleHistoryGroup('${groupId}')">
+                            <i data-lucide="chevron-down" id="${groupId}_icon" class="w-4 h-4 text-sky-500 shrink-0 transition-transform duration-200" style="transform:rotate(-90deg)"></i>
+                            <div class="min-w-0">
+                                <span class="text-xs font-black text-slate-700">${grupo.dataEnvio}</span>
+                                <span class="ml-2 text-[10px] font-bold text-slate-400 truncate">${grupo.responsavel}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">${grupo.itens.length} ${grupo.itens.length === 1 ? 'item' : 'itens'}</span>
+                            <button type="button" onclick="window.copyHistoricoGrupo(${idx})"
+                                class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 text-[10px] font-black rounded-lg transition-colors whitespace-nowrap">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copiar
+                            </button>
+                        </div>
+                    </div>
+                    <div id="${groupId}_body" class="hidden px-3.5 pb-3">${itensHtml}</div>
+                </div>
+                `;
+            }).join('');
+
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.toggleHistoryGroup = function(groupId) {
+            const contentEl = document.getElementById(`${groupId}_body`);
+            const iconEl = document.getElementById(`${groupId}_icon`);
+            if (!contentEl) return;
+            const isOpen = !contentEl.classList.contains('hidden');
+            contentEl.classList.toggle('hidden', isOpen);
+            if (iconEl) iconEl.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
+        }
+
+        window.expandAllHistory = function() {
+            document.querySelectorAll('#historyModalBody [id$="_body"]').forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll('#historyModalBody [id$="_icon"]').forEach(el => el.style.transform = 'rotate(0deg)');
+        }
+
+        window.collapseAllHistory = function() {
+            document.querySelectorAll('#historyModalBody [id$="_body"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('#historyModalBody [id$="_icon"]').forEach(el => el.style.transform = 'rotate(-90deg)');
+        }
+
+        window.copyHistoricoGrupo = function(idx) {
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de copiar uma programação."); return; }
+
+            const grupo = historicoFiltrado[idx];
+            if (!grupo) return;
+
+            _copiedProgramacaoItens = grupo.itens.map(item => ({
+                block: String(item.block || '').toUpperCase(),
+                minutes: item.minutes || 0,
+                turno: item.turno || '',
+                observation: item.observation || ''
+            }));
+            _copiedProgramacaoOrigem = grupo.dataEnvio;
+
+            window.updatePasteBarVisibility();
+            window.showAlert("Programação Copiada", `${_copiedProgramacaoItens.length} item(ns) prontos para colar. Use a barra "Colar programação copiada" no topo.`);
+        }
+
+        window.updatePasteBarVisibility = function() {
+            const bar = document.getElementById('pasteProgBar');
+            if (!bar) return;
+            const show = !!_copiedProgramacaoItens && progUnlocked;
+            bar.classList.toggle('hidden', !show);
+            if (show) {
+                const qtd = _copiedProgramacaoItens.length;
+                document.getElementById('pasteProgText').innerText =
+                    `${qtd} ${qtd === 1 ? 'item copiado' : 'itens copiados'} de ${_copiedProgramacaoOrigem}. Escolha o dia e cole:`;
+            }
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.pasteProgramacaoCopiada = function() {
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de colar uma programação."); return; }
+            if (!_copiedProgramacaoItens || _copiedProgramacaoItens.length === 0) return;
+
+            const dia = document.getElementById('pasteProgDaySelect').value;
+            const novosItens = _copiedProgramacaoItens.map((item, i) => ({
+                id: Date.now() + i,
+                dia,
+                block: item.block,
+                minutes: item.minutes,
+                turno: item.turno,
+                observation: item.observation
+            }));
+
+            programacao = programacao.concat(novosItens);
+            saveProgramacao();
+            window.showAlert("Programação Colada", `${novosItens.length} ${novosItens.length === 1 ? 'item foi adicionado' : 'itens foram adicionados'} à programação.`);
+        }
+
+        window.cancelPasteProgramacao = function() {
+            _copiedProgramacaoItens = null;
+            _copiedProgramacaoOrigem = '';
+            window.updatePasteBarVisibility();
+        }
+
+        function getDiaKeyHoje() {
+            const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+            return dias[new Date().getDay()];
+        }
+
+        function getDataDaSemana(dia) {
+            const diaOrder = { 'Segunda': 0, 'Terça': 1, 'Quarta': 2, 'Quinta': 3, 'Sexta': 4, 'Sábado': 5, 'Domingo': 6 };
+            const targetIndex = diaOrder[dia];
+            if (targetIndex === undefined) return '';
+
+            const today = new Date();
+            const todayMondayIndex = (today.getDay() + 6) % 7; // Segunda=0 ... Domingo=6
+            const resultDate = new Date(today);
+            resultDate.setDate(today.getDate() + (targetIndex - todayMondayIndex));
+
+            const d = String(resultDate.getDate()).padStart(2, '0');
+            const m = String(resultDate.getMonth() + 1).padStart(2, '0');
+            return `${d}/${m}`;
+        }
+
+        function diaLabel(dia) {
+            const labels = {
+                'Segunda': 'SEGUNDA-FEIRA', 'Terça': 'TERÇA-FEIRA', 'Quarta': 'QUARTA-FEIRA',
+                'Quinta': 'QUINTA-FEIRA', 'Sexta': 'SEXTA-FEIRA', 'Sábado': 'SÁBADO', 'Domingo': 'DOMINGO'
+            };
+            const nome = labels[dia] || dia.toUpperCase();
+            const data = getDataDaSemana(dia);
+            return data ? `${nome} (${data})` : nome;
+        }
+
+        let consumoRequestToken = 0;
+
+        function renderConsumoCard() {
+            const body = document.getElementById('progConsumoBody');
+            if (!body) return;
+
+            if (consumoStatus === 'idle') {
+                body.innerHTML = `<p class="text-xs text-slate-400">Adicione um bloco à programação para estimar o consumo de água automaticamente. É necessário estar conectado à internet.</p>`;
+            } else if (consumoStatus === 'loading') {
+                body.innerHTML = `<div class="flex items-center gap-2 text-xs font-medium text-slate-400">
+                    <i data-lucide="loader-circle" class="w-4 h-4 animate-spin text-sky-500"></i> Calculando consumo automaticamente...
+                </div>`;
+            } else if (consumoStatus === 'error') {
+                body.innerHTML = `<p class="text-xs font-medium text-red-500">Erro de conexão. Verifique sua internet.</p>`;
+            } else {
+                const totalTexto = (consumoTotalMil || '--').toString().replace(',', '.');
+                body.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-black text-slate-700 uppercase tracking-wide">Total da Semana</span>
+                        <span class="text-base font-black text-sky-700">${totalTexto} mil L</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">O detalhamento por bloco aparece junto ao tempo de cada item, na lista abaixo.</p>
+                `;
+            }
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.calcularConsumoProgramacao = async function() {
+            if (programacao.length === 0) {
+                // Invalida qualquer requisição em andamento, para que sua resposta
+                // não sobrescreva o card depois que a lista foi limpa
+                ++consumoRequestToken;
+                consumoStatus = 'idle';
+                consumoBlocosData = {};
+                consumoTotalMil = null;
+                renderConsumoCard();
+                renderProgramacao();
+                return;
+            }
+
+            const requestToken = ++consumoRequestToken;
+
+            consumoStatus = 'loading';
+            renderConsumoCard();
+
+            // Soma os minutos totais por bloco (considerando todos os dias da semana)
+            const minutosPorBloco = {};
+            programacao.forEach(item => {
+                minutosPorBloco[item.block] = (minutosPorBloco[item.block] || 0) + (item.minutes || 0);
+            });
+            const registrosSimulados = Object.keys(minutosPorBloco).map(block => ({ block, minutes: minutosPorBloco[block] }));
+
+            try {
+                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec";
+                const response = await fetch(scriptUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        registros: registrosSimulados,
+                        responsavel: document.getElementById('progResponsavel').value
+                    })
+                });
+
+                const data = await response.json();
+
+                // Descarta a resposta se a programação já mudou de novo enquanto aguardava
+                if (requestToken !== consumoRequestToken) return;
+
+                if (data.sucesso) {
+                    consumoBlocosData = data.blocos || {};
+                    consumoTotalMil = data.totalLitrosMil || null;
+                    consumoStatus = 'done';
+                } else {
+                    consumoStatus = 'error';
+                    console.warn("Aviso do Apps Script:", data.erro);
+                }
+            } catch (err) {
+                if (requestToken !== consumoRequestToken) return;
+                console.error("Erro na comunicação com a planilha:", err);
+                consumoStatus = 'error';
+            }
+
+            renderConsumoCard();
+            renderProgramacao();
+        }
+
+        function renderProgramacao() {
+            const list = document.getElementById('progList');
+            const empty = document.getElementById('progEmptyState');
+
+            if (programacao.length === 0) {
+                list.innerHTML = '';
+                if(empty) empty.classList.remove('hidden');
+                return;
+            }
+
+            if(empty) empty.classList.add('hidden');
+
+            const diaOrder = { 'Segunda': 0, 'Terça': 1, 'Quarta': 2, 'Quinta': 3, 'Sexta': 4, 'Sábado': 5, 'Domingo': 6 };
+
+            // Minutos totais por bloco na semana, para ratear os litros calculados proporcionalmente a cada item
+            const minutosPorBlocoSemana = {};
+            programacao.forEach(item => {
+                minutosPorBlocoSemana[item.block] = (minutosPorBlocoSemana[item.block] || 0) + (item.minutes || 0);
+            });
+
+            const filtroDiaSelect = document.getElementById('progListDiaFiltro');
+            const filtroDiaValor = filtroDiaSelect ? filtroDiaSelect.value : '__hoje__';
+            const diaFiltro = filtroDiaValor === '__hoje__' ? getDiaKeyHoje() : filtroDiaValor;
+
+            const filtroTurnoSelect = document.getElementById('progListTurnoFiltro');
+            const filtroTurnoValor = filtroTurnoSelect ? filtroTurnoSelect.value : '__todos__';
+
+            const itemsFiltrados = programacao.filter(item => {
+                const passaDia = filtroDiaValor === '__todos__' || item.dia === diaFiltro;
+                const passaTurno = filtroTurnoValor === '__todos__' || item.turno === filtroTurnoValor;
+                return passaDia && passaTurno;
+            });
+
+            const grouped = {};
+            itemsFiltrados.forEach(item => {
+                const key = item.dia;
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(item);
+            });
+
+            const sortedDias = Object.keys(grouped).sort((a, b) => (diaOrder[a] ?? 99) - (diaOrder[b] ?? 99));
+
+            if (sortedDias.length === 0) {
+                list.innerHTML = `
+                    <div class="text-center py-10 text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                        <i data-lucide="calendar-x" class="w-10 h-10 mx-auto mb-2 text-sky-200"></i>
+                        <p class="text-sm font-medium text-slate-400">Nenhuma programação para os filtros selecionados.</p>
+                        <p class="text-xs text-slate-300 mt-1">Ajuste os filtros acima para consultar.</p>
+                    </div>`;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            list.innerHTML = sortedDias.map(dia => {
+                const items = grouped[dia].slice().sort((a, b) => {
+                    const turnoDiff = (TURNO_ORDER[a.turno] ?? 99) - (TURNO_ORDER[b.turno] ?? 99);
+                    if (turnoDiff !== 0) return turnoDiff;
+                    return a.block.localeCompare(b.block, undefined, {numeric: true});
+                });
+
+                let diaTotalMinutes = 0;
+                items.forEach(i => { diaTotalMinutes += i.minutes || 0; });
+                const dHours = Math.floor(diaTotalMinutes / 60);
+                const dMins = diaTotalMinutes % 60;
+                const diaDurationText = dHours === 0 ? `${dMins}min` : `${dHours}h ${dMins}min`;
+
+                const rowsHtml = items.map(item => {
+                    const isEditing = item.id === editingProgId;
+                    const bgClass = isEditing ? 'bg-amber-50 border-l-4 border-l-amber-400' : '';
+                    const obsHtml = item.observation ? `
+                        <div class="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500 italic bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+                            <i data-lucide="message-square" class="w-3 h-3 shrink-0 mt-0.5 text-slate-400"></i>
+                            <span class="break-words leading-relaxed">${item.observation}</span>
+                        </div>
+                    ` : '';
+
+                    const turnoIcon  = item.turno === 'Madrugada' ? 'cloud-moon' : item.turno === 'Manhã' ? 'sunrise' : item.turno === 'Tarde' ? 'sun' : item.turno === 'Noite' ? 'moon' : 'clock';
+                    const turnoBg    = item.turno === 'Madrugada' ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                     : item.turno === 'Manhã' ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                     : item.turno === 'Tarde' ? 'bg-orange-50 text-orange-700 border-orange-200'
+                                     : item.turno === 'Noite' ? 'bg-violet-50 text-violet-700 border-violet-200'
+                                     : 'bg-slate-50 text-slate-500 border-slate-200';
+                    const turnoBadge = `<span class="text-[11px] font-bold ${turnoBg} border flex items-center gap-1 px-2 py-0.5 rounded-full"><i data-lucide="${turnoIcon}" class="w-3 h-3"></i>${item.turno || 'Qualquer turno'}</span>`;
+
+                    // Litros estimados deste item, rateados a partir do total semanal do bloco
+                    let aguaBadge = '';
+                    if (consumoStatus === 'loading') {
+                        aguaBadge = `<span class="text-sm font-bold text-slate-300 flex items-center gap-1"><i data-lucide="loader-circle" class="w-3.5 h-3.5 animate-spin"></i></span>`;
+                    } else {
+                        const blocoInfo = consumoBlocosData[item.block];
+                        if (blocoInfo) {
+                            const totalBlocoMin = minutosPorBlocoSemana[item.block] || 0;
+                            let litrosTexto;
+                            if (totalBlocoMin > 0) {
+                                const litrosTotaisBloco = parseFloat(blocoInfo.litrosMil.replace(',', '.')) * 1000;
+                                const litrosItem = (litrosTotaisBloco * (item.minutes || 0)) / totalBlocoMin;
+                                litrosTexto = (litrosItem / 1000).toFixed(3).replace('.', ',');
+                            } else {
+                                litrosTexto = blocoInfo.litrosMil;
+                            }
+                            aguaBadge = `<span class="text-sm font-bold text-sky-700 flex items-center gap-1">
+                                <i data-lucide="droplets" class="w-3.5 h-3.5"></i>
+                                ${litrosTexto} mil L
+                            </span>`;
+                        }
+                    }
+
+                    const actionsHtml = progUnlocked ? `
+                        <div class="flex gap-1 shrink-0">
+                            <button type="button" onclick="window.editProgramacaoItem(${item.id})"
+                                class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Editar">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                            </button>
+                            <button type="button" onclick="window.deleteProgramacaoItem(${item.id})"
+                                class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    ` : '';
+
+                    return `
+                    <div class="flex justify-between items-start px-4 py-3.5 border-b border-slate-100 last:border-0 ${bgClass} transition-colors">
+                        <div class="flex flex-col gap-1.5 w-full mr-3">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-bold text-sky-700 flex items-center gap-1">
+                                    <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                                    BLOCO ${item.block}
+                                </span>
+                                <span class="text-sm font-bold text-slate-700 flex items-center gap-1">
+                                    <i data-lucide="timer" class="w-3.5 h-3.5"></i>
+                                    ${formatDuration(item.minutes)}
+                                </span>
+                                ${aguaBadge}
+                                ${turnoBadge}
+                            </div>
+                            ${obsHtml}
+                        </div>
+                        ${actionsHtml}
+                    </div>
+                    `;
+                }).join('');
+
+                return `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="bg-gradient-to-r from-sky-700 to-sky-600 px-4 py-3 flex justify-between items-center">
+                        <div class="flex items-center gap-2.5">
+                            <div class="bg-white/20 rounded-lg p-1.5">
+                                <i data-lucide="calendar-days" class="w-4 h-4 text-white"></i>
+                            </div>
+                            <div>
+                                <span class="text-sm font-bold text-white uppercase tracking-wide">${diaLabel(dia)}</span>
+                                <span class="ml-2 text-xs font-bold text-sky-100 bg-white/15 px-2 py-0.5 rounded-full">
+                                    ${diaDurationText}
+                                </span>
+                            </div>
+                        </div>
+                        <span class="text-xs font-bold text-sky-100 bg-white/15 px-2.5 py-1 rounded-full">${items.length} pulso${items.length > 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="flex flex-col divide-y divide-slate-50">
+                        ${rowsHtml}
+                    </div>
+                </div>
+                `;
+            }).join('');
+
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -830,7 +2101,6 @@
             document.getElementById('reportCollaborator').innerText = document.getElementById('collaborator').value;
 
             // --- INTEGRAÇÃO APPS SCRIPT ---
-            let textoResumoWhatsApp = "";
             let infoBlocosImagem = {};
             const today = new Date();
             const day = String(today.getDate()).padStart(2, '0');
@@ -845,6 +2115,8 @@
                 nomeResponsavel = "Alexandro Ribeiro";
             } else if (nomeResponsavel === "RAFAEL SARAIVA DE LIMA") {
                 nomeResponsavel = "Rafael Saraiva";
+            } else if (nomeResponsavel === "FRANCISCO FÁBIO TEXEIRA PEREIRA") {
+                nomeResponsavel = "Francisco Fábio";
             }
 
             try {
@@ -860,7 +2132,6 @@
                 const data = await response.json();
 
                 if (data.sucesso) {
-                    if (data.resumo) textoResumoWhatsApp = data.resumo;
                     if (data.blocos) infoBlocosImagem = data.blocos;
                     if (data.totalLitrosMil) {
                         document.getElementById('reportTotalVolume').innerText = data.totalLitrosMil.replace(',', '.');
@@ -872,12 +2143,10 @@
                 console.error("Erro na comunicação com a planilha:", err);
             }
 
-            // --- GERAÇÃO DAS LINHAS DO RELATÓRIO (após fetch para ter infoBlocosImagem) ---
+            // --- GERAÇÃO DOS CARTÕES POR BLOCO (após fetch para ter infoBlocosImagem) ---
             const gridContainer = document.getElementById('img-grid-container');
 
-            // Agrupa por bloco+turno para gerar uma linha por combinação
-            const turnoOrder = { 'Manhã': 0, 'Tarde': 1, 'Noite': 2 };
-            const groupedRows = [];
+            // Agrupa por bloco, e dentro do bloco por turno
             const groupedByBlock = {};
             records.forEach(rec => {
                 const k = rec.block;
@@ -887,59 +2156,83 @@
                 groupedByBlock[k][t].push(rec);
             });
 
-            Object.keys(groupedByBlock)
-                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-                .forEach(blockKey => {
+            const blockKeys = Object.keys(groupedByBlock).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+            gridContainer.innerHTML = blockKeys.map((blockKey, cardIdx) => {
                     const turnoMap = groupedByBlock[blockKey];
-                    Object.keys(turnoMap)
-                        .sort((a, b) => (turnoOrder[a] ?? 99) - (turnoOrder[b] ?? 99))
-                        .forEach(turno => {
-                            groupedRows.push({ blockKey, turno, recs: turnoMap[turno] });
-                        });
-                });
+                    const turnos = Object.keys(turnoMap).sort((a, b) => (TURNO_ORDER[a] ?? 99) - (TURNO_ORDER[b] ?? 99));
 
-            gridContainer.innerHTML = groupedRows.map(({ blockKey, turno, recs }, idx) => {
-                    const totalMinutes = recs.reduce((s, r) => s + (r.minutes || 0), 0);
-                    const bH = Math.floor(totalMinutes / 60);
-                    const bM = totalMinutes % 60;
-                    const tempoTexto = bH === 0 ? `${bM} min` : `${bH}h ${bM}min`;
-
-                    // Calcula água proporcional ao tempo deste turno
                     const blocoInfo = infoBlocosImagem[blockKey];
-                    let aguaTexto = '—';
-                    if (blocoInfo) {
-                        // Pega total de minutos do bloco inteiro para calcular proporção
-                        const totalBlocoMin = records
-                            .filter(r => r.block === blockKey)
-                            .reduce((s, r) => s + (r.minutes || 0), 0);
-                        if (totalBlocoMin > 0) {
-                            const litrosTotaisBloco = parseFloat(blocoInfo.litrosMil.replace(',', '.')) * 1000;
-                            const litrosTurno = (litrosTotaisBloco * totalMinutes) / totalBlocoMin;
-                            aguaTexto = (litrosTurno / 1000).toFixed(3) + ' mil L';
-                        } else {
-                            aguaTexto = blocoInfo.litrosMil.replace(',', '.') + ' mil L';
-                        }
-                    }
-
-                    const aspTexto   = blocoInfo ? blocoInfo.aspersoresTexto : '—';
+                    const totalBlocoMin = records
+                        .filter(r => r.block === blockKey)
+                        .reduce((s, r) => s + (r.minutes || 0), 0);
+                    const bH = Math.floor(totalBlocoMin / 60);
+                    const bM = totalBlocoMin % 60;
+                    const totalTempoTexto = bH === 0 ? `${bM}min` : `${bH}h ${bM}min`;
+                    const totalVolumeTexto = blocoInfo ? blocoInfo.litrosMil.replace(',', '.') + ' mil L' : '—';
+                    const aspTexto = blocoInfo ? blocoInfo.aspersoresTexto : '—';
                     const dataAtualiz = blocoInfo ? blocoInfo.dataAtualizacao : '—';
                     const blockTitle = blockKey === 'E' ? 'TÂMARAS' : `BLOCO ${blockKey}`;
-                    const obs = recs.filter(r => r.observation).map(r => r.observation).join(' | ');
 
-                    const isOdd = (idx % 2 === 0);
-                    const rowBg = isOdd ? '#ffffff' : '#f9fafb';
-                    const aspFormatado = aspTexto === '—' ? '<span style="color:#9ca3af;">—</span>' :
+                    const rowsHtml = turnos.map(turno => {
+                        const recs = turnoMap[turno];
+                        const minutes = recs.reduce((s, r) => s + (r.minutes || 0), 0);
+                        const h = Math.floor(minutes / 60);
+                        const m = minutes % 60;
+                        const tempoTexto = h === 0 ? `${m}min` : `${h}h ${m}min`;
+
+                        let aguaTexto = '—';
+                        if (blocoInfo && totalBlocoMin > 0) {
+                            const litrosTotaisBloco = parseFloat(blocoInfo.litrosMil.replace(',', '.')) * 1000;
+                            const litrosTurno = (litrosTotaisBloco * minutes) / totalBlocoMin;
+                            aguaTexto = (litrosTurno / 1000).toFixed(3) + ' mil L';
+                        } else if (blocoInfo) {
+                            aguaTexto = blocoInfo.litrosMil.replace(',', '.') + ' mil L';
+                        }
+
+                        const obs = recs.filter(r => r.observation).map(r => r.observation).join(' | ');
+
+                        return `
+                        <div style="display:flex; align-items:center; padding:9px 0; border-bottom:1px solid #f1f5f9;">
+                            <div style="width:100px; font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">${turno !== '—' ? turno : '—'}</div>
+                            <div style="width:80px; font-size:13px; font-weight:800; color:#1f2937;">${tempoTexto}</div>
+                            <div style="flex:1; font-size:13px; font-weight:800; color:#15803d;">${aguaTexto}</div>
+                        </div>
+                        ${obs ? `<div style="padding:0 0 8px; font-size:10px; color:#9ca3af; font-style:italic;">${obs}</div>` : ''}`;
+                    }).join('');
+
+                    const aspFormatado = (aspTexto && aspTexto !== '—') ?
                         aspTexto.split(/\s*-\s*(?=\()/).map(grupo =>
-                            `<span style="display:inline-block; background:#dcfce7; color:#166534; border:1px solid #86efac; border-radius:5px; padding:2px 7px; font-size:10px; font-weight:700; white-space:nowrap; margin:2px 2px 2px 0;">${grupo.trim()}</span>`
-                        ).join('');
+                            `<span style="display:inline-block; background:#dcfce7; color:#166534; border:1px solid #86efac; border-radius:5px; padding:2px 7px; font-size:9px; font-weight:700; white-space:nowrap; margin:2px 4px 0 0;">${grupo.trim()}</span>`
+                        ).join('') : '';
+
+                    const isLastInRow = (cardIdx + 1) % 3 === 0;
+
                     return `
-                    <div class="report-row" style="display:flex; align-items:center; padding:12px 20px; border-bottom:1px solid #e5e7eb; background:${rowBg};">
-                        <div style="width:190px; font-size:14px; font-weight:900; color:#15803d; letter-spacing:0.5px; text-transform:uppercase;">${blockTitle}</div>
-                        <div style="width:160px; font-size:17px; font-weight:700; color:#1f2937;">${tempoTexto}</div>
-                        <div style="width:200px; font-size:17px; font-weight:700; color:#374151;">${aguaTexto}</div>
-                        <div style="width:140px; font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:1px;">${turno !== '—' ? turno : '—'}</div>
-                        <div style="flex:1; line-height:1.8;">${aspFormatado}${obs ? `<br><span style="color:#9ca3af; font-size:10px; font-style:italic;">${obs}</span>` : ''}</div>
-                        <div style="width:110px; text-align:right;"><span style="display:inline-block; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:5px; padding:2px 7px; font-size:10px; font-weight:600; white-space:nowrap;">${dataAtualiz}</span></div>
+                    <div style="width:calc(33.333% - 11px); margin:0 ${isLastInRow ? '0' : '16px'} 16px 0; background:#ffffff; border:1px solid #d1d5db; border-radius:14px; overflow:hidden; box-sizing:border-box;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:#f0fdf4; border-bottom:1px solid #d1d5db;">
+                            <div style="font-size:14px; font-weight:900; color:#15803d; letter-spacing:0.5px; text-transform:uppercase;">${blockTitle}</div>
+                            <span style="display:inline-block; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:5px; padding:2px 7px; font-size:9px; font-weight:700; white-space:nowrap;">${dataAtualiz}</span>
+                        </div>
+                        <div style="padding:4px 16px;">
+                            <div style="display:flex; padding:8px 0 6px; border-bottom:1px solid #e5e7eb; font-size:8px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:1.5px;">
+                                <div style="width:100px;">Turno</div>
+                                <div style="width:80px;">Tempo</div>
+                                <div style="flex:1;">Volume</div>
+                            </div>
+                            ${rowsHtml}
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding:10px 16px; background:#f9fafb; border-top:1px solid #e5e7eb;">
+                            <div>
+                                <div style="font-size:8px; color:#9ca3af; text-transform:uppercase; font-weight:700;">Tempo Total</div>
+                                <div style="font-size:14px; font-weight:900; color:#1f2937;">${totalTempoTexto}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:8px; color:#9ca3af; text-transform:uppercase; font-weight:700;">Volume Total</div>
+                                <div style="font-size:14px; font-weight:900; color:#15803d;">${totalVolumeTexto}</div>
+                            </div>
+                        </div>
+                        ${aspFormatado ? `<div style="padding:8px 16px; background:#ffffff; border-top:1px solid #f1f5f9;">${aspFormatado}</div>` : ''}
                     </div>`;
                 }).join('');
 
@@ -973,15 +2266,10 @@
                 element.style.borderRadius = originalStyle.borderRadius;
                 element.style.border = originalStyle.border;
                 const fileName = `Irrigação - ${day}-${month}-${year}.png`;
-                
-                if(!textoResumoWhatsApp) {
-                    textoResumoWhatsApp = `\`Relatório de Irrigação (${day}/${month}/${year})\`\n\n• Total de irrigações: ${records.length}\n\n*Responsável:* ${nomeResponsavel}`;
-                }
 
                 // Armazena no estado global como arquivo de imagem (PNG)
                 currentReportData.file = new File([imageBlob], fileName, { type: 'image/png' });
                 currentReportData.fileName = fileName;
-                currentReportData.text = textoResumoWhatsApp;
 
                 // Vai para o Passo 3: Sucesso
                 document.getElementById('step-loading').classList.add('hidden');
@@ -1007,6 +2295,258 @@
             window.closeFlowModal();
         }
 
+        // --- SISTEMA DE MODAL MULTI-STEP: PROGRAMAÇÃO ---
+
+        // Retorna os itens da programação que serão incluídos no relatório,
+        // respeitando o filtro de dia selecionado na lista (evita repetir o dia em cada linha)
+        function getProgReportScope() {
+            const filtroSelect = document.getElementById('progListDiaFiltro');
+            const filtroValor = filtroSelect ? filtroSelect.value : '__hoje__';
+            if (filtroValor === '__todos__') {
+                return { items: programacao, diaUnico: null };
+            }
+            const diaAlvo = filtroValor === '__hoje__' ? getDiaKeyHoje() : filtroValor;
+            return { items: programacao.filter(p => p.dia === diaAlvo), diaUnico: diaAlvo };
+        }
+
+        window.startProgReportFlow = function() {
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie a edição com a senha do responsável para enviar o relatório."); return; }
+            if (getProgReportScope().items.length === 0) {
+                window.showAlert("Programação Vazia", "Não há itens na programação para o dia selecionado no filtro acima da lista.");
+                return;
+            }
+
+            document.getElementById('flowModalProg').classList.remove('hidden');
+            document.getElementById('step-prog-confirm').classList.remove('hidden');
+            document.getElementById('step-prog-confirm').classList.add('flex');
+
+            document.getElementById('step-prog-loading').classList.add('hidden');
+            document.getElementById('step-prog-loading').classList.remove('flex');
+
+            document.getElementById('step-prog-success').classList.add('hidden');
+            document.getElementById('step-prog-success').classList.remove('flex');
+
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.closeProgFlowModal = function() {
+            document.getElementById('flowModalProg').classList.add('hidden');
+        }
+
+        window.processProgReport = async function() {
+            // Vai para o Passo 2: Carregando
+            document.getElementById('step-prog-confirm').classList.add('hidden');
+            document.getElementById('step-prog-confirm').classList.remove('flex');
+
+            document.getElementById('step-prog-loading').classList.remove('hidden');
+            document.getElementById('step-prog-loading').classList.add('flex');
+
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            // Prepara a grid do relatório nos bastidores
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = today.getFullYear();
+
+            const { items: reportItems, diaUnico } = getProgReportScope();
+
+            document.getElementById('reportDateProg').innerText = `${day}/${month}/${year}`;
+            document.getElementById('reportDiaLabelProg').innerText = diaUnico ? diaLabel(diaUnico) : 'SEMANA COMPLETA';
+            document.getElementById('reportTotalCountProg').innerText = reportItems.length;
+
+            const uniqueBlocks = new Set(reportItems.map(p => p.block)).size;
+            document.getElementById('reportBlockCountProg').innerText = uniqueBlocks;
+
+            let totalMinutesGeral = 0;
+            reportItems.forEach(p => { totalMinutesGeral += p.minutes || 0; });
+            const tHours = Math.floor(totalMinutesGeral / 60);
+            const tMins = totalMinutesGeral % 60;
+
+            document.getElementById('reportTotalDurationProg').innerText = tHours === 0 ? `${tMins}min` : `${tHours}h ${tMins}min`;
+
+            let nomeResponsavel = document.getElementById('progResponsavel').value;
+            if (nomeResponsavel === "ANTONIO AIRTON CORDEIRO DE BRITO") {
+                nomeResponsavel = "Airton Cordeiro";
+            } else if (nomeResponsavel === "ALEXANDRO RIBEIRO LIMA") {
+                nomeResponsavel = "Alexandro Ribeiro";
+            } else if (nomeResponsavel === "RAFAEL SARAIVA DE LIMA") {
+                nomeResponsavel = "Rafael Saraiva";
+            } else if (nomeResponsavel === "FRANCISCO FÁBIO TEXEIRA PEREIRA") {
+                nomeResponsavel = "Francisco Fábio";
+            }
+
+            // --- INTEGRAÇÃO APPS SCRIPT (consumo de água por bloco) ---
+            let infoBlocosImagem = {};
+            const minutosPorBloco = {};
+            reportItems.forEach(item => {
+                minutosPorBloco[item.block] = (minutosPorBloco[item.block] || 0) + (item.minutes || 0);
+            });
+            const registrosSimulados = Object.keys(minutosPorBloco).map(block => ({ block, minutes: minutosPorBloco[block] }));
+
+            try {
+                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec";
+                const response = await fetch(scriptUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        registros: registrosSimulados,
+                        programacao: reportItems,
+                        responsavel: nomeResponsavel
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    if (data.blocos) infoBlocosImagem = data.blocos;
+                    if (data.totalLitrosMil) {
+                        document.getElementById('reportTotalVolumeProg').innerText = data.totalLitrosMil.replace(',', '.');
+                    }
+                } else {
+                    console.warn("Aviso do Apps Script:", data.erro);
+                }
+            } catch (err) {
+                console.error("Erro na comunicação com a planilha:", err);
+            }
+
+            // --- GERAÇÃO DOS CARTÕES POR BLOCO ---
+            const gridContainer = document.getElementById('img-grid-container-prog');
+            const diaOrder = { 'Segunda': 0, 'Terça': 1, 'Quarta': 2, 'Quinta': 3, 'Sexta': 4, 'Sábado': 5, 'Domingo': 6 };
+
+            const groupedByBlockProg = {};
+            reportItems.forEach(item => {
+                const k = item.block;
+                if (!groupedByBlockProg[k]) groupedByBlockProg[k] = [];
+                groupedByBlockProg[k].push(item);
+            });
+
+            const blockKeysProg = Object.keys(groupedByBlockProg).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+            gridContainer.innerHTML = blockKeysProg.map((blockKey, cardIdx) => {
+                const items = groupedByBlockProg[blockKey].slice().sort((a, b) => {
+                    const diaDiff = (diaOrder[a.dia] ?? 99) - (diaOrder[b.dia] ?? 99);
+                    if (diaDiff !== 0) return diaDiff;
+                    return (TURNO_ORDER[a.turno] ?? 99) - (TURNO_ORDER[b.turno] ?? 99);
+                });
+
+                const blocoInfo = infoBlocosImagem[blockKey];
+                const totalBlocoMin = minutosPorBloco[blockKey] || 0;
+                const bH = Math.floor(totalBlocoMin / 60);
+                const bM = totalBlocoMin % 60;
+                const totalTempoTexto = bH === 0 ? `${bM}min` : `${bH}h ${bM}min`;
+                const totalVolumeTexto = blocoInfo ? blocoInfo.litrosMil.replace(',', '.') + ' mil L' : '—';
+                const blockTitle = blockKey === 'E' ? 'TÂMARAS' : `BLOCO ${blockKey}`;
+
+                const rowsHtml = items.map(item => {
+                    const tempoTexto = formatDuration(item.minutes);
+
+                    let aguaTexto = '—';
+                    if (blocoInfo && totalBlocoMin > 0) {
+                        const litrosTotaisBloco = parseFloat(blocoInfo.litrosMil.replace(',', '.')) * 1000;
+                        const litrosItem = (litrosTotaisBloco * (item.minutes || 0)) / totalBlocoMin;
+                        aguaTexto = (litrosItem / 1000).toFixed(3) + ' mil L';
+                    } else if (blocoInfo) {
+                        aguaTexto = blocoInfo.litrosMil.replace(',', '.') + ' mil L';
+                    }
+
+                    const diaColHtml = diaUnico ? '' : `<div style="width:110px; font-size:11px; font-weight:700; color:#0369a1; text-transform:uppercase; letter-spacing:0.5px;">${diaLabel(item.dia)}</div>`;
+
+                    return `
+                    <div style="display:flex; align-items:center; padding:9px 0; border-bottom:1px solid #f1f5f9;">
+                        ${diaColHtml}
+                        <div style="width:90px; font-size:10px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">${item.turno || 'Qualquer'}</div>
+                        <div style="width:80px; font-size:13px; font-weight:800; color:#1f2937;">${tempoTexto}</div>
+                        <div style="flex:1; font-size:13px; font-weight:800; color:#0284c7;">${aguaTexto}</div>
+                    </div>
+                    ${item.observation ? `<div style="padding:0 0 8px; font-size:10px; color:#9ca3af; font-style:italic;">${item.observation}</div>` : ''}`;
+                }).join('');
+
+                const isLastInRow = (cardIdx + 1) % 3 === 0;
+                const diaHeaderColHtml = diaUnico ? '' : `<div style="width:110px;">Dia</div>`;
+
+                return `
+                <div style="width:calc(33.333% - 11px); margin:0 ${isLastInRow ? '0' : '16px'} 16px 0; background:#ffffff; border:1px solid #d1d5db; border-radius:14px; overflow:hidden; box-sizing:border-box;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:#f0f9ff; border-bottom:1px solid #d1d5db;">
+                        <div style="font-size:14px; font-weight:900; color:#0369a1; letter-spacing:0.5px; text-transform:uppercase;">${blockTitle}</div>
+                    </div>
+                    <div style="padding:4px 16px;">
+                        <div style="display:flex; padding:8px 0 6px; border-bottom:1px solid #e5e7eb; font-size:8px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:1.5px;">
+                            ${diaHeaderColHtml}
+                            <div style="width:90px;">Turno</div>
+                            <div style="width:80px;">Tempo</div>
+                            <div style="flex:1;">Volume</div>
+                        </div>
+                        ${rowsHtml}
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:10px 16px; background:#f9fafb; border-top:1px solid #e5e7eb;">
+                        <div>
+                            <div style="font-size:8px; color:#9ca3af; text-transform:uppercase; font-weight:700;">Tempo Total</div>
+                            <div style="font-size:14px; font-weight:900; color:#1f2937;">${totalTempoTexto}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:8px; color:#9ca3af; text-transform:uppercase; font-weight:700;">Volume Total</div>
+                            <div style="font-size:14px; font-weight:900; color:#0284c7;">${totalVolumeTexto}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // --- GERAÇÃO DA IMAGEM EM ALTA RESOLUÇÃO ---
+            try {
+                await new Promise(r => setTimeout(r, 200));
+
+                const element = document.getElementById('img-report-grid-prog');
+
+                const images = element.querySelectorAll('img');
+                await Promise.all(Array.from(images).map(img => {
+                    if (img.complete) return Promise.resolve();
+                    return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+                }));
+
+                const originalStyle = { margin: element.style.margin, boxShadow: element.style.boxShadow, borderRadius: element.style.borderRadius, border: element.style.border };
+                element.style.margin = '0';
+                element.style.boxShadow = 'none';
+                element.style.borderRadius = '0';
+                element.style.border = 'none';
+
+                const imageBlob = await htmlToImage.toBlob(element, {
+                    pixelRatio: 5,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                });
+
+                element.style.margin = originalStyle.margin;
+                element.style.boxShadow = originalStyle.boxShadow;
+                element.style.borderRadius = originalStyle.borderRadius;
+                element.style.border = originalStyle.border;
+                const fileName = `Programação Semanal - ${day}-${month}-${year}.png`;
+
+                currentProgReportData.file = new File([imageBlob], fileName, { type: 'image/png' });
+                currentProgReportData.fileName = fileName;
+
+                document.getElementById('step-prog-loading').classList.add('hidden');
+                document.getElementById('step-prog-loading').classList.remove('flex');
+
+                document.getElementById('step-prog-success').classList.remove('hidden');
+                document.getElementById('step-prog-success').classList.add('flex');
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            } catch (err) {
+                console.error(err);
+                window.showAlert("Erro de Processamento", "Ocorreu um erro inesperado ao gerar o relatório da programação.");
+                window.closeProgFlowModal();
+            }
+        }
+
+        window.downloadProgReport = function() {
+            const { file, fileName } = currentProgReportData;
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(file);
+            link.download = fileName;
+            link.click();
+            window.closeProgFlowModal();
+        }
+
         // --- INICIALIZAÇÃO E EXPOSIÇÃO GERAL ---
         window.saveCollaborator = saveCollaborator;
         window.addRecord = addRecord;
@@ -1027,10 +2567,12 @@
             const appleTouchIcon = document.getElementById('siteAppleTouchIcon');
             const manifestLink   = document.getElementById('siteManifest');
             const reportLogo     = document.getElementById('reportLogo');
+            const reportLogoProg = document.getElementById('reportLogoProg');
 
             if (favicon)        favicon.href        = logoUri;
             if (appleTouchIcon) appleTouchIcon.href = logoUri;
             if (reportLogo)     reportLogo.src      = logoUri;
+            if (reportLogoProg) reportLogoProg.src   = logoUri;
             if (manifestLink) {
                 const manifest = {
                     name: 'Registro Irrigação',
@@ -1064,12 +2606,22 @@
                     collabSelect.value = savedCollab;
                 }
             }
-            
+
+            const savedProgResponsavel = localStorage.getItem('irrigation_prog_responsavel');
+            if(savedProgResponsavel) {
+                const progRespSelect = document.getElementById('progResponsavel');
+                if([...progRespSelect.options].some(o => o.value === savedProgResponsavel)) {
+                    progRespSelect.value = savedProgResponsavel;
+                }
+            }
+
             setInterval(updateTimerDisplay, 30000);
             updateTimerDisplay();
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
             renderList();
+            window.updateProgLockUI();
+            window.calcularConsumoProgramacao();
         });
 
     </script>
