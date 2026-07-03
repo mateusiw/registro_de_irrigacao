@@ -1248,6 +1248,7 @@
                 btnProgramacao.classList.add('bg-sky-600', 'text-white', 'shadow-sm');
                 navbarRegistroActions.classList.add('hidden');
                 navbarProgAction.classList.remove('hidden');
+                if (!progUnlocked) window.syncProgramacaoFromSheet();
             } else {
                 progTab.classList.add('hidden');
                 registroTab.classList.remove('hidden');
@@ -1430,6 +1431,37 @@
             } catch (err) {
                 console.error("Erro ao sincronizar edição com a planilha:", err);
             }
+        }
+
+        // Busca a programação oficial da planilha e substitui a lista local,
+        // para o irrigador sempre visualizar o que está de fato registrado.
+        // Só roda em modo consulta (bloqueado) para não sobrescrever uma edição em andamento.
+        window.syncProgramacaoFromSheet = async function() {
+            const list = document.getElementById('progList');
+            const empty = document.getElementById('progEmptyState');
+            if (empty) empty.classList.add('hidden');
+            if (list) {
+                list.innerHTML = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-8">
+                    <i data-lucide="loader-circle" class="w-4 h-4 animate-spin text-sky-500"></i> Sincronizando programação...
+                </div>`;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }
+
+            try {
+                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec?action=programacaoAtual";
+                const response = await fetch(scriptUrl);
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    programacao = data.programacao || [];
+                    localStorage.setItem('irrigation_programacao', JSON.stringify(programacao));
+                }
+            } catch (err) {
+                console.error("Erro ao sincronizar programação com a planilha:", err);
+            }
+
+            renderProgramacao();
+            window.calcularConsumoProgramacao();
         }
 
         window.updateProgMinutesHelper = function() {
