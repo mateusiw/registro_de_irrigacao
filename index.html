@@ -138,6 +138,29 @@
                         class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
                 </div>
 
+                <!-- HORA MOTOR (valor único do dia, não por bloco) -->
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                        <i data-lucide="power" class="w-3.5 h-3.5 text-green-500"></i> Hora Motor
+                        <span class="normal-case font-normal text-slate-300 ml-1">(capturado do aparelho)</span>
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" id="btnMotorLigar" onclick="window.registrarHoraMotor('ligar')"
+                            class="flex flex-col items-center gap-1 w-full py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-500 transition-all text-xs font-bold">
+                            <i data-lucide="power" class="w-5 h-5 text-green-500"></i>
+                            <span>Ligar Motor</span>
+                            <span id="motorLigarHoraText" class="text-[11px] font-mono text-slate-400">--:--</span>
+                        </button>
+                        <button type="button" id="btnMotorDesligar" onclick="window.registrarHoraMotor('desligar')"
+                            class="flex flex-col items-center gap-1 w-full py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-500 transition-all text-xs font-bold">
+                            <i data-lucide="power-off" class="w-5 h-5 text-red-400"></i>
+                            <span>Desligar Motor</span>
+                            <span id="motorDesligarHoraText" class="text-[11px] font-mono text-slate-400">--:--</span>
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-slate-300 font-medium mt-2 leading-relaxed">Vale para o dia inteiro (não é por bloco). O horário é lido direto do relógio do aparelho ao tocar no botão, não pode ser digitado.</p>
+                </div>
+
                 <!-- TURNO -->
                 <div class="px-5 py-4">
                     <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
@@ -224,6 +247,11 @@
                     <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Relatório Diário de Irrigação</h3>
                     <!-- TIMER DE LIMPEZA AUTOMÁTICA -->
                     <span id="autoCleanTimer" class="text-[10px] font-mono text-orange-500 font-bold block h-3 mt-1"></span>
+                    <!-- HORA MOTOR DO DIA (valor único, não por bloco) -->
+                    <div id="listMotorHoraBadge" class="hidden items-center gap-1.5 text-[11px] font-bold font-mono bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full mt-1.5 w-fit">
+                        <i data-lucide="power" class="w-3 h-3"></i>
+                        <span id="listMotorHoraText"></span>
+                    </div>
                 </div>
                 <button type="button" onclick="window.clearAll()" class="text-xs text-red-400 hover:text-red-600 font-semibold underline cursor-pointer mb-1">Limpar Tudo</button>
             </div>
@@ -701,6 +729,7 @@
                 <div style="padding:16px 24px; display:flex; flex-direction:column; justify-content:center; align-items:center; border-left:1px solid #d1d5db; min-width:180px; background:#f9fafb; text-align:center;">
                     <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:4px; text-transform:uppercase; margin-bottom:4px;">EMISSÃO</div>
                     <div id="reportDate" style="font-size:20px; font-weight:900; color:#16a34a; letter-spacing:1px;"></div>
+                    <div id="reportMotorHora" style="font-size:9px; font-weight:700; color:#166534; letter-spacing:0.5px; margin-top:3px;"></div>
                 </div>
             </div>
 
@@ -804,6 +833,10 @@
         let expirationTime = localStorage.getItem('irrigation_expiration');
         let editingId = null;
 
+        // Hora Motor: valor único do dia (não por bloco/registro), capturado do relógio do aparelho (não digitável)
+        let motorLigadoHora = localStorage.getItem('irrigation_motorLigado') || null;
+        let motorDesligadoHora = localStorage.getItem('irrigation_motorDesligado') || null;
+
         let programacao = JSON.parse(localStorage.getItem('irrigation_programacao')) || [];
         let editingProgId = null;
 
@@ -846,6 +879,7 @@
             if (records.length === 0) {
                 localStorage.removeItem('irrigation_expiration');
                 expirationTime = null;
+                window.resetHoraMotor();
                 updateTimerDisplay();
             }
             renderList();
@@ -868,6 +902,67 @@
             if (!isoDate) return "";
             const [y, m, d] = isoDate.split('-');
             return `${d}/${m}/${y}`;
+        }
+
+        // Captura o horário atual do aparelho (não aceita digitação, evitando horário falso)
+        function horaAtualDispositivo() {
+            const d = new Date();
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+
+        const MOTOR_BTN_BASE_CLASS = "flex flex-col items-center gap-1 w-full py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-500 transition-all text-xs font-bold";
+
+        // Reflete a Hora Motor do dia (valor único) no badge próximo à lista de registros
+        function updateMotorHoraBadge() {
+            const badge = document.getElementById('listMotorHoraBadge');
+            const text = document.getElementById('listMotorHoraText');
+            if (!badge || !text) return;
+            if (motorLigadoHora && motorDesligadoHora) {
+                text.innerText = `Motor: ${motorLigadoHora} → ${motorDesligadoHora}`;
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
+            } else {
+                badge.classList.add('hidden');
+                badge.classList.remove('flex');
+            }
+        }
+
+        // Aplica um horário (capturado do aparelho) na UI e persiste como valor único do dia
+        window.registrarHoraMotorValor = function(tipo, hora) {
+            if (tipo === 'ligar') {
+                motorLigadoHora = hora;
+                localStorage.setItem('irrigation_motorLigado', hora);
+                document.getElementById('motorLigarHoraText').innerText = hora;
+                document.getElementById('btnMotorLigar').className = MOTOR_BTN_BASE_CLASS + " border-green-400 bg-green-50 text-green-700";
+            } else {
+                motorDesligadoHora = hora;
+                localStorage.setItem('irrigation_motorDesligado', hora);
+                document.getElementById('motorDesligarHoraText').innerText = hora;
+                document.getElementById('btnMotorDesligar').className = MOTOR_BTN_BASE_CLASS + " border-red-400 bg-red-50 text-red-700";
+            }
+            updateMotorHoraBadge();
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Acionado pelos botões do formulário: captura a hora atual do relógio do aparelho
+        window.registrarHoraMotor = function(tipo) {
+            window.registrarHoraMotorValor(tipo, horaAtualDispositivo());
+        }
+
+        window.resetHoraMotor = function() {
+            motorLigadoHora = null;
+            motorDesligadoHora = null;
+            localStorage.removeItem('irrigation_motorLigado');
+            localStorage.removeItem('irrigation_motorDesligado');
+            const ligarText = document.getElementById('motorLigarHoraText');
+            const desligarText = document.getElementById('motorDesligarHoraText');
+            if (ligarText) ligarText.innerText = '--:--';
+            if (desligarText) desligarText.innerText = '--:--';
+            const btnL = document.getElementById('btnMotorLigar');
+            const btnD = document.getElementById('btnMotorDesligar');
+            if (btnL) btnL.className = MOTOR_BTN_BASE_CLASS;
+            if (btnD) btnD.className = MOTOR_BTN_BASE_CLASS;
+            updateMotorHoraBadge();
         }
 
         window.updateMinutesHelper = function() {
@@ -2082,7 +2177,12 @@
                 window.showAlert("Lista Vazia", "Não há registros para enviar no momento.");
                 return;
             }
-            
+
+            if (!motorLigadoHora || !motorDesligadoHora) {
+                window.showAlert("Hora Motor obrigatória", "Toque em \"Ligar Motor\" e \"Desligar Motor\" (perto da Data) para registrar o horário automaticamente pelo relógio do aparelho antes de enviar o relatório.");
+                return;
+            }
+
             // Mostra o modal e esconde os outros passos, deixando só o Passo 1
             document.getElementById('flowModal').classList.remove('hidden');
             document.getElementById('step-confirm').classList.remove('hidden');
@@ -2114,6 +2214,8 @@
             // Prepara a grid do relatório nos bastidores
             const reportDateRef = records.length > 0 ? formatDate(records[0].date) : formatDate(new Date().toISOString().split('T')[0]);
             document.getElementById('reportDate').innerText = reportDateRef;
+            document.getElementById('reportMotorHora').innerText = (motorLigadoHora && motorDesligadoHora)
+                ? `Motor: ${motorLigadoHora} → ${motorDesligadoHora}` : '';
             document.getElementById('reportTotalCount').innerText = records.length;
 
             const uniqueBlocks = new Set(records.map(r => r.block)).size;
@@ -2646,6 +2748,9 @@
                     progRespSelect.value = savedProgResponsavel;
                 }
             }
+
+            if (motorLigadoHora) window.registrarHoraMotorValor('ligar', motorLigadoHora);
+            if (motorDesligadoHora) window.registrarHoraMotorValor('desligar', motorDesligadoHora);
 
             setInterval(updateTimerDisplay, 30000);
             updateTimerDisplay();
