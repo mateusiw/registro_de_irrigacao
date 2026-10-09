@@ -1179,6 +1179,21 @@
                 </h3>
                 <button type="button" onclick="window.fecharFichaPoco()" class="text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
+            <!-- PDF DA FICHA (dados técnicos + histórico) -->
+            <div class="shrink-0 px-5 py-2.5 border-b border-slate-100 bg-teal-50/60 flex flex-wrap items-center gap-2">
+                <span class="text-[10px] font-black text-teal-800 uppercase tracking-widest">PDF com o histórico</span>
+                <select id="fichaPdfPeriodo" aria-label="Período das leituras no PDF"
+                    class="bg-white border-2 border-teal-200 rounded-lg py-1.5 px-2 text-xs font-bold text-slate-700 outline-none">
+                    <option value="30">Leituras dos últimos 30 dias</option>
+                    <option value="90" selected>Leituras dos últimos 90 dias</option>
+                    <option value="365">Leituras dos últimos 12 meses</option>
+                    <option value="0">Todas as leituras</option>
+                </select>
+                <button type="button" id="fichaPdfBtn" onclick="window.baixarPdfFichaPoco()"
+                    class="ml-auto flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow-sm">
+                    <i data-lucide="file-down" class="w-4 h-4"></i> Baixar PDF
+                </button>
+            </div>
             <div class="overflow-y-auto">
                 <!-- DADOS TÉCNICOS -->
                 <form id="fichaPocoForm" onsubmit="window.salvarFichaPoco(event)" class="px-5 py-4 space-y-4 border-b border-slate-100">
@@ -4235,6 +4250,201 @@
             const modal = document.getElementById('pocoModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+        }
+
+        // ----- PDF da ficha do poço (dados técnicos, situação, manutenções, horas e leituras) -----
+
+        // Bibliotecas do PDF: só carregam quando alguém pede o primeiro PDF
+        const scriptsCarregados = {};
+        function carregarScript(src) {
+            if (!scriptsCarregados[src]) {
+                scriptsCarregados[src] = new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.onload = resolve;
+                    s.onerror = () => { delete scriptsCarregados[src]; reject(new Error('Não foi possível carregar o gerador de PDF. Verifique a internet.')); };
+                    document.head.appendChild(s);
+                });
+            }
+            return scriptsCarregados[src];
+        }
+
+        async function logoDataUrl() {
+            try {
+                const blob = await (await fetch(getBrandLogoDataUri())).blob();
+                return await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = () => r(null); fr.readAsDataURL(blob); });
+            } catch (e) { return null; }
+        }
+
+        window.baixarPdfFichaPoco = async function() {
+            const p = pocosCache.find(x => x.id === fichaPocoId);
+            if (!p) return;
+            const btn = document.getElementById('fichaPdfBtn');
+            const textoOriginal = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Gerando...`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            try {
+                await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+                await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+                const [leituras, logo] = await Promise.all([API.listarLeiturasDoPoco(p.id), logoDataUrl()]);
+                const manutencoes = manutencoesCache.filter(m => m.poco_id === p.id);
+
+                const dias = Number(document.getElementById('fichaPdfPeriodo').value);
+                const desde = dias > 0 ? new Date(Date.now() - dias * 86400000) : null;
+                const leiturasPeriodo = desde ? leituras.filter(l => new Date(l.data_hora) >= desde) : leituras;
+                const textoPeriodo = dias > 0 ? `últimos ${dias === 365 ? '12 meses' : dias + ' dias'}` : 'todo o histórico';
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+                const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 14;
+                const TEAL = [15, 118, 110];
+                const num = (v, c) => v == null || v === '' ? '—' : fmtNum(v, c);
+                const txt = v => v == null || v === '' ? '—' : String(v);
+                const dataHoraCompleta = iso => { const d = new Date(iso); return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR') + ' ' + fmtHora(iso); };
+                const horasTxt = h => h == null ? '—' : `${fmtNum(h, h % 1 ? 1 : 0)} h/dia`;
+
+                // Título de seção, com quebra de página se não couber
+                let y = 0;
+                const secao = (titulo) => {
+                    y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 9;
+                    if (y > H - 35) { doc.addPage(); y = 20; }
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...TEAL);
+                    doc.text(titulo.toUpperCase(), M, y);
+                    doc.setDrawColor(...TEAL); doc.setLineWidth(0.4); doc.line(M, y + 1.5, W - M, y + 1.5);
+                    y += 4;
+                };
+                const tabela = (opcoes) => doc.autoTable(Object.assign({
+                    startY: y, margin: { left: M, right: M }, theme: 'grid',
+                    styles: { font: 'helvetica', fontSize: 8, cellPadding: 1.8, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
+                    headStyles: { fillColor: TEAL, textColor: 255, fontStyle: 'bold' },
+                    alternateRowStyles: { fillColor: [248, 250, 252] }
+                }, opcoes));
+                // Pares "campo: valor" em duas colunas
+                const pares = (lista) => {
+                    const linhas = [];
+                    for (let i = 0; i < lista.length; i += 2) linhas.push([lista[i][0], lista[i][1], lista[i + 1] ? lista[i + 1][0] : '', lista[i + 1] ? lista[i + 1][1] : '']);
+                    tabela({ body: linhas, theme: 'plain', styles: { fontSize: 8.5, cellPadding: 1.5 },
+                        columnStyles: { 0: { fontStyle: 'bold', textColor: [100, 116, 139], cellWidth: 38 }, 1: { cellWidth: 53 }, 2: { fontStyle: 'bold', textColor: [100, 116, 139], cellWidth: 38 } } });
+                };
+
+                // ----- Cabeçalho -----
+                if (logo) { try { doc.addImage(logo, 'PNG', M, 10, 18, 18); } catch (e) {} }
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(30, 41, 59);
+                doc.text(`Ficha do Poço ${p.numero}`, M + 22, 17);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
+                doc.text(p.nome ? String(p.nome) : 'SPG Oásis', M + 22, 22.5);
+                doc.text(`Emitido em ${dataHoraCompleta(new Date().toISOString())} por ${API.nomeUsuario()}`, M + 22, 27);
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+                doc.setTextColor(...(p.ativo === false ? [220, 38, 38] : TEAL));
+                doc.text(p.ativo === false ? 'DESATIVADO' : 'ATIVO', W - M, 17, { align: 'right' });
+                y = 32;
+
+                // ----- Situação atual -----
+                const ultima = leituras[0];
+                const ultimaAfericao = leituras.find(l => l.status !== 'desligado' && vazaoLeitura(l) > 0);
+                const ultManut = manutencoes[0];
+                const outorga = situacaoOutorga(p.outorga_validade);
+                secao('Situação atual');
+                pares([
+                    ['Status (última leitura)', ultima ? `${(STATUS_POCO[ultima.status] || STATUS_POCO.ligado).rotulo}${motivoParada(ultima) ? ' - ' + motivoParada(ultima) : ''}` : 'Sem leituras'],
+                    ['Data da última leitura', ultima ? `${dataHoraCompleta(ultima.data_hora)} (${txt(ultima.responsavel)})` : '—'],
+                    ['Última vazão aferida', ultimaAfericao ? `${fmtLh(vazaoLeitura(ultimaAfericao))} L/h` : '—'],
+                    ['Aferida em', ultimaAfericao ? `${dataHoraCompleta(ultimaAfericao.data_hora)}${Number(ultimaAfericao.segundos_15l) > 0 ? ` (${fmtNum(ultimaAfericao.segundos_15l, 2)} s / 15 L)` : ''}` : '—'],
+                    ['Horas ligado por dia', horasTxt(horasPadraoDoPoco(p))],
+                    ['Volume estimado/dia', ultimaAfericao ? `${fmtLh(vazaoLeitura(ultimaAfericao) * horasPadraoDoPoco(p))} L` : '—'],
+                    ['Última manutenção', ultManut ? `${formatDate(ultManut.data)} - ${ultManut.tipo}` : 'Nenhuma registrada'],
+                    ['Feita por', ultManut ? txt(ultManut.executado_por) : '—'],
+                    ['Outorga', outorga ? outorga.texto : 'Validade não informada']
+                ]);
+
+                // ----- Dados técnicos -----
+                secao('Dados técnicos');
+                pares([
+                    ['Número', txt(p.numero)], ['Nome / local', txt(p.nome)],
+                    ['Data de perfuração', p.data_perfuracao ? formatDate(p.data_perfuracao) : '—'], ['Profundidade', p.profundidade_m != null ? `${num(p.profundidade_m, 2)} m` : '—'],
+                    ['Diâmetro', txt(p.diametro)], ['Bomba instalada a', p.profundidade_bomba_m != null ? `${num(p.profundidade_bomba_m, 2)} m` : '—'],
+                    ['Nível estático', p.nivel_estatico_m != null ? `${num(p.nivel_estatico_m, 2)} m` : '—'], ['Nível dinâmico', p.nivel_dinamico_m != null ? `${num(p.nivel_dinamico_m, 2)} m` : '—'],
+                    ['Motor / bomba', txt(p.motor)], ['Potência', p.potencia_cv != null ? `${num(p.potencia_cv, 1)} CV` : '—'],
+                    ['Tensão', txt(p.tensao)], ['Outorga nº', txt(p.outorga)],
+                    ['Validade da outorga', p.outorga_validade ? formatDate(p.outorga_validade) : '—'], ['Observações', txt(p.observacao)]
+                ]);
+
+                // ----- Resumo das leituras no período -----
+                const aferidas = leiturasPeriodo.filter(l => l.status !== 'desligado' && vazaoLeitura(l) > 0);
+                const vazoes = aferidas.map(vazaoLeitura);
+                const paradas = leiturasPeriodo.filter(l => l.status === 'desligado');
+                const motivos = {};
+                paradas.forEach(l => { const m = l.motivo || 'Sem motivo'; motivos[m] = (motivos[m] || 0) + 1; });
+                secao(`Resumo das leituras (${textoPeriodo})`);
+                pares([
+                    ['Leituras no período', String(leiturasPeriodo.length)], ['Aferições de vazão', String(aferidas.length)],
+                    ['Vazão média', vazoes.length ? `${fmtLh(vazoes.reduce((s, v) => s + v, 0) / vazoes.length)} L/h` : '—'],
+                    ['Vazão mín. / máx.', vazoes.length ? `${fmtLh(Math.min(...vazoes))} / ${fmtLh(Math.max(...vazoes))} L/h` : '—'],
+                    ['Registros desligado', String(paradas.length)],
+                    ['Motivos das paradas', Object.keys(motivos).length ? Object.entries(motivos).map(([m, q]) => `${m} (${q})`).join(', ') : '—']
+                ]);
+
+                // ----- Manutenções -----
+                secao(`Histórico de manutenções (${manutencoes.length})`);
+                if (manutencoes.length) {
+                    const custoTotal = manutencoes.reduce((s, m) => s + (Number(m.custo) || 0), 0);
+                    tabela({
+                        head: [['Data', 'Tipo', 'O que foi feito', 'Feito por', 'Custo (R$)', 'Registrado por']],
+                        body: manutencoes.map(m => [formatDate(m.data), txt(m.tipo), txt(m.descricao), txt(m.executado_por),
+                            m.custo != null ? fmtNum(m.custo, 2) : '—', txt(m.responsavel)]),
+                        foot: custoTotal > 0 ? [['', '', '', 'Total', fmtNum(custoTotal, 2), '']] : undefined,
+                        footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
+                        columnStyles: { 0: { cellWidth: 18 }, 2: { cellWidth: 60 }, 4: { halign: 'right', cellWidth: 20 } }
+                    });
+                } else {
+                    tabela({ body: [['Nenhuma manutenção registrada.']], theme: 'plain' });
+                }
+
+                // ----- Horas ligado (só as mudanças) -----
+                const comHoras = leituras.filter(l => l.horas_ligado != null).slice().reverse();
+                const mudancas = comHoras.filter((l, i) => i === 0 || Number(l.horas_ligado) !== Number(comHoras[i - 1].horas_ligado)).reverse();
+                secao('Histórico de horas ligado');
+                tabela(mudancas.length ? {
+                    head: [['A partir de', 'Horas ligado', 'Informado por']],
+                    body: mudancas.map((l, i) => [dataHoraCompleta(l.data_hora), horasTxt(Number(l.horas_ligado)) + (i === 0 ? ' (atual)' : ''), txt(l.responsavel)])
+                } : { body: [[`Nenhuma alteração informada nas leituras. Valor da ficha: ${horasTxt(horasPadraoDoPoco(p))}.`]], theme: 'plain' });
+
+                // ----- Leituras -----
+                secao(`Leituras de vazão (${textoPeriodo}: ${leiturasPeriodo.length})`);
+                tabela(leiturasPeriodo.length ? {
+                    head: [['Data e hora', 'Status', 'Seg. (15 L)', 'Vazão (L/h)', 'Horas/dia', 'Motivo / observação', 'Responsável']],
+                    body: leiturasPeriodo.map(l => [
+                        dataHoraCompleta(l.data_hora),
+                        (STATUS_POCO[l.status] || STATUS_POCO.ligado).rotulo,
+                        Number(l.segundos_15l) > 0 ? fmtNum(l.segundos_15l, 2) : '—',
+                        l.status === 'desligado' ? '0' : fmtLh(vazaoLeitura(l)),
+                        l.horas_ligado != null ? fmtNum(l.horas_ligado, l.horas_ligado % 1 ? 1 : 0) : '—',
+                        [motivoParada(l), l.observacao].filter(Boolean).join(' - ') || '—',
+                        txt(l.responsavel)
+                    ]),
+                    columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' }, 4: { halign: 'right' }, 5: { cellWidth: 52 } }
+                } : { body: [['Nenhuma leitura no período.']], theme: 'plain' });
+
+                // ----- Rodapé com número da página -----
+                const paginas = doc.getNumberOfPages();
+                for (let i = 1; i <= paginas; i++) {
+                    doc.setPage(i);
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
+                    doc.text(`SPG Oásis · Ficha do Poço ${p.numero}`, M, H - 8);
+                    doc.text(`Página ${i} de ${paginas}`, W - M, H - 8, { align: 'right' });
+                }
+
+                doc.save(`Ficha Poço ${p.numero} - ${formatDate(dataLocalIso()).replace(/\//g, '-')}.pdf`);
+            } catch (err) {
+                console.error(err);
+                window.showAlert("Erro ao gerar o PDF", err.message || "Não foi possível gerar o PDF da ficha.");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }
         }
 
         function atualizarAvisoOutorga() {
