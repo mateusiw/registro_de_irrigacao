@@ -107,6 +107,7 @@
     }
 
     async function logout() {
+        await encerrarSessao();
         try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {}
         localStorage.removeItem(K.usuario);
         sessaoExpirada = false;
@@ -887,6 +888,81 @@
         return resp.data;
     }
 
+    // ------------------------------------------------------------
+    // Sessões: quem está online e o que fez em cada sessão
+    // ------------------------------------------------------------
+    let sessaoId = null;
+    let sessaoAba = '';
+    let timerSinal = null;
+
+    function descreverDispositivo() {
+        const ua = navigator.userAgent || '';
+        const so = /Android/i.test(ua) ? 'Android' : /iPhone|iPad|iPod/i.test(ua) ? 'iPhone/iPad'
+                 : /Windows/i.test(ua) ? 'Windows' : /Macintosh|Mac OS/i.test(ua) ? 'Mac' : /Linux/i.test(ua) ? 'Linux' : 'Outro';
+        const nav = /Edg\//.test(ua) ? 'Edge' : /SamsungBrowser/i.test(ua) ? 'Samsung Internet' : /Chrome\//.test(ua) ? 'Chrome'
+                  : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : '';
+        const app = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches ? ' (app instalado)' : '';
+        return `${so}${nav ? ' · ' + nav : ''}${app}`;
+    }
+
+    // Envia o "estou online". Sem internet ou sem sessão válida, simplesmente não envia.
+    async function enviarSinal() {
+        const u = usuarioAtual();
+        if (!u || !sessaoId || !navigator.onLine || document.visibilityState === 'hidden') return;
+        try {
+            const { data } = await sb.auth.getSession();
+            if (!data.session) return;
+            await sb.from('sessoes').upsert({
+                id: sessaoId, usuario_id: u.id, usuario_nome: nomeUsuario(u),
+                ultimo_sinal: new Date().toISOString(), dispositivo: descreverDispositivo(), aba: sessaoAba, fim: null
+            }, { onConflict: 'id' });
+        } catch (e) { /* sinal é opcional: nunca atrapalha o uso do app */ }
+    }
+
+    // Abre uma sessão nova (ao entrar no app ou fazer login)
+    function iniciarSessao(aba) {
+        sessaoId = novoId();
+        sessaoAba = aba || '';
+        clearInterval(timerSinal);
+        timerSinal = setInterval(enviarSinal, 60 * 1000);
+        enviarSinal();
+    }
+
+    function informarAbaSessao(aba) {
+        if (aba === sessaoAba) return;
+        sessaoAba = aba;
+        enviarSinal();
+    }
+
+    async function encerrarSessao() {
+        clearInterval(timerSinal);
+        if (sessaoId && navigator.onLine) {
+            try { await sb.from('sessoes').update({ fim: new Date().toISOString() }).eq('id', sessaoId); } catch (e) {}
+        }
+        sessaoId = null;
+    }
+
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') enviarSinal(); });
+    window.addEventListener('online', enviarSinal);
+
+    // Sessões com sinal a partir de "desde" (somente gestor, precisa de internet)
+    async function listarSessoes(desdeIso) {
+        if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
+        const resp = await sb.from('sessoes').select('*').gte('ultimo_sinal', desdeIso).order('ultimo_sinal', { ascending: false }).limit(300);
+        if (resp.error) throw erroSupabase(resp);
+        return resp.data;
+    }
+
+    // Tudo o que o usuário registrou/alterou entre o início e o fim da sessão
+    async function atividadesDaSessao(usuarioId, inicioIso, fimIso) {
+        if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
+        const resp = await sb.from('auditoria').select('*').eq('usuario_id', usuarioId)
+            .gte('criado_em', inicioIso).lte('criado_em', fimIso)
+            .order('criado_em', { ascending: false }).limit(300);
+        if (resp.error) throw erroSupabase(resp);
+        return resp.data;
+    }
+
     function falhasSync() { return ler(K.falhas, []); }
     function limparFalhasSync() { gravar(K.falhas, []); emitir(); }
 
@@ -909,7 +985,7 @@
         // balanço de água
         lerConfiguracao, salvarConfiguracao, listarHorasPocoPeriodo, salvarHorasPoco, listarRegistrosPeriodo, listarLeiturasPocoPeriodo,
         listarCulturas, salvarCultura,
-        // auditoria
-        listarAuditoria
+        // auditoria e sessões
+        listarAuditoria, iniciarSessao, informarAbaSessao, encerrarSessao, listarSessoes, atividadesDaSessao
     };
 })();
