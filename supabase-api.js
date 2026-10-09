@@ -934,6 +934,14 @@
             .filter(r => r.data === data && (!u || (r.criado_por !== u.id && !String(r.id).startsWith(prefixo))));
     }
 
+    // Todos os registros de um dia (de todos os irrigadores, inclusive os do próprio
+    // usuário), com as alterações ainda na fila já aplicadas. Usado ao consultar dias anteriores.
+    async function listarRegistrosDia(data) {
+        const lista = await buscarComCache(`registros_dia_${data}`,
+            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('data', data).limit(2000), 0).catch(() => []);
+        return mesclarPendentes('registros_irrigacao', lista).filter(r => r.data === data);
+    }
+
     let canalRegistros = null;
 
     // Avisa a cada registro de irrigação criado, alterado ou excluído.
@@ -1105,7 +1113,7 @@
         lerConfiguracao, salvarConfiguracao, listarHorasPocoPeriodo, salvarHorasPoco, listarRegistrosPeriodo, listarLeiturasPocoPeriodo,
         listarCulturas, salvarCultura,
         // tempo real (registros dos outros irrigadores)
-        listarRegistrosEquipe, assinarRegistros, cancelarAssinaturaRegistros,
+        listarRegistrosEquipe, listarRegistrosDia, assinarRegistros, cancelarAssinaturaRegistros,
         // auditoria e sessões
         listarAuditoria, restaurarAuditoria, iniciarSessao, informarAbaSessao, encerrarSessao, listarSessoes, atividadesDaSessao
     };
