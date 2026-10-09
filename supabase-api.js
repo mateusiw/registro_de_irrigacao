@@ -768,6 +768,21 @@
         return linha;
     }
 
+    // Exclui um poço ou reservatório (somente gestor, precisa de internet).
+    // Se já tiver leituras, o banco recusa (erro 23503) para preservar o histórico.
+    async function excluirCadastro(tabela, id) {
+        if (!navigator.onLine) throw new Error("Sem conexão. Excluir cadastros precisa de internet.");
+        await sincronizar(); // envia antes o que estiver na fila (ex.: o próprio cadastro recém-criado)
+        const resp = await sb.from(tabela).delete().eq('id', id).select();
+        if (resp.error) {
+            const e = erroSupabase(resp);
+            if (e.code === '23503') e.message = 'possui leituras registradas';
+            throw e;
+        }
+        if (!resp.data || resp.data.length === 0) throw new Error("Sem permissão para excluir (ou já foi excluído).");
+        localStorage.removeItem(K.cache(tabela));
+    }
+
     async function listarLeiturasReservatorios() {
         const lista = await buscarComCache('leituras_reservatorio', () => sb.from('leituras_reservatorio')
             .select('*').order('data_hora', { ascending: false }).limit(500), 0).catch(() => []);
@@ -874,6 +889,7 @@
         // água
         listarPocos, salvarPoco, listarLeiturasPocos, salvarLeituraPoco, excluirLeituraPoco,
         listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, salvarLeituraReservatorio, excluirLeituraReservatorio,
+        excluirCadastro,
         // balanço de água
         lerConfiguracao, salvarConfiguracao, listarHorasPocoPeriodo, salvarHorasPoco, listarRegistrosPeriodo, listarLeiturasPocoPeriodo,
         listarCulturas, salvarCultura,
