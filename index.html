@@ -45,12 +45,75 @@
         .btn-primary:active { transform: scale(0.97); }
 
         #img-grid-container, #img-grid-container-prog { display: flex; flex-wrap: wrap; }
+
+        /* ===== LAYOUT DESKTOP (a partir de 1024px; o celular continua igual) =====
+           As abas usam :not(.hidden) para nunca exibir uma aba escondida. */
+        @media (min-width: 1024px) {
+            :root { --largura-desktop: 1400px; }
+
+            /* Barra superior alinhada com o conteúdo */
+            #navbar {
+                padding-left: max(1rem, calc((100% - var(--largura-desktop)) / 2 + 1rem));
+                padding-right: max(1rem, calc((100% - var(--largura-desktop)) / 2 + 1rem));
+            }
+
+            /* Abas à esquerda, usuário e status à direita, numa linha só */
+            #navTabs { max-width: var(--largura-desktop); display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
+            #tabBar { width: 520px; flex: none; }
+            #statusBar { margin-top: 0; justify-content: flex-end; gap: 1.25rem; }
+
+            #tabRegistro, #tabProgramacao, #tabAgua { max-width: var(--largura-desktop); padding-top: 1.5rem; }
+
+            /* Registro: formulário à esquerda, lista do dia à direita */
+            #tabRegistro:not(.hidden) {
+                display: grid; grid-template-columns: 420px minmax(0, 1fr); grid-template-rows: auto 1fr;
+                gap: 1.5rem; align-items: start;
+            }
+            #tabRegistro > * { margin-top: 0 !important; }
+            #tabRegistro > section { grid-column: 2; grid-row: 1 / span 2; }
+            #recordsList { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem; align-items: start; }
+            #recordsList > * { margin-top: 0 !important; }
+
+            /* Programação: em modo edição, formulário à esquerda e lista à direita */
+            #tabProgramacao.prog-editando:not(.hidden) {
+                display: grid; grid-template-columns: 440px minmax(0, 1fr); gap: 1.5rem; align-items: start;
+            }
+            #tabProgramacao.prog-editando > * { margin-top: 0 !important; }
+            #progList { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1rem; align-items: start; }
+            #progList > * { margin-top: 0 !important; }
+            #progList > .text-center { grid-column: 1 / -1; }
+
+            /* Água: uma sub-aba por vez; em cada uma, formulário + cadastro à esquerda e situação à direita */
+            #aguaSubNav { width: 520px; }
+            .agua-sec:not(.hidden) {
+                display: grid; grid-template-columns: 440px minmax(0, 1fr); grid-template-rows: auto 1fr;
+                gap: 1.5rem; align-items: start;
+            }
+            .agua-sec > * { margin-top: 0 !important; }
+            .agua-sec > section { grid-column: 2; grid-row: 1 / span 2; }
+            #pocosList, #reservList { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1rem; align-items: start; }
+            #pocosList > *, #reservList > * { margin-top: 0 !important; }
+            #pocosList > .text-center, #reservList > .text-center { grid-column: 1 / -1; }
+
+            /* Balanço: entrada (poços) e saída (blocos) lado a lado */
+            #balancoColunas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; align-items: start; }
+            #balancoColunas > * { margin-top: 0 !important; }
+
+            /* Dados dos blocos: formulário à esquerda, lista à direita dentro do mesmo cartão */
+            #aguaSecBlocos:not(.hidden) { display: block; }
+            #dadosBlocosCard:not(.hidden) { display: grid; grid-template-columns: 420px minmax(0, 1fr); align-items: start; }
+            #dadosBlocosCard > :first-child { grid-column: 1 / -1; }
+            #dadoBlocoForm { border-bottom: 0; border-right: 1px solid #f1f5f9; }
+            #dadosBlocosLista { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.75rem; align-items: start; }
+            #dadosBlocosLista > * { margin-top: 0 !important; }
+            #dadosBlocosLista > p { grid-column: 1 / -1; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen pb-24 safe-area-bottom">
 
     <!-- Navbar -->
-    <div class="bg-green-700 text-white px-4 py-3 flex justify-between items-center shadow-lg sticky top-0 z-40 pt-safe-top">
+    <div id="navbar" class="bg-green-700 text-white px-4 py-3 flex justify-between items-center shadow-lg sticky top-0 z-40 pt-safe-top">
         <div class="flex items-center gap-2">
             <div>
                 <h1 class="text-sm font-bold leading-tight tracking-tight">Registro Irrigação</h1>
@@ -85,8 +148,8 @@
     </div>
 
     <!-- ABAS DE NAVEGAÇÃO -->
-    <div class="max-w-md mx-auto px-4 pt-4">
-        <div class="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1 gap-1">
+    <div id="navTabs" class="max-w-md mx-auto px-4 pt-4">
+        <div id="tabBar" class="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1 gap-1">
             <button type="button" id="tabBtnRegistro" onclick="window.switchTab('registro')"
                 class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all bg-green-600 text-white shadow-sm">
                 <i data-lucide="droplets" class="w-3.5 h-3.5"></i> Registro
@@ -102,7 +165,7 @@
         </div>
 
         <!-- USUÁRIO LOGADO + STATUS DE SINCRONIZAÇÃO -->
-        <div class="flex items-center justify-between gap-2 mt-2 px-1">
+        <div id="statusBar" class="flex items-center justify-between gap-2 mt-2 px-1">
             <div class="flex items-center gap-1.5 min-w-0">
                 <i data-lucide="user-circle" class="w-4 h-4 text-slate-400 shrink-0"></i>
                 <span id="userNameLabel" class="text-xs font-bold text-slate-600 truncate"></span>
@@ -305,6 +368,9 @@
     <!-- ABA 2: PROGRAMAÇÃO SEMANAL -->
     <div id="tabProgramacao" class="hidden container mx-auto p-4 space-y-6 max-w-md">
 
+        <!-- COLUNA DE EDIÇÃO (no desktop fica à esquerda da lista) -->
+        <div id="progSide" class="space-y-6">
+
         <!-- BOTÃO HISTÓRICO (SOMENTE NO MODO EDIÇÃO) -->
         <button type="button" id="progHistoryBtn" onclick="window.toggleHistoryCard()"
             class="hidden bg-white border-2 border-slate-200 hover:border-sky-300 text-slate-600 font-bold py-3 px-4 rounded-xl shadow-sm items-center justify-center gap-2 touch-manipulation text-xs uppercase tracking-wide transition-colors w-full">
@@ -490,6 +556,8 @@
             <i data-lucide="send" class="w-4 h-4"></i> Enviar Relatório da Programação
         </button>
 
+        </div>
+
         <!-- LISTA DA PROGRAMAÇÃO -->
         <section class="space-y-3">
             <div class="flex justify-between items-end px-1">
@@ -537,165 +605,399 @@
         </section>
     </div>
 
-    <!-- ABA 3: ÁGUA (POÇOS E RESERVATÓRIOS) -->
+    <!-- ABA 3: ÁGUA (POÇOS, RESERVATÓRIOS E DADOS DOS BLOCOS) -->
     <div id="tabAgua" class="hidden container mx-auto p-4 space-y-6 max-w-md">
 
-        <!-- LEITURA DE POÇO -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="bg-gradient-to-r from-teal-600 to-teal-700 px-5 py-4 flex items-center gap-2">
-                <i data-lucide="droplet" class="w-5 h-5 text-white opacity-90"></i>
-                <h2 class="text-base font-bold text-white">Vazão dos Poços</h2>
+        <!-- SUB-ABAS DA ÁGUA -->
+        <div id="aguaSubNav" class="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1 gap-1">
+            <button type="button" data-agua-sec="balanco" onclick="window.switchAgua('balanco')"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="scale" class="w-3.5 h-3.5"></i> Balanço
+            </button>
+            <button type="button" data-agua-sec="pocos" onclick="window.switchAgua('pocos')"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="droplet" class="w-3.5 h-3.5"></i> Poços
+            </button>
+            <button type="button" data-agua-sec="reserv" onclick="window.switchAgua('reserv')"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="container" class="w-3.5 h-3.5"></i> Reservatório
+            </button>
+            <button type="button" data-agua-sec="blocos" data-so-gestor onclick="window.switchAgua('blocos')"
+                class="hidden flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="layers" class="w-3.5 h-3.5"></i> Blocos
+            </button>
+        </div>
+
+        <!-- ===== SEÇÃO: BALANÇO (entrada pelos poços × saída pelos blocos) ===== -->
+        <div id="aguaSecBalanco" class="hidden space-y-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-end gap-4">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Período</label>
+                    <div class="flex items-center gap-1.5">
+                        <input type="date" id="balancoDe" onchange="window.ajustarPeriodoBalanco('de')" aria-label="De"
+                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-2 text-sm font-bold text-slate-800">
+                        <span class="text-xs font-bold text-slate-400">até</span>
+                        <input type="date" id="balancoAte" onchange="window.ajustarPeriodoBalanco('ate')" aria-label="Até"
+                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-2 text-sm font-bold text-slate-800">
+                    </div>
+                    <div class="flex gap-1 mt-1.5">
+                        <button type="button" onclick="window.periodoBalanco(0)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">Hoje</button>
+                        <button type="button" onclick="window.periodoBalanco(1)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">Ontem</button>
+                        <button type="button" onclick="window.periodoBalanco(7)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">7 dias</button>
+                        <button type="button" onclick="window.periodoBalanco(30)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">30 dias</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Horas padrão de bombeamento</label>
+                    <div class="flex items-center gap-1.5">
+                        <input type="number" id="horasPadraoInput" min="0" max="24" step="0.5" inputmode="decimal"
+                            class="w-20 bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-800 text-center">
+                        <span class="text-xs font-bold text-slate-500">h/dia</span>
+                        <button type="button" data-so-gestor onclick="window.salvarHorasPadrao()"
+                            class="hidden text-[10px] font-black uppercase tracking-wider px-2.5 py-2 rounded-lg bg-slate-800 text-white">Salvar</button>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-400 font-medium leading-relaxed flex-1 min-w-[200px]">
+                    Entrada do poço = vazão média das aferições do dia (L/h) × horas ligado, somando os dias do período. Para ajustar as horas de um poço, selecione um único dia.
+                </p>
+                <button type="button" id="balancoImagemBtn" onclick="window.baixarImagemBalanco()"
+                    class="flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
+                    <i data-lucide="image-down" class="w-4 h-4"></i> Baixar imagem
+                </button>
             </div>
-            <form onsubmit="window.addLeituraPoco(event)" class="divide-y divide-slate-100">
-                <div class="px-5 py-4">
-                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                        <i data-lucide="hash" class="w-3.5 h-3.5 text-teal-500"></i> Poço
-                    </label>
-                    <select id="pocoSelect" required class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all"></select>
+
+            <div id="balancoResumo" class="grid grid-cols-2 lg:grid-cols-4 gap-2"></div>
+
+            <!-- GRÁFICOS (mesmos do relatório em PDF) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-5">
+                <div>
+                    <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Volume (L) por Poço</h3>
+                    <div class="overflow-x-auto"><div id="graficoVolumePoco" class="min-w-[560px]"></div></div>
                 </div>
-                <div class="px-5 py-4">
-                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                        <i data-lucide="calendar-clock" class="w-3.5 h-3.5 text-teal-500"></i> Data e Hora da Leitura
-                    </label>
-                    <input type="datetime-local" id="pocoDataHora" required
-                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                <div>
+                    <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Vazão Média por Poço (L/h)</h3>
+                    <div class="overflow-x-auto"><div id="graficoVazaoPoco" class="min-w-[560px]"></div></div>
                 </div>
-                <div class="px-5 py-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                                <i data-lucide="gauge" class="w-3.5 h-3.5 text-teal-500"></i> Hidrômetro
-                            </label>
-                            <input type="number" id="pocoHidrometro" step="0.001" min="0" inputmode="decimal" placeholder="m³ acumulado"
-                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-3 text-sm font-medium text-slate-800 transition-all">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Volume (L) por Bloco</h3>
+                        <div id="legendaCulturas" class="flex flex-wrap gap-x-3 gap-y-1"></div>
+                    </div>
+                    <div class="overflow-x-auto"><div id="graficoVolumeBloco" class="min-w-[560px]"></div></div>
+                </div>
+            </div>
+
+            <div id="balancoColunas" class="space-y-4">
+                <!-- ENTRADA: POÇOS -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-3.5 flex items-center gap-2">
+                        <i data-lucide="arrow-down-to-line" class="w-5 h-5 text-white opacity-90"></i>
+                        <h2 class="text-sm font-bold text-white">Entrada · Volume por Poço</h2>
+                    </div>
+                    <div id="balancoAplicarTodos" class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-500">
+                        Aplicar a todos os poços do dia:
+                        <input type="number" id="horasTodosInput" min="0" max="24" step="0.5" inputmode="decimal" placeholder="h"
+                            class="w-16 bg-slate-50 border-2 border-slate-200 rounded-lg py-1 px-2 text-xs font-bold text-slate-800 text-center">
+                        <button type="button" onclick="window.aplicarHorasTodos()"
+                            class="text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100">Aplicar</button>
+                    </div>
+                    <div id="balancoPocos" class="px-4 py-2 divide-y divide-slate-100"></div>
+                </div>
+
+                <!-- SAÍDA: BLOCOS -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-orange-500 to-orange-600 px-5 py-3.5 flex items-center gap-2">
+                        <i data-lucide="arrow-up-from-line" class="w-5 h-5 text-white opacity-90"></i>
+                        <h2 class="text-sm font-bold text-white">Saída · Volume por Bloco</h2>
+                    </div>
+                    <div id="balancoBlocos" class="px-4 py-2 divide-y divide-slate-100"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SEÇÃO: POÇOS ===== -->
+        <div id="aguaSecPocos" class="agua-sec space-y-6">
+
+            <!-- LEITURA DE POÇO -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-teal-600 to-teal-700 px-5 py-4 flex items-center gap-2">
+                    <i data-lucide="droplet" class="w-5 h-5 text-white opacity-90"></i>
+                    <h2 class="text-base font-bold text-white">Vazão dos Poços</h2>
+                </div>
+                <form onsubmit="window.addLeituraPoco(event)" class="divide-y divide-slate-100">
+                    <div class="px-5 py-4">
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                            <i data-lucide="hash" class="w-3.5 h-3.5 text-teal-500"></i> Poço
+                        </label>
+                        <select id="pocoSelect" required class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all"></select>
+                    </div>
+                    <div class="px-5 py-4">
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                            <i data-lucide="calendar-clock" class="w-3.5 h-3.5 text-teal-500"></i> Data e Hora da Leitura
+                        </label>
+                        <input type="datetime-local" id="pocoDataHora" required
+                            class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                    </div>
+                    <!-- STATUS OPERACIONAL -->
+                    <div class="px-5 py-4">
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                            <i data-lucide="power" class="w-3.5 h-3.5 text-teal-500"></i> Status Operacional
+                        </label>
+                        <div class="grid grid-cols-3 gap-1 bg-slate-100 rounded-xl p-1">
+                            <button type="button" data-poco-status="ligado" onclick="window.setStatusPoco('ligado')"
+                                class="flex flex-col items-center gap-1 py-3 rounded-lg text-[10px] font-black uppercase transition-all">
+                                <i data-lucide="power" class="w-4 h-4"></i> Ligado
+                            </button>
+                            <button type="button" data-poco-status="religado" onclick="window.setStatusPoco('religado')"
+                                class="flex flex-col items-center gap-1 py-3 rounded-lg text-[10px] font-black uppercase transition-all">
+                                <i data-lucide="activity" class="w-4 h-4"></i> Religado
+                            </button>
+                            <button type="button" data-poco-status="desligado" onclick="window.setStatusPoco('desligado')"
+                                class="flex flex-col items-center gap-1 py-3 rounded-lg text-[10px] font-black uppercase transition-all">
+                                <i data-lucide="wrench" class="w-4 h-4"></i> Desligado
+                            </button>
                         </div>
-                        <div>
-                            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                                <i data-lucide="activity" class="w-3.5 h-3.5 text-teal-500"></i> Vazão
-                            </label>
-                            <input type="number" id="pocoVazao" step="0.001" min="0" inputmode="decimal" placeholder="m³/h"
-                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-3 text-sm font-medium text-slate-800 transition-all">
+
+                        <!-- MOTIVO DA PARADA (só quando desligado) -->
+                        <div id="pocoMotivoArea" class="hidden mt-3 space-y-2">
+                            <div>
+                                <p class="text-[10px] font-black text-slate-400 uppercase mb-1.5">Motivo da Parada</p>
+                                <select id="pocoMotivo" onchange="window.atualizarMotivoPoco()"
+                                    class="w-full bg-rose-50 border-2 border-rose-200 text-rose-800 text-sm font-bold rounded-xl py-2.5 px-3 outline-none">
+                                    <option value="TANQUE CHEIO">TANQUE CHEIO</option>
+                                    <option value="MANUTENÇÃO">MANUTENÇÃO</option>
+                                    <option value="ELÉTRICA">ELÉTRICA</option>
+                                    <option value="AGUARDANDO">AGUARDANDO</option>
+                                    <option value="OUTROS">OUTROS</option>
+                                </select>
+                            </div>
+                            <div id="pocoDataParadaArea" class="hidden">
+                                <p class="text-[10px] font-black text-slate-400 uppercase mb-1.5">Data da Parada</p>
+                                <input type="date" id="pocoDataParada"
+                                    class="w-full bg-rose-50 border-2 border-rose-200 text-rose-800 text-sm font-bold rounded-xl py-2.5 px-3">
+                            </div>
+                            <div id="pocoMotivoOutrosArea" class="hidden">
+                                <p class="text-[10px] font-black text-slate-400 uppercase mb-1.5">Especifique o Motivo</p>
+                                <input type="text" id="pocoMotivoOutros" placeholder="Digite o motivo..."
+                                    oninput="this.value = this.value.toUpperCase()"
+                                    class="w-full bg-purple-50 border-2 border-purple-200 text-purple-800 text-sm font-bold rounded-xl py-2.5 px-3">
+                            </div>
                         </div>
                     </div>
-                    <p class="text-[10px] text-slate-400 font-medium mt-2 leading-relaxed">Preencha a leitura do hidrômetro, a vazão, ou os dois. Com duas leituras de hidrômetro, o app calcula a vazão média entre elas.</p>
+
+                    <!-- SEGUNDOS PARA ENCHER 15 L -->
+                    <div id="pocoSegundosArea" class="px-5 py-4">
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                            <i data-lucide="timer" class="w-3.5 h-3.5 text-teal-500"></i> Segundos (15 L)
+                            <span class="normal-case font-normal text-slate-300 ml-1">(cronômetro)</span>
+                        </label>
+                        <input type="text" id="pocoSegundos" inputmode="numeric" value="0,00" autocomplete="off"
+                            oninput="window.mascaraSegundos(this)"
+                            class="w-full bg-emerald-50/60 border-[3px] border-emerald-300 rounded-xl py-3 px-4 text-center text-2xl font-black text-emerald-900 transition-all">
+                        <p id="pocoVazaoPreview" class="text-center text-sm font-black text-teal-700 mt-2">—</p>
+                        <p class="text-[10px] text-slate-400 font-medium mt-1 text-center leading-relaxed">Tempo para encher o balde de 15 litros. Vazão = 15 ÷ segundos × 3600.</p>
+                    </div>
+                    <div class="px-5 py-4">
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                            <i data-lucide="message-square" class="w-3.5 h-3.5 text-teal-500"></i> Observações
+                            <span class="normal-case font-normal text-slate-300 ml-1">(opcional)</span>
+                        </label>
+                        <textarea id="pocoObs" rows="2" placeholder="Alguma observação..."
+                            class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-800 resize-none transition-all"></textarea>
+                    </div>
+                    <div class="px-5 py-4">
+                        <button type="submit" id="pocoSubmitBtn"
+                            class="btn-primary w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base">
+                            <i data-lucide="save" class="w-5 h-5"></i> Registrar Leitura
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- SITUAÇÃO DOS POÇOS -->
+            <section class="space-y-3">
+                <div class="px-1">
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Situação dos Poços</h3>
+                    <p class="text-[10px] text-slate-400 font-medium">Última leitura de cada poço</p>
                 </div>
-                <div class="px-5 py-4">
-                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                        <i data-lucide="message-square" class="w-3.5 h-3.5 text-teal-500"></i> Observações
-                        <span class="normal-case font-normal text-slate-300 ml-1">(opcional)</span>
-                    </label>
-                    <textarea id="pocoObs" rows="2" placeholder="Alguma observação..."
-                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-800 resize-none transition-all"></textarea>
+                <div id="pocosResumo" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+                <div id="pocosList" class="space-y-3"></div>
+            </section>
+
+            <!-- CADASTRO DE POÇOS (SOMENTE GESTOR) -->
+            <div data-so-gestor class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-white opacity-90"></i>
+                    <h2 class="text-base font-bold text-white">Cadastro de Poços</h2>
+                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Gestor</span>
                 </div>
-                <div class="px-5 py-4">
-                    <button type="submit" id="pocoSubmitBtn"
-                        class="btn-primary w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base">
-                        <i data-lucide="save" class="w-5 h-5"></i> Registrar Leitura
+                <form onsubmit="window.addPoco(event)" class="px-5 py-4 border-b border-slate-100">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Novo Poço</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="novoPocoNumero" required placeholder="Nº" maxlength="10"
+                            class="col-span-1 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
+                        <input type="text" id="novoPocoNome" placeholder="Nome / local (opcional)"
+                            class="col-span-2 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                    </div>
+                    <button type="submit" class="mt-2 w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Poço
                     </button>
+                </form>
+                <div class="px-5 py-4">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Poços cadastrados</p>
+                    <div id="cadastrosPocosLista" class="divide-y divide-slate-100 text-xs"></div>
                 </div>
-            </form>
+            </div>
         </div>
 
-        <section class="space-y-3">
-            <div class="px-1">
-                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Situação dos Poços</h3>
-                <p class="text-[10px] text-slate-400 font-medium">Última leitura de cada poço</p>
-            </div>
-            <div id="pocosList" class="space-y-3"></div>
-        </section>
+        <!-- ===== SEÇÃO: RESERVATÓRIO ===== -->
+        <div id="aguaSecReserv" class="agua-sec hidden space-y-6">
 
-        <!-- NÍVEL DO RESERVATÓRIO -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-5 py-4 flex items-center gap-2">
-                <i data-lucide="container" class="w-5 h-5 text-white opacity-90"></i>
-                <h2 class="text-base font-bold text-white">Nível do Reservatório</h2>
+            <!-- NÍVEL DO RESERVATÓRIO -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-5 py-4 flex items-center gap-2">
+                    <i data-lucide="container" class="w-5 h-5 text-white opacity-90"></i>
+                    <h2 class="text-base font-bold text-white">Nível do Reservatório</h2>
+                </div>
+                <form onsubmit="window.addLeituraReservatorio(event)" class="divide-y divide-slate-100">
+                    <div class="px-5 py-4">
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                            <i data-lucide="container" class="w-3.5 h-3.5 text-indigo-500"></i> Reservatório
+                        </label>
+                        <select id="reservSelect" required class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all"></select>
+                    </div>
+                    <div class="px-5 py-4">
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                            <i data-lucide="calendar-clock" class="w-3.5 h-3.5 text-indigo-500"></i> Data e Hora da Leitura
+                        </label>
+                        <input type="datetime-local" id="reservDataHora" required
+                            class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                    </div>
+                    <div class="px-5 py-4">
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                            <i data-lucide="ruler" class="w-3.5 h-3.5 text-indigo-500"></i> Nível da Água (metros)
+                        </label>
+                        <input type="number" id="reservNivel" required step="0.01" min="0" inputmode="decimal" placeholder="ex: 2,35"
+                            class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                    </div>
+                    <div class="px-5 py-4">
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                            <i data-lucide="message-square" class="w-3.5 h-3.5 text-indigo-500"></i> Observações
+                            <span class="normal-case font-normal text-slate-300 ml-1">(opcional)</span>
+                        </label>
+                        <textarea id="reservObs" rows="2" placeholder="Alguma observação..."
+                            class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-800 resize-none transition-all"></textarea>
+                    </div>
+                    <div class="px-5 py-4">
+                        <button type="submit" id="reservSubmitBtn"
+                            class="btn-primary w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base">
+                            <i data-lucide="save" class="w-5 h-5"></i> Registrar Nível
+                        </button>
+                    </div>
+                </form>
             </div>
-            <form onsubmit="window.addLeituraReservatorio(event)" class="divide-y divide-slate-100">
-                <div class="px-5 py-4">
-                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                        <i data-lucide="container" class="w-3.5 h-3.5 text-indigo-500"></i> Reservatório
-                    </label>
-                    <select id="reservSelect" required class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all"></select>
+
+            <!-- SITUAÇÃO DOS RESERVATÓRIOS -->
+            <section class="space-y-3">
+                <div class="px-1">
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Situação dos Reservatórios</h3>
+                    <p class="text-[10px] text-slate-400 font-medium">Último nível registrado</p>
                 </div>
-                <div class="px-5 py-4">
-                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                        <i data-lucide="calendar-clock" class="w-3.5 h-3.5 text-indigo-500"></i> Data e Hora da Leitura
-                    </label>
-                    <input type="datetime-local" id="reservDataHora" required
-                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                <div id="reservList" class="space-y-3"></div>
+            </section>
+
+            <!-- CADASTRO DE RESERVATÓRIOS (SOMENTE GESTOR) -->
+            <div data-so-gestor class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-white opacity-90"></i>
+                    <h2 class="text-base font-bold text-white">Cadastro de Reservatórios</h2>
+                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Gestor</span>
                 </div>
-                <div class="px-5 py-4">
-                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                        <i data-lucide="ruler" class="w-3.5 h-3.5 text-indigo-500"></i> Nível da Água (metros)
-                    </label>
-                    <input type="number" id="reservNivel" required step="0.01" min="0" inputmode="decimal" placeholder="ex: 2,35"
-                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
-                </div>
-                <div class="px-5 py-4">
-                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                        <i data-lucide="message-square" class="w-3.5 h-3.5 text-indigo-500"></i> Observações
-                        <span class="normal-case font-normal text-slate-300 ml-1">(opcional)</span>
-                    </label>
-                    <textarea id="reservObs" rows="2" placeholder="Alguma observação..."
-                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-800 resize-none transition-all"></textarea>
-                </div>
-                <div class="px-5 py-4">
-                    <button type="submit" id="reservSubmitBtn"
-                        class="btn-primary w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base">
-                        <i data-lucide="save" class="w-5 h-5"></i> Registrar Nível
+                <form onsubmit="window.addReservatorio(event)" class="px-5 py-4 border-b border-slate-100">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Novo Reservatório</p>
+                    <input type="text" id="novoReservNome" required placeholder="Nome (ex: Reservatório Principal)"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all mb-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="novoReservAltura" step="0.01" min="0" inputmode="decimal" placeholder="Altura máx. (m)"
+                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                        <input type="number" id="novoReservCapacidade" step="0.01" min="0" inputmode="decimal" placeholder="Capacidade (m³)"
+                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                    </div>
+                    <p class="text-[10px] text-slate-400 font-medium mt-1.5">Altura e capacidade são opcionais; servem para mostrar o % cheio e o volume estimado.</p>
+                    <button type="submit" class="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Reservatório
                     </button>
+                </form>
+                <div class="px-5 py-4">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Reservatórios cadastrados</p>
+                    <div id="cadastrosReservLista" class="divide-y divide-slate-100 text-xs"></div>
                 </div>
-            </form>
+            </div>
         </div>
 
-        <section class="space-y-3">
-            <div class="px-1">
-                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Situação dos Reservatórios</h3>
-                <p class="text-[10px] text-slate-400 font-medium">Último nível registrado</p>
-            </div>
-            <div id="reservList" class="space-y-3"></div>
-        </section>
-
-        <!-- CADASTROS (SOMENTE GESTOR) -->
-        <div id="cadastrosAgua" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
-                <i data-lucide="settings" class="w-5 h-5 text-white opacity-90"></i>
-                <h2 class="text-base font-bold text-white">Cadastros</h2>
-                <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Gestor</span>
-            </div>
-
-            <form onsubmit="window.addPoco(event)" class="px-5 py-4 border-b border-slate-100">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Novo Poço</p>
-                <div class="grid grid-cols-3 gap-2">
-                    <input type="text" id="novoPocoNumero" required placeholder="Nº" maxlength="10"
-                        class="col-span-1 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
-                    <input type="text" id="novoPocoNome" placeholder="Nome / local (opcional)"
-                        class="col-span-2 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+        <!-- ===== SEÇÃO: DADOS DOS BLOCOS (SOMENTE GESTOR) — base do cálculo de litros ===== -->
+        <div id="aguaSecBlocos" class="agua-sec hidden space-y-6">
+            <div id="dadosBlocosCard" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-green-700 to-green-800 px-5 py-4 flex items-center gap-2">
+                    <i data-lucide="layers" class="w-5 h-5 text-white opacity-90"></i>
+                    <div>
+                        <h2 class="text-base font-bold text-white leading-tight">Dados dos Blocos</h2>
+                        <p class="text-[10px] text-green-100 font-medium">Base do cálculo de litros de cada bloco</p>
+                    </div>
+                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Gestor</span>
                 </div>
-                <button type="submit" class="mt-2 w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                    <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Poço
-                </button>
-            </form>
 
-            <form onsubmit="window.addReservatorio(event)" class="px-5 py-4 border-b border-slate-100">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Novo Reservatório</p>
-                <input type="text" id="novoReservNome" required placeholder="Nome (ex: Reservatório Principal)"
-                    class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all mb-2">
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="novoReservAltura" step="0.01" min="0" inputmode="decimal" placeholder="Altura máx. (m)"
-                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                    <input type="number" id="novoReservCapacidade" step="0.01" min="0" inputmode="decimal" placeholder="Capacidade (m³)"
-                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                </div>
-                <p class="text-[10px] text-slate-400 font-medium mt-1.5">Altura e capacidade são opcionais; servem para mostrar o % cheio e o volume estimado.</p>
-                <button type="submit" class="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                    <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Reservatório
-                </button>
-            </form>
+                <form id="dadoBlocoForm" onsubmit="window.salvarDadoBloco(event)" class="px-5 py-4 border-b border-slate-100 space-y-2">
+                    <p id="dadoBlocoFormTitulo" class="text-xs font-bold text-slate-400 uppercase tracking-wider">Nova Linha</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Bloco</label>
+                            <input type="text" id="dbBloco" required maxlength="3" placeholder="ex: 8 ou E"
+                                oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"
+                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Válvulas ativas</label>
+                            <input type="number" id="dbValvulas" required min="1" step="1" inputmode="numeric" placeholder="ex: 2"
+                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Tipo de aspersor</label>
+                            <select id="dbTipo" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-700 outline-none">
+                                <option value="MicroAspersor">MicroAspersor</option>
+                                <option value="Aspersor">Aspersor</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Vazão (L/H)</label>
+                            <input type="number" id="dbVazao" required min="0.1" step="0.1" inputmode="decimal" placeholder="ex: 90"
+                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Aspersores ativos</label>
+                            <input type="number" id="dbQtd" required min="1" step="1" inputmode="numeric" placeholder="ex: 856"
+                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Data atualização</label>
+                            <input type="date" id="dbData" required
+                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                        </div>
+                    </div>
+                    <p id="dadoBlocoErro" class="hidden text-xs font-bold text-red-500"></p>
+                    <div class="flex gap-2">
+                        <button type="button" id="dadoBlocoCancelar" onclick="window.editarDadoBloco(null)"
+                            class="hidden flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
+                        <button type="submit" id="dadoBlocoBtn"
+                            class="flex-1 bg-green-700 hover:bg-green-800 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Linha
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-slate-400 leading-relaxed">Um bloco pode ter várias linhas (um tipo de aspersor em cada). Alterações precisam de internet.</p>
+                </form>
 
-            <div class="px-5 py-4">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Cadastrados</p>
-                <div id="cadastrosLista" class="divide-y divide-slate-100 text-xs"></div>
+                <div id="dadosBlocosLista" class="px-5 py-4 space-y-3"></div>
+                <datalist id="listaCulturas"></datalist>
             </div>
         </div>
     </div>
@@ -1072,11 +1374,35 @@
             </div>
 
         </div>
+
+        <!-- GRID DA IMAGEM: BALANÇO DE ÁGUA (entrada × saída), no formato do relatório em PDF -->
+        <div id="img-report-grid-balanco" style="font-family: Arial, Helvetica, sans-serif; width: 1200px; background: #ffffff; color: #1f2937; -webkit-font-smoothing: antialiased;">
+            <div style="display:flex; align-items:stretch; border:1px solid #d1d5db;">
+                <div style="padding:16px 20px; display:flex; align-items:center; justify-content:center; background:#f9fafb; border-right:1px solid #d1d5db; min-width:110px;">
+                    <img id="reportLogoBalanco" src="" style="height:56px; width:auto;" alt="Logo">
+                </div>
+                <div style="flex:1; padding:16px 28px; display:flex; align-items:center; justify-content:center;">
+                    <div style="font-size:18px; font-weight:900; letter-spacing:2px; text-transform:uppercase;">Entrada e Saída de Água</div>
+                </div>
+                <div style="padding:16px 24px; display:flex; flex-direction:column; justify-content:center; align-items:center; border-left:1px solid #d1d5db; min-width:220px; background:#f9fafb;">
+                    <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:4px; text-transform:uppercase; margin-bottom:4px;">PERÍODO</div>
+                    <div id="imgBalancoPeriodo" style="font-size:16px; font-weight:900; color:#1c5cab;"></div>
+                </div>
+            </div>
+            <div id="imgBalancoCorpo" style="padding:18px 20px;"></div>
+            <div style="padding:10px 20px; display:flex; justify-content:center; border-top:1px solid #e5e7eb;">
+                <div style="font-size:8px; color:#1c5cab; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
+            </div>
+        </div>
     </div>
 
     <!-- JAVASCRIPT PURO -->
     <script>
         console.log("Console pronto para edição!");
+
+        // Imagem transparente usada no lugar de uma imagem que não carregar (ex.: logo),
+        // para a geração do relatório não falhar por causa dela
+        const IMG_RESERVA = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
         // Ordem de exibição dos turnos em todas as listas e relatórios
         const TURNO_ORDER = { 'Madrugada': 0, 'Manhã': 1, 'Tarde': 2, 'Noite': 3 };
@@ -1642,6 +1968,9 @@
             const sendReportBtn = document.getElementById('progSendReportBtn');
             const historyBtn = document.getElementById('progHistoryBtn');
             const historyCard = document.getElementById('historyCard');
+
+            // No desktop, o modo edição divide a aba em duas colunas (ver CSS)
+            document.getElementById('tabProgramacao').classList.toggle('prog-editando', progUnlocked);
 
             if (progUnlocked) {
                 formContainer.classList.remove('hidden');
@@ -2618,6 +2947,7 @@
                 const imageBlob = await htmlToImage.toBlob(element, {
                     pixelRatio: 5,
                     useCORS: true,
+                    imagePlaceholder: IMG_RESERVA,
                     backgroundColor: '#ffffff',
                 });
 
@@ -2870,6 +3200,7 @@
                 const imageBlob = await htmlToImage.toBlob(element, {
                     pixelRatio: 5,
                     useCORS: true,
+                    imagePlaceholder: IMG_RESERVA,
                     backgroundColor: '#ffffff',
                 });
 
@@ -2958,10 +3289,46 @@
         let reservCache = [];
         let leiturasReservCache = [];
 
+        // Sub-abas da aba Água (a última escolhida fica salva no aparelho)
+        const AGUA_SECOES = {
+            balanco: { painel: 'aguaSecBalanco', cor: 'bg-blue-600' },
+            pocos:  { painel: 'aguaSecPocos',  cor: 'bg-teal-600' },
+            reserv: { painel: 'aguaSecReserv', cor: 'bg-indigo-600' },
+            blocos: { painel: 'aguaSecBlocos', cor: 'bg-green-700', soGestor: true }
+        };
+        let aguaSecaoAtual = (() => { try { return localStorage.getItem('irrigacao_agua_secao') || 'pocos'; } catch (e) { return 'pocos'; } })();
+
+        window.switchAgua = function(secao) {
+            if (!AGUA_SECOES[secao] || (AGUA_SECOES[secao].soGestor && !API.isGestor())) secao = 'pocos';
+            aguaSecaoAtual = secao;
+            try { localStorage.setItem('irrigacao_agua_secao', secao); } catch (e) {}
+
+            Object.entries(AGUA_SECOES).forEach(([nome, s]) => {
+                document.getElementById(s.painel).classList.toggle('hidden', nome !== secao);
+                const btn = document.querySelector(`[data-agua-sec="${nome}"]`);
+                btn.classList.remove('bg-blue-600', 'bg-teal-600', 'bg-indigo-600', 'bg-green-700', 'text-white', 'shadow-sm', 'text-slate-400');
+                if (nome === secao) btn.classList.add(s.cor, 'text-white', 'shadow-sm');
+                else btn.classList.add('text-slate-400');
+            });
+            if (secao === 'blocos') carregarDadosBlocos(false);
+            if (secao === 'balanco') window.carregarBalanco();
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Mostra/esconde tudo o que é exclusivo do gestor (marcado com data-so-gestor)
+        function aplicarVisibilidadeGestor() {
+            const gestor = API.isGestor();
+            document.querySelectorAll('[data-so-gestor]').forEach(el => el.classList.toggle('hidden', !gestor));
+            if (!gestor && aguaSecaoAtual === 'blocos') window.switchAgua('pocos');
+        }
+
         window.carregarAgua = async function() {
             document.getElementById('pocoDataHora').value = agoraParaInput();
             document.getElementById('reservDataHora').value = agoraParaInput();
-            document.getElementById('cadastrosAgua').classList.toggle('hidden', !API.isGestor());
+            if (!document.getElementById('pocoDataParada').value) document.getElementById('pocoDataParada').value = dataLocalIso();
+            window.setStatusPoco(statusPocoAtual);
+            aplicarVisibilidadeGestor();
+            window.switchAgua(aguaSecaoAtual);
 
             [pocosCache, leiturasPocoCache, reservCache, leiturasReservCache] = await Promise.all([
                 API.listarPocos(), API.listarLeiturasPocos(), API.listarReservatorios(), API.listarLeiturasReservatorios()
@@ -2980,15 +3347,67 @@
 
         function rotuloPoco(p) { return `Poço ${p.numero}${p.nome ? ' — ' + p.nome : ''}`; }
 
-        // Vazão média entre as duas últimas leituras de hidrômetro (m³/h)
-        function vazaoCalculada(leituras) {
-            const comHidrometro = leituras.filter(l => l.leitura_hidrometro_m3 != null);
-            if (comHidrometro.length < 2) return null;
-            const [l1, l2] = comHidrometro;
-            const horas = (new Date(l1.data_hora) - new Date(l2.data_hora)) / 3600000;
-            const volume = Number(l1.leitura_hidrometro_m3) - Number(l2.leitura_hidrometro_m3);
-            if (horas <= 0 || volume < 0) return null;
-            return volume / horas;
+        // ----- Aferição pelo balde de 15 L (mesma conta do Painel de Vazão) -----
+        const STATUS_POCO = {
+            ligado:    { rotulo: 'Ligado',    badge: 'bg-emerald-100 text-emerald-700', botao: 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow',  campo: 'bg-emerald-50/60 border-emerald-300 text-emerald-900' },
+            religado:  { rotulo: 'Religado',  badge: 'bg-amber-100 text-amber-700',     botao: 'bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow',     campo: 'bg-amber-50/60 border-amber-300 text-amber-900' },
+            desligado: { rotulo: 'Desligado', badge: 'bg-rose-100 text-rose-700',       botao: 'bg-gradient-to-br from-rose-500 to-rose-600 text-white shadow',       campo: '' }
+        };
+        let statusPocoAtual = 'ligado';
+
+        // L/h = 15 litros ÷ segundos × 3600
+        function vazaoDe15L(segundos) { return segundos > 0 ? 15 / segundos * 3600 : 0; }
+
+        // Vazão da leitura em L/h (o banco calcula; leituras ainda na fila são calculadas aqui)
+        function vazaoLeitura(l) {
+            if (l.vazao_lh != null && !l._pendente) return Number(l.vazao_lh);
+            if (l.status === 'desligado') return 0;
+            if (Number(l.segundos_15l) > 0) return vazaoDe15L(Number(l.segundos_15l));
+            if (l.vazao_m3h != null) return Number(l.vazao_m3h) * 1000; // leitura antiga, em m³/h
+            return 0;
+        }
+
+        function fmtLh(valor) { return Math.round(valor).toLocaleString('pt-BR'); }
+
+        function seloStatusPoco(l) {
+            const st = STATUS_POCO[l.status] || STATUS_POCO.ligado;
+            return `<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${st.badge}">${st.rotulo}</span>`;
+        }
+
+        function motivoParada(l) {
+            if (l.status !== 'desligado' || !l.motivo) return '';
+            return l.motivo + (l.data_parada ? ` desde ${formatDate(l.data_parada)}` : '');
+        }
+
+        window.setStatusPoco = function(status) {
+            statusPocoAtual = status;
+            document.querySelectorAll('[data-poco-status]').forEach(btn => {
+                const s = btn.dataset.pocoStatus;
+                btn.className = `flex flex-col items-center gap-1 py-3 rounded-lg text-[10px] font-black uppercase transition-all ${s === status ? STATUS_POCO[s].botao : 'text-slate-500 hover:bg-white'}`;
+            });
+            const desligado = status === 'desligado';
+            document.getElementById('pocoMotivoArea').classList.toggle('hidden', !desligado);
+            document.getElementById('pocoSegundosArea').classList.toggle('hidden', desligado);
+            if (!desligado) {
+                document.getElementById('pocoSegundos').className =
+                    `w-full border-[3px] rounded-xl py-3 px-4 text-center text-2xl font-black transition-all ${STATUS_POCO[status].campo}`;
+            }
+            window.atualizarMotivoPoco();
+        }
+
+        window.atualizarMotivoPoco = function() {
+            const motivo = document.getElementById('pocoMotivo').value;
+            const desligado = statusPocoAtual === 'desligado';
+            document.getElementById('pocoDataParadaArea').classList.toggle('hidden', !(desligado && motivo === 'MANUTENÇÃO'));
+            document.getElementById('pocoMotivoOutrosArea').classList.toggle('hidden', !(desligado && motivo === 'OUTROS'));
+        }
+
+        // Máscara igual à do Painel de Vazão: digitando "142" aparece "1,42"
+        window.mascaraSegundos = function(input) {
+            const digitos = input.value.replace(/\D/g, '');
+            input.value = (parseFloat(digitos || 0) / 100).toFixed(2).replace('.', ',');
+            const segundos = parseFloat(input.value.replace(',', '.')) || 0;
+            document.getElementById('pocoVazaoPreview').innerText = segundos > 0 ? `= ${fmtLh(vazaoDe15L(segundos))} L/h` : '—';
         }
 
         function renderAgua() {
@@ -2997,38 +3416,49 @@
             preencherSelect('pocoSelect', pocosAtivos, rotuloPoco, 'Nenhum poço cadastrado');
             preencherSelect('reservSelect', reservAtivos, r => r.nome, 'Nenhum reservatório cadastrado');
 
+            // Resumo pela última leitura de cada poço (como no Painel de Vazão)
+            const ultimas = pocosAtivos.map(p => leiturasPocoCache.find(l => l.poco_id === p.id)).filter(Boolean);
+            const operando = ultimas.filter(l => l.status !== 'desligado');
+            const vazaoTotal = operando.reduce((s, l) => s + vazaoLeitura(l), 0);
+            const vazaoMedia = operando.length ? vazaoTotal / operando.length : 0;
+            const cartaoResumo = (rotulo, valor, sufixo, cor) => `
+                <div class="${cor} rounded-xl px-3 py-2.5 text-center shadow-sm">
+                    <div class="text-[8px] font-black uppercase tracking-widest opacity-80">${rotulo}</div>
+                    <div class="text-lg font-black leading-tight mt-0.5">${valor}<span class="text-[10px] opacity-70 ml-0.5">${sufixo}</span></div>
+                </div>`;
+            document.getElementById('pocosResumo').innerHTML = pocosAtivos.length === 0 ? '' :
+                cartaoResumo('Vazão total', fmtLh(vazaoTotal), ' L/h', 'bg-blue-600 text-white') +
+                cartaoResumo('Média / poço', fmtLh(vazaoMedia), ' L/h', 'bg-slate-800 text-white') +
+                cartaoResumo('Poços ativos', operando.length, ` /${pocosAtivos.length}`, 'bg-emerald-600 text-white') +
+                cartaoResumo('Registros', ultimas.length, '', 'bg-white text-slate-800 border border-slate-200');
+
             // Poços
             const pocosList = document.getElementById('pocosList');
             pocosList.innerHTML = pocosAtivos.length === 0
-                ? `<div class="text-center py-8 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">Nenhum poço cadastrado.${API.isGestor() ? ' Cadastre no fim desta página.' : ' Peça ao gestor para cadastrar.'}</div>`
+                ? `<div class="text-center py-8 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">Nenhum poço cadastrado.${API.isGestor() ? ' Use o Cadastro de Poços nesta aba.' : ' Peça ao gestor para cadastrar.'}</div>`
                 : pocosAtivos.map(p => {
                     const leituras = leiturasPocoCache.filter(l => l.poco_id === p.id);
                     const ultima = leituras[0];
-                    const media = vazaoCalculada(leituras);
-                    const stat = (rotulo, valor, unidade) => `
-                        <div class="bg-teal-50 border border-teal-100 rounded-xl px-2 py-2 text-center">
-                            <div class="text-[8px] font-black text-teal-700 uppercase tracking-wider">${rotulo}</div>
-                            <div class="text-sm font-black text-teal-900 leading-tight mt-0.5">${valor}</div>
-                            <div class="text-[9px] text-teal-600">${unidade}</div>
-                        </div>`;
                     const historicoHtml = leituras.slice(0, 5).map(l => `
                         <div class="flex justify-between items-center gap-2 py-1.5 text-[11px]">
                             <div class="min-w-0">
                                 <span class="font-bold text-slate-600">${fmtDataHora(l.data_hora)}</span>
                                 <span class="text-slate-400 truncate"> · ${escapeHtml(l.responsavel || '')}</span>
+                                ${motivoParada(l) ? `<div class="text-rose-500 font-bold truncate">${escapeHtml(motivoParada(l))}</div>` : ''}
                                 ${l.observacao ? `<div class="text-slate-400 italic truncate">${escapeHtml(l.observacao)}</div>` : ''}
                             </div>
-                            <div class="flex items-center gap-1 shrink-0">
-                                <span class="font-bold text-teal-700 text-right">
-                                    ${l.vazao_m3h != null ? fmtNum(l.vazao_m3h, 2) + ' m³/h' : ''}
-                                    ${l.vazao_m3h != null && l.leitura_hidrometro_m3 != null ? '<br>' : ''}
-                                    ${l.leitura_hidrometro_m3 != null ? '<span class="text-slate-500">' + fmtNum(l.leitura_hidrometro_m3, 3) + ' m³</span>' : ''}
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                ${seloStatusPoco(l)}
+                                <span class="font-bold text-right ${l.status === 'desligado' ? 'text-slate-300' : 'text-blue-700'}">
+                                    ${fmtLh(vazaoLeitura(l))} L/h
+                                    ${Number(l.segundos_15l) > 0 ? `<br><span class="text-slate-400 font-medium">${fmtNum(l.segundos_15l, 2)} s</span>` : ''}
                                 </span>
                                 ${l._pendente ? '<i data-lucide="cloud-off" class="w-3.5 h-3.5 text-amber-500"></i>' : ''}
                                 ${podeExcluir(l) ? `<button type="button" onclick="window.excluirLeituraPoco('${escapeHtml(l.id)}')" class="p-1 text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
                             </div>
                         </div>`).join('');
 
+                    const desligado = ultima && ultima.status === 'desligado';
                     return `
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="bg-gradient-to-r from-teal-700 to-teal-600 px-4 py-3 flex justify-between items-center gap-2">
@@ -3040,10 +3470,17 @@
                         </div>
                         ${ultima ? `
                         <div class="px-4 pt-3">
-                            <div class="grid grid-cols-3 gap-2">
-                                ${stat('Vazão', ultima.vazao_m3h != null ? fmtNum(ultima.vazao_m3h, 2) : '—', 'm³/h')}
-                                ${stat('Hidrômetro', ultima.leitura_hidrometro_m3 != null ? fmtNum(ultima.leitura_hidrometro_m3, 1) : '—', 'm³')}
-                                ${stat('Média calc.', media != null ? fmtNum(media, 2) : '—', 'm³/h')}
+                            <div class="flex items-end justify-between gap-3">
+                                <div>
+                                    <div class="flex items-center gap-1.5">${seloStatusPoco(ultima)}</div>
+                                    <div class="text-2xl font-black leading-none mt-1.5 ${desligado ? 'text-slate-300' : 'text-blue-700'}">${fmtLh(vazaoLeitura(ultima))} <span class="text-xs">L/h</span></div>
+                                    ${desligado && motivoParada(ultima) ? `<div class="text-[10px] font-bold text-rose-500 mt-1">${escapeHtml(motivoParada(ultima))}</div>` : ''}
+                                </div>
+                                ${Number(ultima.segundos_15l) > 0 ? `
+                                <div class="text-right">
+                                    <div class="text-[8px] font-black text-slate-400 uppercase tracking-wider">Aferição</div>
+                                    <div class="text-sm font-black text-slate-700">${fmtNum(ultima.segundos_15l, 2)} s <span class="text-[10px] font-medium text-slate-400">/ 15 L</span></div>
+                                </div>` : ''}
                             </div>
                             <div class="flex items-center justify-between gap-2 mt-2">
                                 <span class="text-[10px] font-bold text-slate-400">Última: ${fmtDataHora(ultima.data_hora)}</span>
@@ -3058,7 +3495,7 @@
             // Reservatórios
             const reservList = document.getElementById('reservList');
             reservList.innerHTML = reservAtivos.length === 0
-                ? `<div class="text-center py-8 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">Nenhum reservatório cadastrado.${API.isGestor() ? ' Cadastre no fim desta página.' : ' Peça ao gestor para cadastrar.'}</div>`
+                ? `<div class="text-center py-8 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">Nenhum reservatório cadastrado.${API.isGestor() ? ' Use o Cadastro de Reservatórios nesta aba.' : ' Peça ao gestor para cadastrar.'}</div>`
                 : reservAtivos.map(r => {
                     const leituras = leiturasReservCache.filter(l => l.reservatorio_id === r.id);
                     const ultima = leituras[0];
@@ -3112,8 +3549,7 @@
                     </div>`;
                 }).join('');
 
-            // Cadastros (gestor)
-            const cadastros = document.getElementById('cadastrosLista');
+            // Cadastros (gestor), cada um na sua sub-aba
             const linhaCadastro = (tipo, item, rotulo) => `
                 <div class="flex items-center justify-between gap-2 py-2">
                     <span class="font-bold ${item.ativo === false ? 'text-slate-300 line-through' : 'text-slate-600'} truncate">${escapeHtml(rotulo)}</span>
@@ -3122,52 +3558,60 @@
                         ${item.ativo === false ? 'Reativar' : 'Desativar'}
                     </button>
                 </div>`;
-            cadastros.innerHTML = (pocosCache.length + reservCache.length) === 0
-                ? `<p class="text-slate-400 py-2">Nada cadastrado ainda.</p>`
-                : pocosCache.map(p => linhaCadastro('poco', p, rotuloPoco(p))).join('') +
-                  reservCache.map(r => linhaCadastro('reservatorio', r, r.nome)).join('');
+            document.getElementById('cadastrosPocosLista').innerHTML = pocosCache.length === 0
+                ? `<p class="text-slate-400 py-2">Nenhum poço cadastrado ainda.</p>`
+                : pocosCache.map(p => linhaCadastro('poco', p, rotuloPoco(p))).join('');
+            document.getElementById('cadastrosReservLista').innerHTML = reservCache.length === 0
+                ? `<p class="text-slate-400 py-2">Nenhum reservatório cadastrado ainda.</p>`
+                : reservCache.map(r => linhaCadastro('reservatorio', r, r.nome)).join('');
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
-        function salvarLeituraPocoConfirmada(leitura) {
-            API.salvarLeituraPoco(leitura);
-            document.getElementById('pocoHidrometro').value = '';
-            document.getElementById('pocoVazao').value = '';
-            document.getElementById('pocoObs').value = '';
-            botaoSalvo(document.getElementById('pocoSubmitBtn'), 'Leitura Salva!');
-            window.carregarAgua();
         }
 
         window.addLeituraPoco = function(e) {
             e.preventDefault();
             const pocoId = document.getElementById('pocoSelect').value;
-            const hidrometro = lerNumero('pocoHidrometro');
-            const vazao = lerNumero('pocoVazao');
             if (!pocoId) { window.showAlert("Sem poço", "Nenhum poço cadastrado. Peça ao gestor para cadastrar."); return; }
-            if (hidrometro === null && vazao === null) {
-                window.showAlert("Leitura vazia", "Preencha a leitura do hidrômetro, a vazão, ou os dois.");
-                return;
-            }
 
             const leitura = {
                 poco_id: pocoId,
                 data_hora: new Date(document.getElementById('pocoDataHora').value).toISOString(),
-                leitura_hidrometro_m3: hidrometro,
-                vazao_m3h: vazao,
+                status: statusPocoAtual,
+                segundos_15l: null,
+                motivo: null,
+                data_parada: null,
                 observacao: document.getElementById('pocoObs').value.trim()
             };
 
-            // Hidrômetro menor que a leitura anterior costuma ser erro de digitação
-            const anterior = leiturasPocoCache.find(l => l.poco_id === pocoId && l.leitura_hidrometro_m3 != null);
-            if (hidrometro !== null && anterior && hidrometro < Number(anterior.leitura_hidrometro_m3)) {
-                pendingConfirmCallback = () => salvarLeituraPocoConfirmada(leitura);
-                window.showConfirmModal("Confira a leitura",
-                    `A leitura do hidrômetro (${fmtNum(hidrometro, 3)} m³) é menor que a anterior (${fmtNum(anterior.leitura_hidrometro_m3, 3)} m³). Salvar mesmo assim?`,
-                    "SALVAR", "alert-triangle");
-                return;
+            if (statusPocoAtual === 'desligado') {
+                const motivo = document.getElementById('pocoMotivo').value;
+                if (motivo === 'OUTROS') {
+                    const outro = document.getElementById('pocoMotivoOutros').value.trim().toUpperCase();
+                    if (!outro) { window.showAlert("Motivo da parada", "Especifique o motivo da parada na opção OUTROS."); return; }
+                    leitura.motivo = outro;
+                } else {
+                    leitura.motivo = motivo;
+                }
+                if (motivo === 'MANUTENÇÃO') {
+                    leitura.data_parada = document.getElementById('pocoDataParada').value;
+                    if (!leitura.data_parada) { window.showAlert("Data da parada", "Informe a data da parada para a manutenção."); return; }
+                }
+            } else {
+                const segundos = parseFloat(document.getElementById('pocoSegundos').value.replace(',', '.')) || 0;
+                if (segundos <= 0) {
+                    window.showAlert("Aferição", "Informe os segundos que o poço levou para encher 15 litros (não pode ser 0).");
+                    return;
+                }
+                leitura.segundos_15l = segundos;
             }
-            salvarLeituraPocoConfirmada(leitura);
+
+            API.salvarLeituraPoco(leitura);
+            document.getElementById('pocoSegundos').value = '0,00';
+            document.getElementById('pocoVazaoPreview').innerText = '—';
+            document.getElementById('pocoObs').value = '';
+            document.getElementById('pocoMotivoOutros').value = '';
+            botaoSalvo(document.getElementById('pocoSubmitBtn'), 'Leitura Salva!');
+            window.carregarAgua();
         }
 
         window.addLeituraReservatorio = function(e) {
@@ -3208,7 +3652,9 @@
         window.addPoco = function(e) {
             e.preventDefault();
             if (!API.isGestor()) return;
-            const numero = document.getElementById('novoPocoNumero').value.trim().toUpperCase();
+            // "1" vira "01", no mesmo padrão "Poço 01 ... Poço 17"
+            let numero = document.getElementById('novoPocoNumero').value.trim().toUpperCase();
+            if (/^\d$/.test(numero)) numero = numero.padStart(2, '0');
             const nome = document.getElementById('novoPocoNome').value.trim();
             if (pocosCache.some(p => String(p.numero).toUpperCase() === numero)) {
                 window.showAlert("Poço já cadastrado", `Já existe um poço com o número ${numero}.`);
@@ -3249,6 +3695,596 @@
             window.carregarAgua();
         }
 
+        // --- BALANÇO DE ÁGUA (entrada pelos poços × saída pelos blocos) ---
+
+        let horasPadraoPoco = 24;
+        let balancoPocosComDados = [];
+        let ultimoBalanco = null;
+
+        // Paleta categórica validada (ordem fixa) — a cor segue a cultura, nunca a posição
+        const CORES_CULTURA = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
+        const COR_ENTRADA = '#2a78d6';
+        const COR_SEM_CULTURA = '#898781';
+
+        function diasNoPeriodo(de, ate) {
+            const dias = [];
+            for (let d = new Date(de + 'T12:00:00'); dataLocalIso(d) <= ate; d = new Date(d.getTime() + 86400000)) dias.push(dataLocalIso(d));
+            return dias;
+        }
+
+        function rotuloPeriodo(de, ate) {
+            if (de === ate) return formatDate(de);
+            return `${formatDate(de)} a ${formatDate(ate)} (${diasNoPeriodo(de, ate).length} dias)`;
+        }
+
+        window.periodoBalanco = function(dias) {
+            const hoje = new Date();
+            let de, ate;
+            if (dias === 0) { de = ate = dataLocalIso(hoje); }
+            else if (dias === 1) { de = ate = dataLocalIso(new Date(hoje.getTime() - 86400000)); }
+            else { ate = dataLocalIso(hoje); de = dataLocalIso(new Date(hoje.getTime() - (dias - 1) * 86400000)); }
+            document.getElementById('balancoDe').value = de;
+            document.getElementById('balancoAte').value = ate;
+            window.carregarBalanco();
+        }
+
+        window.ajustarPeriodoBalanco = function(campo) {
+            const de = document.getElementById('balancoDe');
+            const ate = document.getElementById('balancoAte');
+            if (!de.value) de.value = ate.value || dataLocalIso();
+            if (!ate.value) ate.value = de.value;
+            if (de.value > ate.value) { if (campo === 'de') ate.value = de.value; else de.value = ate.value; }
+            window.carregarBalanco();
+        }
+
+        // Entrada: para cada poço e cada dia, média das aferições (L/h) × horas ligado; soma os dias do período
+        function calcularEntradaPocos(pocos, leituras, horasRegs, horasPadrao) {
+            return pocos.filter(p => p.ativo !== false).map(p => {
+                const doPoco = leituras.filter(l => l.poco_id === p.id);
+                const porDia = {};
+                doPoco.filter(l => l.status !== 'desligado').forEach(l => {
+                    const d = dataLocalIso(new Date(l.data_hora));
+                    (porDia[d] = porDia[d] || []).push(vazaoLeitura(l));
+                });
+                const dias = Object.keys(porDia).sort();
+                if (dias.length === 0) return { poco: p, semDados: true, desligado: doPoco.some(l => l.status === 'desligado') };
+
+                let volume = 0, somaMedias = 0, somaHoras = 0, afericoes = 0, horasAlteradas = false;
+                dias.forEach(d => {
+                    const media = porDia[d].reduce((s, v) => s + v, 0) / porDia[d].length;
+                    const reg = horasRegs.find(h => h.poco_id === p.id && h.data === d);
+                    const horas = reg ? Number(reg.horas) : horasPadrao;
+                    if (reg) horasAlteradas = true;
+                    volume += media * horas;
+                    somaMedias += media;
+                    somaHoras += horas;
+                    afericoes += porDia[d].length;
+                });
+                return { poco: p, media: somaMedias / dias.length, dias: dias.length, afericoes, horas: somaHoras / dias.length, horasAlteradas, volume };
+            });
+        }
+
+        // ----- Gráficos em SVG (mesmos no app e na imagem) -----
+
+        function escalaMax(v) {
+            if (!(v > 0)) return 1;
+            const p = Math.pow(10, Math.floor(Math.log10(v)));
+            const n = v / p;
+            return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+        }
+
+        function fmtEixo(v) {
+            if (v >= 1e6) return `${fmtNum(v / 1e6, v % 1e6 ? 1 : 0)} mi`;
+            if (v >= 1e3) return `${fmtNum(v / 1e3, v % 1e3 ? 1 : 0)} mil`;
+            return fmtNum(v, 0);
+        }
+
+        function eixoSvg(W, m, ph, max, fs) {
+            const y = v => m.t + ph - (v / max) * ph;
+            return [0, max / 2, max].map(v => `
+                <line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0 ? '#c3c2b7' : '#e1e0d9'}" stroke-width="1"/>
+                <text x="${m.l - 6}" y="${y(v) + fs * 0.35}" text-anchor="end" font-size="${fs}" fill="#898781">${fmtEixo(v)}</text>`).join('');
+        }
+
+        // Colunas: itens = [{ rotulo, valor, cor, dica }]
+        function svgColunas(itens, opts) {
+            opts = opts || {};
+            if (!itens.length) return `<p class="text-xs text-slate-400 py-6 text-center">${opts.vazio || 'Sem dados no período.'}</p>`;
+            const fs = opts.fonte || 10, W = opts.largura || 720, H = opts.altura || 230;
+            const m = { l: fs * 5, r: 8, t: fs * 2.2, b: fs * 3 };
+            const pw = W - m.l - m.r, ph = H - m.t - m.b;
+            const max = escalaMax(Math.max(...itens.map(i => i.valor)));
+            const y = v => m.t + ph - (v / max) * ph;
+            const banda = pw / itens.length;
+            const larg = Math.min(opts.barraMax || 24, banda * 0.6);
+            const base = m.t + ph;
+            const marcas = itens.map((it, i) => {
+                const cx = m.l + banda * i + banda / 2, x = cx - larg / 2, topo = y(it.valor), h = base - topo;
+                const r = Math.min(4, h, larg / 2);
+                const coluna = h > 0.5
+                    ? `<path d="M${x},${base} V${topo + r} Q${x},${topo} ${x + r},${topo} H${x + larg - r} Q${x + larg},${topo} ${x + larg},${topo + r} V${base} Z" fill="${it.cor}"/>`
+                    : '';
+                return `<g><title>${escapeHtml(it.dica || `${it.rotulo}: ${fmtLh(it.valor)}`)}</title>
+                    <rect x="${m.l + banda * i}" y="${m.t}" width="${banda}" height="${ph}" fill="transparent"/>
+                    ${coluna}
+                    <text x="${cx}" y="${topo - fs * 0.6}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="#0b0b0b">${fmtLh(it.valor)}</text>
+                    <text x="${cx}" y="${base + fs * 1.7}" text-anchor="middle" font-size="${fs}" fill="#52514e">${escapeHtml(it.rotulo)}</text></g>`;
+            }).join('');
+            return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escapeHtml(opts.titulo || '')}" style="display:block;font-family:system-ui,-apple-system,'Segoe UI',sans-serif">${eixoSvg(W, m, ph, max, fs)}${marcas}</svg>`;
+        }
+
+        // Linha com marcadores: itens = [{ rotulo, valor, dica }]
+        function svgLinha(itens, cor, opts) {
+            opts = opts || {};
+            if (!itens.length) return `<p class="text-xs text-slate-400 py-6 text-center">${opts.vazio || 'Sem dados no período.'}</p>`;
+            const fs = opts.fonte || 10, W = opts.largura || 720, H = opts.altura || 180;
+            const m = { l: fs * 5, r: 8, t: fs * 2.4, b: fs * 3 };
+            const pw = W - m.l - m.r, ph = H - m.t - m.b;
+            const max = escalaMax(Math.max(...itens.map(i => i.valor)));
+            const y = v => m.t + ph - (v / max) * ph;
+            const banda = pw / itens.length;
+            const base = m.t + ph;
+            const pts = itens.map((it, i) => ({ ...it, cx: m.l + banda * i + banda / 2, cy: y(it.valor) }));
+            const linha = pts.map((p, i) => `${i ? 'L' : 'M'}${p.cx},${p.cy}`).join(' ');
+            const area = `${linha} L${pts[pts.length - 1].cx},${base} L${pts[0].cx},${base} Z`;
+            const marcas = pts.map((p, i) => `<g><title>${escapeHtml(p.dica || `${p.rotulo}: ${fmtLh(p.valor)} L/h`)}</title>
+                    <rect x="${m.l + banda * i}" y="${m.t}" width="${banda}" height="${ph}" fill="transparent"/>
+                    <circle cx="${p.cx}" cy="${p.cy}" r="4" fill="${cor}" stroke="#ffffff" stroke-width="2"/>
+                    <text x="${p.cx}" y="${p.cy - fs * 0.9}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="#0b0b0b">${fmtLh(p.valor)}</text>
+                    <text x="${p.cx}" y="${base + fs * 1.7}" text-anchor="middle" font-size="${fs}" fill="#52514e">${escapeHtml(p.rotulo)}</text></g>`).join('');
+            return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escapeHtml(opts.titulo || '')}" style="display:block;font-family:system-ui,-apple-system,'Segoe UI',sans-serif">
+                ${eixoSvg(W, m, ph, max, fs)}
+                <path d="${area}" fill="${cor}" fill-opacity="0.10"/>
+                <path d="${linha}" fill="none" stroke="${cor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                ${marcas}</svg>`;
+        }
+
+        function legendaCulturasHtml(legenda, fs) {
+            return legenda.map(c => `<span style="display:inline-flex;align-items:center;gap:6px;font-size:${fs || 11}px;font-weight:700;color:#52514e;margin-right:12px">
+                <span style="width:10px;height:10px;border-radius:3px;background:${c.cor};display:inline-block"></span>${escapeHtml(c.nome)}</span>`).join('');
+        }
+
+        function dadosGraficos(b, fs, largura) {
+            const pocos = b.comDados.map(l => ({ rotulo: `Poço ${l.poco.numero}`, valor: l.volume, cor: COR_ENTRADA,
+                dica: `Poço ${l.poco.numero}: ${fmtLh(l.volume)} L (${fmtLh(l.media)} L/h)` }));
+            const vazoes = b.comDados.map(l => ({ rotulo: `Poço ${l.poco.numero}`, valor: l.media }));
+            const blocos = b.blocos.filter(x => x.litros != null).map(x => ({ rotulo: x.bloco === 'E' ? 'Bloco E' : `Bloco ${x.bloco}`, valor: x.litros, cor: x.cor,
+                dica: `Bloco ${x.bloco}${x.cultura ? ' (' + x.cultura + ')' : ''}: ${fmtLh(x.litros)} L` }));
+            return {
+                volumePoco: svgColunas(pocos, { fonte: fs, largura, titulo: 'Volume (L) por Poço', vazio: 'Nenhuma aferição de poço no período.' }),
+                vazaoPoco: svgLinha(vazoes, COR_ENTRADA, { fonte: fs, largura, titulo: 'Vazão média por poço', vazio: 'Nenhuma aferição de poço no período.' }),
+                volumeBloco: svgColunas(blocos, { fonte: fs, largura, titulo: 'Volume (L) por Bloco', vazio: 'Nenhum registro de irrigação no período.' })
+            };
+        }
+
+        window.carregarBalanco = async function() {
+            const deInput = document.getElementById('balancoDe');
+            const ateInput = document.getElementById('balancoAte');
+            if (!deInput.value) deInput.value = dataLocalIso();
+            if (!ateInput.value) ateInput.value = deInput.value;
+            const de = deInput.value, ate = ateInput.value, umDia = de === ate;
+
+            const horasPadraoInput = document.getElementById('horasPadraoInput');
+            horasPadraoInput.readOnly = !API.isGestor();
+            document.getElementById('balancoAplicarTodos').classList.toggle('hidden', !umDia);
+
+            const carregando = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-6"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
+            ['balancoPocos', 'balancoBlocos', 'graficoVolumePoco', 'graficoVazaoPoco', 'graficoVolumeBloco'].forEach(id => document.getElementById(id).innerHTML = carregando);
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            const [padrao, horasRegs, registros, leituras, pocos, reservs, leiturasRes, culturas] = await Promise.all([
+                API.lerConfiguracao('horas_padrao_poco', 24), API.listarHorasPocoPeriodo(de, ate), API.listarRegistrosPeriodo(de, ate),
+                API.listarLeiturasPocoPeriodo(de, ate), API.listarPocos(), API.listarReservatorios(), API.listarLeiturasReservatorios(),
+                API.listarCulturas()
+            ]);
+            // Ignora respostas atrasadas se o período foi trocado enquanto carregava
+            if (deInput.value !== de || ateInput.value !== ate) return;
+
+            horasPadraoPoco = Number(padrao) || 24;
+            if (document.activeElement !== horasPadraoInput) horasPadraoInput.value = horasPadraoPoco;
+
+            // ----- Entrada (poços) -----
+            const linhas = calcularEntradaPocos(pocos, leituras, horasRegs, horasPadraoPoco);
+            const comDados = linhas.filter(l => !l.semDados).sort((a, b) => String(a.poco.numero).localeCompare(String(b.poco.numero), undefined, { numeric: true }));
+            const semDados = linhas.filter(l => l.semDados);
+            balancoPocosComDados = comDados;
+            const somaVazao = comDados.reduce((s, l) => s + l.media, 0);
+            const entrada = comDados.reduce((s, l) => s + l.volume, 0);
+
+            // ----- Saída (blocos), pelos registros de irrigação do período -----
+            const nomesCultura = [...new Set((culturas || []).map(c => (c.cultura || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            const corDaCultura = nome => nome ? CORES_CULTURA[nomesCultura.indexOf(nome) % CORES_CULTURA.length] : COR_SEM_CULTURA;
+            let saida = 0;
+            let blocos = [];
+            if (registros.length) {
+                const minutosPorBloco = {};
+                registros.forEach(r => {
+                    const b = String(r.bloco || '').toUpperCase().replace('BLOCO', '').trim();
+                    minutosPorBloco[b] = (minutosPorBloco[b] || 0) + (Number(r.minutos) || 0);
+                });
+                const resultado = await API.enviar({
+                    registros: Object.entries(minutosPorBloco).map(([block, minutes]) => ({ block, minutes })),
+                    responsavel: ''
+                });
+                if (resultado.sucesso) {
+                    saida = parseFloat(resultado.totalLitrosMil.replace(',', '.')) * 1000;
+                    blocos = Object.entries(resultado.blocos).map(([bloco, info]) => {
+                        const c = (culturas || []).find(x => String(x.id) === bloco);
+                        const cultura = c && c.cultura ? c.cultura.trim() : '';
+                        return { bloco, cultura, cor: corDaCultura(cultura), minutos: minutosPorBloco[bloco] || 0,
+                                 litros: info ? parseFloat(info.litrosMil.replace(',', '.')) * 1000 : null };
+                    }).sort((a, b) => a.bloco.localeCompare(b.bloco, undefined, { numeric: true }));
+                }
+            }
+            const legenda = [];
+            blocos.filter(b => b.litros != null).forEach(b => {
+                const nome = b.cultura || 'Sem cultura';
+                if (!legenda.some(l => l.nome === nome)) legenda.push({ nome, cor: b.cor });
+            });
+
+            // ----- Nível do tanque: última leitura do período -----
+            const reserv = reservs.find(r => r.ativo !== false);
+            const nivel = reserv ? leiturasRes
+                .filter(l => l.reservatorio_id === reserv.id && dataLocalIso(new Date(l.data_hora)) >= de && dataLocalIso(new Date(l.data_hora)) <= ate)
+                .sort((a, b) => String(b.data_hora).localeCompare(String(a.data_hora)))[0] : null;
+            const pctNivel = nivel && Number(reserv.altura_maxima_m) > 0 ? Number(nivel.nivel_m) / Number(reserv.altura_maxima_m) * 100 : null;
+
+            ultimoBalanco = { de, ate, umDia, entrada, saida, somaVazao, comDados, semDados, blocos, legenda, nivel, pctNivel };
+
+            // ----- Resumo -----
+            const diferenca = entrada - saida;
+            const cartao = (rotulo, valor, detalhe, cor) => `
+                <div class="${cor} rounded-xl px-3 py-3 text-center shadow-sm">
+                    <div class="text-[8px] font-black uppercase tracking-widest opacity-80">${rotulo}</div>
+                    <div class="text-lg font-black leading-tight mt-0.5">${valor}</div>
+                    <div class="text-[9px] font-bold opacity-80 mt-0.5">${detalhe}</div>
+                </div>`;
+            document.getElementById('balancoResumo').innerHTML =
+                cartao('Volume de entrada', `${fmtLh(entrada)} L`, `${fmtLh(somaVazao)} L/h · ${comDados.length} poço${comDados.length === 1 ? '' : 's'}`, 'bg-blue-600 text-white') +
+                cartao('Volume de saída', `${fmtLh(saida)} L`, `${blocos.length} bloco${blocos.length === 1 ? '' : 's'} irrigado${blocos.length === 1 ? '' : 's'}`, 'bg-orange-500 text-white') +
+                cartao('Diferença', `${diferenca >= 0 ? '+' : '−'}${fmtLh(Math.abs(diferenca))} L`, diferenca >= 0 ? 'entrou mais do que saiu' : 'saiu mais do que entrou', diferenca >= 0 ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white') +
+                cartao('Nível do tanque', nivel ? `${fmtNum(nivel.nivel_m, 2)} m` : 'Sem dados', nivel ? (pctNivel != null ? `${fmtNum(pctNivel, 0)}% · ${fmtDataHora(nivel.data_hora)}` : fmtDataHora(nivel.data_hora)) : 'nenhuma leitura no período', 'bg-white text-slate-800 border border-slate-200');
+
+            // ----- Gráficos -----
+            const g = dadosGraficos(ultimoBalanco, 10, 720);
+            document.getElementById('graficoVolumePoco').innerHTML = g.volumePoco;
+            document.getElementById('graficoVazaoPoco').innerHTML = g.vazaoPoco;
+            document.getElementById('graficoVolumeBloco').innerHTML = g.volumeBloco;
+            document.getElementById('legendaCulturas').innerHTML = legendaCulturasHtml(legenda, 11);
+
+            // ----- Lista de entrada (com as horas de cada poço) -----
+            document.getElementById('balancoPocos').innerHTML = (comDados.length === 0
+                ? `<p class="text-xs text-slate-400 py-4 text-center">Nenhuma aferição de poço no período.</p>`
+                : comDados.map(l => `
+                    <div class="py-2.5 flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs font-black text-slate-700">Poço ${escapeHtml(l.poco.numero)}</p>
+                            <p class="text-[10px] text-slate-400">${fmtLh(l.media)} L/h · ${l.afericoes} aferiç${l.afericoes > 1 ? 'ões' : 'ão'}${umDia ? '' : ` · ${l.dias} dia${l.dias > 1 ? 's' : ''}`}</p>
+                        </div>
+                        ${umDia ? `
+                        <div class="flex items-center gap-1 shrink-0">
+                            <input type="number" min="0" max="24" step="0.5" inputmode="decimal" value="${l.horas}"
+                                onchange="window.alterarHorasPoco('${escapeHtml(l.poco.id)}', this.value)"
+                                title="Horas que o poço ficou ligado neste dia"
+                                class="w-16 border-2 rounded-lg py-1 px-1.5 text-xs font-bold text-center ${l.horasAlteradas ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-slate-50 border-slate-200 text-slate-700'}">
+                            <span class="text-[10px] font-bold text-slate-400">h</span>
+                        </div>` : `
+                        <span class="text-[10px] font-bold shrink-0 ${l.horasAlteradas ? 'text-amber-700' : 'text-slate-400'}">${fmtNum(l.horas, l.horas % 1 ? 1 : 0)} h/dia</span>`}
+                        <p class="w-24 text-right text-sm font-black text-slate-800 shrink-0">${fmtLh(l.volume)} <span class="text-[10px] text-slate-400">L</span></p>
+                    </div>`).join('') +
+                  `<div class="py-2.5 flex justify-between text-xs font-black text-slate-700">
+                        <span>Total · ${fmtLh(somaVazao)} L/h</span><span>${fmtLh(entrada)} L</span>
+                   </div>`) +
+                (semDados.length ? `<p class="py-2 text-[10px] text-slate-400">Sem aferição no período: ${semDados.map(l => `Poço ${escapeHtml(l.poco.numero)}${l.desligado ? ' (desligado)' : ''}`).join(', ')}.</p>` : '');
+
+            // ----- Lista de saída -----
+            document.getElementById('balancoBlocos').innerHTML = blocos.length === 0
+                ? `<p class="text-xs text-slate-400 py-4 text-center">Nenhum registro de irrigação no período.</p>`
+                : blocos.map(b => `
+                    <div class="py-2.5 flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs font-black text-slate-700">${b.bloco === 'E' ? 'Bloco E (Tâmaras)' : 'Bloco ' + escapeHtml(b.bloco)}</p>
+                            <p class="text-[10px] text-slate-400 flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-sm inline-block" style="background:${b.cor}"></span>${escapeHtml(b.cultura || 'Sem cultura')} · ${formatDuration(b.minutos)} de irrigação
+                            </p>
+                        </div>
+                        <p class="text-sm font-black shrink-0 ${b.litros == null ? 'text-slate-300' : 'text-slate-800'}">${b.litros == null ? 'sem dados do bloco' : fmtLh(b.litros) + ' <span class="text-[10px] text-slate-400">L</span>'}</p>
+                    </div>`).join('') +
+                  `<div class="py-2.5 flex justify-between text-xs font-black text-slate-700">
+                        <span>Total · ${blocos.length} bloco${blocos.length > 1 ? 's' : ''}</span><span>${fmtLh(saida)} L</span>
+                   </div>`;
+
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.alterarHorasPoco = function(pocoId, valor) {
+            const horas = parseFloat(String(valor).replace(',', '.'));
+            if (isNaN(horas) || horas < 0 || horas > 24) {
+                window.showAlert("Horas inválidas", "Informe entre 0 e 24 horas.");
+                window.carregarBalanco();
+                return;
+            }
+            API.salvarHorasPoco(pocoId, document.getElementById('balancoDe').value, horas);
+            window.carregarBalanco();
+        }
+
+        window.aplicarHorasTodos = function() {
+            const horas = parseFloat(String(document.getElementById('horasTodosInput').value).replace(',', '.'));
+            if (isNaN(horas) || horas < 0 || horas > 24) { window.showAlert("Horas inválidas", "Informe entre 0 e 24 horas."); return; }
+            if (balancoPocosComDados.length === 0) { window.showAlert("Sem poços", "Nenhum poço com aferição neste dia."); return; }
+            const data = document.getElementById('balancoDe').value;
+            balancoPocosComDados.forEach(l => API.salvarHorasPoco(l.poco.id, data, horas));
+            document.getElementById('horasTodosInput').value = '';
+            window.carregarBalanco();
+        }
+
+        window.salvarHorasPadrao = async function() {
+            if (!API.isGestor()) return;
+            const horas = parseFloat(String(document.getElementById('horasPadraoInput').value).replace(',', '.'));
+            if (isNaN(horas) || horas <= 0 || horas > 24) { window.showAlert("Horas inválidas", "Informe entre 0,5 e 24 horas."); return; }
+            try {
+                await API.salvarConfiguracao('horas_padrao_poco', horas);
+                window.showAlert("Horas padrão salvas", `Os poços sem horas informadas no dia passam a contar ${fmtNum(horas, horas % 1 ? 1 : 0)} h ligados.`);
+                window.carregarBalanco();
+            } catch (err) {
+                window.showAlert("Não foi possível salvar", err.message);
+            }
+        }
+
+        // ----- Imagem do balanço (no formato do relatório em PDF) -----
+        window.baixarImagemBalanco = async function() {
+            const b = ultimoBalanco;
+            if (!b) { window.showAlert("Balanço", "Aguarde o balanço carregar."); return; }
+            const btn = document.getElementById('balancoImagemBtn');
+            const textoOriginal = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Gerando...`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            try {
+                const diferenca = b.entrada - b.saida;
+                const tile = (rotulo, valor, fundo, borda, corValor) => `
+                    <div style="flex:1; background:${fundo}; border:1px solid ${borda}; border-radius:12px; padding:10px 12px; text-align:center;">
+                        <div style="font-size:9px; font-weight:700; color:#52514e; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px;">${rotulo}</div>
+                        <div style="font-size:22px; font-weight:900; color:${corValor}; line-height:1.1;">${valor}</div>
+                    </div>`;
+                const titulo = (texto, cor) => `<div style="font-size:15px; font-weight:900; color:${cor}; margin:4px 0 8px;">${texto}</div>`;
+                const subtitulo = texto => `<div style="font-size:11px; font-weight:700; color:#52514e; text-transform:uppercase; letter-spacing:1px; margin:10px 0 2px;">${texto}</div>`;
+                const g = dadosGraficos(b, 12, 1160);
+
+                document.getElementById('imgBalancoPeriodo').innerText = rotuloPeriodo(b.de, b.ate);
+                document.getElementById('imgBalancoCorpo').innerHTML = `
+                    ${titulo('Volume de Entrada', '#1c5cab')}
+                    <div style="display:flex; gap:12px; margin-bottom:6px;">
+                        ${tile('Volume (L)', fmtLh(b.entrada), '#eaf2fc', '#b7d3f6', '#1c5cab')}
+                        ${tile('Poços', b.comDados.length, '#ffffff', '#e1e0d9', '#0b0b0b')}
+                        ${tile('Média litros/h', fmtLh(b.somaVazao), '#ffffff', '#e1e0d9', '#0b0b0b')}
+                        ${tile('Nível tanque', b.nivel ? `${fmtNum(b.nivel.nivel_m, 2)} m${b.pctNivel != null ? ' · ' + fmtNum(b.pctNivel, 0) + '%' : ''}` : 'Sem dados', '#ffffff', '#e1e0d9', '#0b0b0b')}
+                    </div>
+                    ${subtitulo('Volume (L) por Poço')}${g.volumePoco}
+                    ${subtitulo('Vazão Média por Poço (L/h)')}${g.vazaoPoco}
+                    <div style="height:14px"></div>
+                    ${titulo('Volume de Saída', '#c2410c')}
+                    <div style="display:flex; gap:12px; margin-bottom:6px;">
+                        ${tile('Volume (L)', fmtLh(b.saida), '#fff1ea', '#f7c9b3', '#c2410c')}
+                        ${tile('Blocos irrigados', b.blocos.length, '#ffffff', '#e1e0d9', '#0b0b0b')}
+                        ${tile('Diferença (entrada − saída)', `${diferenca >= 0 ? '+' : '−'}${fmtLh(Math.abs(diferenca))}`, '#ffffff', '#e1e0d9', diferenca >= 0 ? '#006300' : '#d03b3b')}
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        ${subtitulo('Volume (L) por Bloco')}
+                        <div>${legendaCulturasHtml(b.legenda, 12)}</div>
+                    </div>
+                    ${g.volumeBloco}`;
+
+                const element = document.getElementById('img-report-grid-balanco');
+                await Promise.all(Array.from(element.querySelectorAll('img')).map(img =>
+                    img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })));
+                await new Promise(r => setTimeout(r, 150));
+
+                const blob = await htmlToImage.toBlob(element, { pixelRatio: 3, backgroundColor: '#ffffff', imagePlaceholder: IMG_RESERVA });
+                const nome = `Balanço de Água - ${b.de === b.ate ? formatDate(b.de).replace(/\//g, '-') : formatDate(b.de).replace(/\//g, '-') + ' a ' + formatDate(b.ate).replace(/\//g, '-')}.png`;
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = nome;
+                link.click();
+            } catch (err) {
+                console.error(err);
+                window.showAlert("Erro ao gerar imagem", "Não foi possível gerar a imagem do balanço.");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
+        // --- DADOS DOS BLOCOS (GESTOR) ---
+
+        let dadosBlocosCache = [];
+        let dadoBlocoEditando = null;
+        let culturasCache = [];
+
+        // Cultura plantada no bloco (legenda do gráfico de saída do balanço)
+        window.salvarCulturaBloco = async function(bloco, valor) {
+            const cultura = String(valor || '').trim();
+            try {
+                await API.salvarCultura(bloco, cultura ? cultura.charAt(0).toUpperCase() + cultura.slice(1) : '');
+                culturasCache = await API.listarCulturas();
+                renderDadosBlocos();
+            } catch (err) {
+                window.showAlert("Não foi possível salvar a cultura", err.message);
+                renderDadosBlocos();
+            }
+        }
+
+        // Interpreta uma linha no formato livre herdado da planilha
+        // (ex.: "2 Válvula Ativa", "MicroAspesor 90 L/H", "1.092")
+        function lerDadoBloco(l) {
+            const valv = String(l.valvulas || '').match(/(\d+)/);
+            const tipo = String(l.tipo_aspersor || '');
+            const vaz = tipo.match(/([\d.,]+)\s*L\/H/i);
+            return {
+                id: l.id,
+                bloco: String(l.bloco || '').toUpperCase().replace('BLOCO', '').trim(),
+                valvulas: valv ? (parseInt(valv[1]) || 1) : 1,
+                tipo: /micro/i.test(tipo) ? 'MicroAspersor' : 'Aspersor',
+                vazao: vaz ? parseFloat(vaz[1].replace(',', '.')) : 0,
+                qtd: parseFloat(String(l.qtd_aspersores || '').replace(/\./g, '').replace(/,/g, '.')) || 0,
+                data: l.data_atualizacao
+            };
+        }
+
+        async function carregarDadosBlocos(forcar) {
+            const card = document.getElementById('dadosBlocosCard');
+            card.classList.toggle('hidden', !API.isGestor());
+            if (!API.isGestor()) return;
+            if (!document.getElementById('dbData').value) document.getElementById('dbData').value = dataLocalIso();
+            try {
+                const [dados, culturas] = await Promise.all([API.listarDadosBlocos(forcar), API.listarCulturas()]);
+                dadosBlocosCache = dados.map(lerDadoBloco);
+                culturasCache = culturas || [];
+                renderDadosBlocos();
+            } catch (err) {
+                document.getElementById('dadosBlocosLista').innerHTML = `<p class="text-xs font-medium text-red-500">Não foi possível carregar: ${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        function renderDadosBlocos() {
+            const lista = document.getElementById('dadosBlocosLista');
+            if (dadosBlocosCache.length === 0) {
+                lista.innerHTML = `<p class="text-xs text-slate-400">Nenhum dado cadastrado. Sem eles, os litros dos relatórios aparecem como "--".</p>`;
+                return;
+            }
+
+            const grupos = {};
+            dadosBlocosCache.forEach(d => { (grupos[d.bloco] = grupos[d.bloco] || []).push(d); });
+            const chaves = Object.keys(grupos).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+            // Sugestões de cultura para os campos (culturas já usadas em outros blocos)
+            const sugestoes = [...new Set(culturasCache.map(c => (c.cultura || '').trim()).filter(Boolean))].sort();
+            document.getElementById('listaCulturas').innerHTML = sugestoes.map(c => `<option value="${escapeHtml(c)}">`).join('');
+
+            lista.innerHTML = chaves.map(bloco => {
+                const linhas = grupos[bloco];
+                const valvTotal = linhas.reduce((s, d) => s + d.valvulas, 0);
+                const aspTotal = linhas.reduce((s, d) => s + d.qtd, 0);
+                const vazaoTotal = linhas.reduce((s, d) => s + d.qtd * d.vazao, 0);
+                // Mesma conta do relatório: vazão do bloco dividida pelas válvulas = litros por hora de irrigação
+                const milLitrosHora = valvTotal > 0 ? vazaoTotal / valvTotal / 1000 : 0;
+
+                const linhasHtml = linhas.map(d => `
+                    <div class="flex items-center justify-between gap-2 py-2 ${dadoBlocoEditando === d.id ? 'bg-amber-50 -mx-2 px-2 rounded-lg' : ''}">
+                        <div class="min-w-0 text-[11px]">
+                            <p class="font-bold text-slate-700">${d.tipo} ${fmtNum(d.vazao, d.vazao % 1 ? 1 : 0)} L/H · ${fmtNum(d.qtd, 0)} aspersores</p>
+                            <p class="text-slate-400">${d.valvulas} válvula${d.valvulas > 1 ? 's' : ''} · atualizado ${d.data ? formatDate(d.data) : '—'}</p>
+                        </div>
+                        <div class="flex gap-0.5 shrink-0">
+                            <button type="button" onclick="window.editarDadoBloco(${d.id})" title="Editar" class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                            <button type="button" onclick="window.excluirDadoBloco(${d.id})" title="Excluir" class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                    </div>`).join('');
+
+                const culturaAtual = ((culturasCache.find(c => String(c.id) === bloco) || {}).cultura || '');
+                return `
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                    <div class="bg-green-50 px-3 py-2 border-b border-green-100">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-black text-green-800 uppercase tracking-wide">Bloco ${escapeHtml(bloco)}</span>
+                            <span class="text-[10px] font-bold text-green-700">${fmtNum(aspTotal, 0)} asp. · ${valvTotal} válv. · ≈ ${fmtNum(milLitrosHora, 3)} mil L/h</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-1.5">
+                            <i data-lucide="sprout" class="w-3.5 h-3.5 text-green-700 shrink-0"></i>
+                            <input type="text" value="${escapeHtml(culturaAtual)}" placeholder="Cultura (ex: Brócolis)" list="listaCulturas" maxlength="40"
+                                onchange="window.salvarCulturaBloco('${escapeHtml(bloco)}', this.value)"
+                                class="flex-1 min-w-0 bg-white border border-green-200 rounded-md py-1 px-2 text-[11px] font-bold text-slate-700">
+                        </div>
+                    </div>
+                    <div class="px-3 divide-y divide-slate-100">${linhasHtml}</div>
+                </div>`;
+            }).join('');
+
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.editarDadoBloco = function(id) {
+            const d = id == null ? null : dadosBlocosCache.find(x => x.id === id);
+            dadoBlocoEditando = d ? d.id : null;
+            document.getElementById('dadoBlocoErro').classList.add('hidden');
+            document.getElementById('dbBloco').value = d ? d.bloco : '';
+            document.getElementById('dbValvulas').value = d ? d.valvulas : '';
+            document.getElementById('dbTipo').value = d ? d.tipo : 'MicroAspersor';
+            document.getElementById('dbVazao').value = d ? d.vazao : '';
+            document.getElementById('dbQtd').value = d ? d.qtd : '';
+            // Ao editar, sugere a data de hoje como nova data de atualização
+            document.getElementById('dbData').value = dataLocalIso();
+
+            document.getElementById('dadoBlocoFormTitulo').innerText = d ? `Editando Bloco ${d.bloco}` : 'Nova Linha';
+            document.getElementById('dadoBlocoCancelar').classList.toggle('hidden', !d);
+            document.getElementById('dadoBlocoBtn').innerHTML = d
+                ? `<i data-lucide="save" class="w-4 h-4"></i> Salvar Alteração`
+                : `<i data-lucide="plus" class="w-4 h-4"></i> Adicionar Linha`;
+            const form = document.getElementById('dadoBlocoForm');
+            form.classList.toggle('bg-amber-50', !!d);
+            if (d) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            renderDadosBlocos();
+        }
+
+        window.salvarDadoBloco = async function(e) {
+            e.preventDefault();
+            const erro = document.getElementById('dadoBlocoErro');
+            const btn = document.getElementById('dadoBlocoBtn');
+            const bloco = document.getElementById('dbBloco').value.trim().toUpperCase();
+            const valvulas = parseInt(document.getElementById('dbValvulas').value) || 0;
+            const vazao = lerNumero('dbVazao');
+            const qtd = parseInt(document.getElementById('dbQtd').value) || 0;
+            erro.classList.add('hidden');
+
+            if (!bloco || valvulas < 1 || !vazao || qtd < 1) {
+                erro.innerText = "Preencha bloco, válvulas, vazão e quantidade de aspersores.";
+                erro.classList.remove('hidden');
+                return;
+            }
+
+            const linha = {
+                bloco: `Bloco ${bloco}`,
+                valvulas: `${valvulas} Válvula${valvulas > 1 ? 's' : ''} Ativa${valvulas > 1 ? 's' : ''}`,
+                tipo_aspersor: `${document.getElementById('dbTipo').value} ${String(vazao).replace('.', ',')} L/H`,
+                qtd_aspersores: String(qtd),
+                data_atualizacao: document.getElementById('dbData').value
+            };
+            if (dadoBlocoEditando) linha.id = dadoBlocoEditando;
+
+            btn.disabled = true;
+            try {
+                await API.salvarDadoBloco(linha);
+                window.editarDadoBloco(null);
+                await carregarDadosBlocos(true);
+                window.calcularConsumoProgramacao();
+            } catch (err) {
+                erro.innerText = err.message;
+                erro.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        window.excluirDadoBloco = function(id) {
+            const d = dadosBlocosCache.find(x => x.id === id);
+            if (!d) return;
+            pendingConfirmCallback = async () => {
+                try {
+                    await API.excluirDadoBloco(id);
+                    if (dadoBlocoEditando === id) window.editarDadoBloco(null);
+                    await carregarDadosBlocos(true);
+                    window.calcularConsumoProgramacao();
+                } catch (err) {
+                    window.showAlert("Não foi possível excluir", err.message);
+                }
+            };
+            window.showConfirmModal("Excluir linha?",
+                `Bloco ${d.bloco}: ${d.tipo} ${d.vazao} L/H com ${fmtNum(d.qtd, 0)} aspersores. O cálculo de litros desse bloco vai mudar.`,
+                "EXCLUIR");
+        }
+
         // --- LOG DE ATIVIDADES (GESTOR) ---
 
         const ROTULOS_TABELA = {
@@ -3267,6 +4303,8 @@
             if (d.minutos != null && linha.tabela !== 'envios_relatorio') partes.push(`${d.minutos} min`);
             if (d.motor_ligado || d.motor_desligado) partes.push(`Motor ${d.motor_ligado ? d.motor_ligado.slice(0, 5) : '--:--'} → ${d.motor_desligado ? d.motor_desligado.slice(0, 5) : '--:--'}`);
             if (d.numero) partes.push(`Nº ${d.numero}`);
+            if (linha.tabela === 'leituras_poco' && d.status) partes.push(d.status === 'desligado' ? `Desligado${d.motivo ? ' (' + d.motivo + ')' : ''}` : d.status === 'religado' ? 'Religado' : 'Ligado');
+            if (Number(d.segundos_15l) > 0) partes.push(`${fmtNum(d.segundos_15l, 2)} s/15 L = ${fmtLh(vazaoDe15L(Number(d.segundos_15l)))} L/h`);
             if (d.vazao_m3h != null) partes.push(`${fmtNum(d.vazao_m3h, 2)} m³/h`);
             if (d.leitura_hidrometro_m3 != null) partes.push(`${fmtNum(d.leitura_hidrometro_m3, 3)} m³`);
             if (d.nivel_m != null) partes.push(`${fmtNum(d.nivel_m, 2)} m`);
@@ -3648,7 +4686,8 @@
             // Gestão de usuários: somente o administrador
             document.getElementById('usersBtn').classList.toggle('hidden', !API.isAdmin());
             if (!API.isAdmin()) window.closeUsersModal();
-            document.getElementById('cadastrosAgua').classList.toggle('hidden', !gestor);
+            aplicarVisibilidadeGestor();
+            document.getElementById('dadosBlocosCard').classList.toggle('hidden', !gestor);
             const naProgramacao = !document.getElementById('tabProgramacao').classList.contains('hidden');
             document.getElementById('navbarProgAction').classList.toggle('hidden', !naProgramacao || !gestor);
             if (!gestor && progUnlocked) {
@@ -3707,8 +4746,11 @@
         
         window.lucide = lucide;
 
+        // Logo hospedado junto com o app (o Imgur passou a bloquear o acesso, o que
+        // quebrava a geração das imagens dos relatórios). URL absoluta porque o
+        // manifesto é montado como data: URL.
         function getBrandLogoDataUri() {
-            return 'https://i.imgur.com/cTvgRMt.png';
+            return new URL('./logo.png', location.href).href;
         }
 
         function applyBrandAssets() {
@@ -3725,6 +4767,8 @@
             if (reportLogoProg) reportLogoProg.src   = logoUri;
             const loginLogo = document.getElementById('loginLogo');
             if (loginLogo)      loginLogo.src        = logoUri;
+            const logoBalanco = document.getElementById('reportLogoBalanco');
+            if (logoBalanco)    logoBalanco.src      = logoUri;
             if (manifestLink) {
                 const manifest = {
                     name: 'Registro Irrigação',
@@ -3736,8 +4780,7 @@
                     theme_color: '#15803d',
                     orientation: 'portrait-primary',
                     icons: [
-                        { src: logoUri, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-                        { src: logoUri, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+                        { src: logoUri, sizes: '567x567', type: 'image/png', purpose: 'any' }
                     ]
                 };
                 manifestLink.href = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
