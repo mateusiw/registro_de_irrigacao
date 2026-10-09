@@ -879,6 +879,40 @@
     }
 
     // ------------------------------------------------------------
+    // Tempo real: registros de irrigação dos outros irrigadores
+    // ------------------------------------------------------------
+    const CAMPOS_REGISTRO_EQUIPE = 'id,data,bloco,minutos,turno,observacao,responsavel,registrado_em,criado_por';
+
+    // Registros do dia feitos por outros usuários (sem conexão, usa a última cópia salva)
+    async function listarRegistrosEquipe(data) {
+        const u = usuarioAtual();
+        const lista = await buscarComCache(`registros_equipe_${data}`,
+            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('data', data).limit(2000), 0).catch(() => []);
+        return lista.filter(r => !u || r.criado_por !== u.id);
+    }
+
+    let canalRegistros = null;
+
+    // Avisa a cada registro de irrigação criado, alterado ou excluído por outro
+    // usuário. cb({ tipo: 'INSERT'|'UPDATE'|'DELETE', registro, id })
+    function assinarRegistros(cb) {
+        if (canalRegistros) sb.removeChannel(canalRegistros);
+        canalRegistros = sb.channel('registros-irrigacao')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'registros_irrigacao' }, payload => {
+                const u = usuarioAtual();
+                const registro = payload.new && payload.new.id ? payload.new : null;
+                if (registro && u && registro.criado_por === u.id) return; // o próprio usuário
+                cb({ tipo: payload.eventType, registro, id: (registro || payload.old || {}).id });
+            })
+            .subscribe();
+    }
+
+    function cancelarAssinaturaRegistros() {
+        if (canalRegistros) sb.removeChannel(canalRegistros);
+        canalRegistros = null;
+    }
+
+    // ------------------------------------------------------------
     // Log de auditoria (somente gestor, precisa de internet)
     // ------------------------------------------------------------
     async function listarAuditoria(limite) {
@@ -985,6 +1019,8 @@
         // balanço de água
         lerConfiguracao, salvarConfiguracao, listarHorasPocoPeriodo, salvarHorasPoco, listarRegistrosPeriodo, listarLeiturasPocoPeriodo,
         listarCulturas, salvarCultura,
+        // tempo real (registros dos outros irrigadores)
+        listarRegistrosEquipe, assinarRegistros, cancelarAssinaturaRegistros,
         // auditoria e sessões
         listarAuditoria, iniciarSessao, informarAbaSessao, encerrarSessao, listarSessoes, atividadesDaSessao
     };
