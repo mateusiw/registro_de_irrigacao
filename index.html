@@ -3326,7 +3326,7 @@
         let usuarioEditando = null;
 
         window.openUsersModal = async function() {
-            if (!API.isGestor()) return;
+            if (!API.isAdmin()) return;
             const modal = document.getElementById('usersModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
@@ -3395,6 +3395,7 @@
                             <p class="text-[11px] text-slate-400 truncate">@${escapeHtml(p.usuario)} · ${escapeHtml(p.nome)}</p>
                             <div class="flex gap-1 mt-1">
                                 <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${gestor ? 'bg-sky-100 text-sky-700' : 'bg-green-100 text-green-700'}">${gestor ? 'Gestor' : 'Irrigador'}</span>
+                                ${p.administrador ? '<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-white">Administrador</span>' : ''}
                                 ${p.ativo ? '' : '<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-100 text-red-600">Desativado</span>'}
                             </div>
                         </div>
@@ -3402,7 +3403,7 @@
                             <i data-lucide="pencil" class="w-4 h-4"></i>
                         </button>
                     </div>
-                    ${souEu ? '' : `
+                    ${souEu || p.administrador ? '' : `
                     <div class="flex flex-wrap gap-1.5 mt-2">
                         <button type="button" onclick="window.alternarPapelUsuario('${id}')"
                             class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${gestor ? 'bg-green-50 text-green-700' : 'bg-sky-50 text-sky-700'}">
@@ -3640,12 +3641,13 @@
             const gestor = API.isGestor();
             document.getElementById('userNameLabel').innerText = u.nome_curto || u.nome;
             const badge = document.getElementById('userRoleBadge');
-            badge.innerText = gestor ? 'Gestor' : 'Irrigador';
+            badge.innerText = API.isAdmin() ? 'Admin' : gestor ? 'Gestor' : 'Irrigador';
             badge.className = `text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 ${gestor ? 'bg-sky-100 text-sky-700' : 'bg-green-100 text-green-700'}`;
             document.getElementById('collaborator').value = u.nome;
             document.getElementById('auditBtn').classList.toggle('hidden', !gestor);
-            document.getElementById('usersBtn').classList.toggle('hidden', !gestor);
-            if (!gestor) window.closeUsersModal();
+            // Gestão de usuários: somente o administrador
+            document.getElementById('usersBtn').classList.toggle('hidden', !API.isAdmin());
+            if (!API.isAdmin()) window.closeUsersModal();
             document.getElementById('cadastrosAgua').classList.toggle('hidden', !gestor);
             const naProgramacao = !document.getElementById('tabProgramacao').classList.contains('hidden');
             document.getElementById('navbarProgAction').classList.toggle('hidden', !naProgramacao || !gestor);
