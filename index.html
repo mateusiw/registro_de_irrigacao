@@ -235,8 +235,8 @@
                         class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
                 </div>
 
-                <!-- HORA MOTOR (valor único do dia, não por bloco) -->
-                <div class="px-5 py-4">
+                <!-- HORA MOTOR (valor único do dia, não por bloco) — desativada por enquanto, ver HORA_MOTOR_ATIVA -->
+                <div id="horaMotorSection" class="hidden px-5 py-4">
                     <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
                         <i data-lucide="power" class="w-3.5 h-3.5 text-green-500"></i> Hora Motor
                         <span class="normal-case font-normal text-slate-300 ml-1">(capturado do aparelho)</span>
@@ -1412,8 +1412,11 @@
         let editingId = null;
 
         // Hora Motor: valor único do dia (não por bloco/registro), capturado do relógio do aparelho (não digitável)
-        let motorLigadoHora = localStorage.getItem('irrigation_motorLigado') || null;
-        let motorDesligadoHora = localStorage.getItem('irrigation_motorDesligado') || null;
+        // Hora Motor desativada por enquanto: troque para true para voltar a exibir
+        // os botões e a exigir os horários antes de registrar/enviar o relatório.
+        const HORA_MOTOR_ATIVA = false;
+        let motorLigadoHora = HORA_MOTOR_ATIVA ? (localStorage.getItem('irrigation_motorLigado') || null) : null;
+        let motorDesligadoHora = HORA_MOTOR_ATIVA ? (localStorage.getItem('irrigation_motorDesligado') || null) : null;
 
         let programacao = JSON.parse(localStorage.getItem('irrigation_programacao')) || [];
         let editingProgId = null;
@@ -1661,7 +1664,7 @@
                 }
                 editingId = null;
             } else {
-                if (records.length === 0 && !motorLigadoHora) {
+                if (HORA_MOTOR_ATIVA && records.length === 0 && !motorLigadoHora) {
                     window.showAlert("Hora Motor obrigatória", "Antes de registrar o primeiro bloco do dia, toque em \"Ligar Motor\" (logo abaixo da Data) para registrar o horário automaticamente pelo relógio do aparelho.");
                     return;
                 }
@@ -2728,7 +2731,7 @@
                 return;
             }
 
-            if (!motorLigadoHora || !motorDesligadoHora) {
+            if (HORA_MOTOR_ATIVA && (!motorLigadoHora || !motorDesligadoHora)) {
                 window.showAlert("Hora Motor obrigatória", "Toque em \"Ligar Motor\" e \"Desligar Motor\" (perto da Data) para registrar o horário automaticamente pelo relógio do aparelho antes de enviar o relatório.");
                 return;
             }
@@ -4794,6 +4797,7 @@
             const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
             document.getElementById('date').value = localDate;
             
+            document.getElementById('horaMotorSection').classList.toggle('hidden', !HORA_MOTOR_ATIVA);
             if (motorLigadoHora) window.registrarHoraMotorValor('ligar', motorLigadoHora);
             if (motorDesligadoHora) window.registrarHoraMotorValor('desligar', motorDesligadoHora);
 
