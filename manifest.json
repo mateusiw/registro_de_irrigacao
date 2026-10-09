@@ -1,0 +1,18 @@
+{
+  "name": "Registro Irrigação",
+  "short_name": "Irrigação",
+  "description": "Registro diário de irrigação - SPG Oásis",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#15803d",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./logo.png",
+      "sizes": "567x567",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
