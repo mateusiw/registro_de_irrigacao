@@ -1619,6 +1619,8 @@
         let diaEquipe = null;
         let expirationTime = localStorage.getItem('irrigation_expiration');
         let editingId = null;
+        // Gestor editando o registro de outro irrigador (id do banco)
+        let editingEquipeId = null;
 
         // Hora Motor: valor único do dia (não por bloco/registro), capturado do relógio do aparelho (não digitável)
         // Hora Motor desativada por enquanto: troque para true para voltar a exibir
@@ -1817,6 +1819,7 @@
 
         window.resetFormState = function() {
             editingId = null;
+            editingEquipeId = null;
             const formContainer = document.getElementById('formContainer');
             if(formContainer) {
                 formContainer.classList.remove('ring-2', 'ring-amber-400');
@@ -1860,6 +1863,24 @@
             const observation = document.getElementById('observation').value;
             const turnoEl = document.querySelector('input[name="turno"]:checked');
             const turno = turnoEl ? turnoEl.value : '';
+
+            // Gestor corrigindo o registro de outro irrigador
+            if (editingEquipeId !== null) {
+                const reg = registrosEquipe.find(r => r.id === editingEquipeId);
+                if (!API.isGestor() || !reg) { window.cancelEdit(); return; }
+                API.atualizarRegistroEquipe(reg.id, { date, block, minutes, turno, observation });
+                Object.assign(reg, { data: date, bloco: block, minutos: minutes, turno, observacao: observation });
+                if (date !== diaEquipe) registrosEquipe = registrosEquipe.filter(r => r.id !== reg.id);
+                editingEquipeId = null;
+                const btn = document.getElementById('submitBtn');
+                btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Alteração Salva!`;
+                btn.className = "btn-primary w-full bg-green-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
+                renderList();
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+                // Limpa o formulário para o gestor não registrar outro bloco no nome dele sem querer
+                setTimeout(() => window.cancelEdit(), 1000);
+                return;
+            }
 
             if (editingId !== null) {
                 const index = records.findIndex(r => r.id === editingId);
@@ -1924,7 +1945,44 @@
             window.updateMinutesHelper();
 
             editingId = id;
+            editingEquipeId = null;
+            aplicarModoEdicao("Editando Registro");
+        }
 
+        // Gestor: abre no formulário o registro lançado por outro irrigador
+        window.editRecordEquipe = function(id) {
+            if (!API.isGestor()) return;
+            const reg = registrosEquipe.find(r => r.id === id);
+            if (!reg) return;
+
+            document.getElementById('date').value = reg.data;
+            document.getElementById('block').value = String(reg.bloco || '').toUpperCase();
+            document.getElementById('minutes').value = reg.minutos || '';
+            document.getElementById('observation').value = reg.observacao || '';
+            document.querySelectorAll('input[name="turno"]').forEach(r => { r.checked = r.value === reg.turno; });
+            window.updateMinutesHelper();
+
+            editingId = null;
+            editingEquipeId = id;
+            aplicarModoEdicao(`Editando registro de ${reg.responsavel || 'outro irrigador'}`);
+        }
+
+        window.deleteRecordEquipe = function(id) {
+            if (!API.isGestor()) return;
+            const reg = registrosEquipe.find(r => r.id === id);
+            if (!reg) return;
+            pendingConfirmCallback = () => {
+                API.excluirRegistroEquipe(reg.id);
+                registrosEquipe = registrosEquipe.filter(r => r.id !== reg.id);
+                if (editingEquipeId === reg.id) window.cancelEdit();
+                renderList();
+            };
+            window.showConfirmModal("Excluir Registro?",
+                `Apagar a irrigação do Bloco ${String(reg.bloco || '').toUpperCase()} (${formatDuration(Number(reg.minutos) || 0)}) lançada por ${reg.responsavel || 'outro irrigador'}? Dá para restaurar pelo Log de Atividades.`,
+                "EXCLUIR");
+        }
+
+        function aplicarModoEdicao(titulo) {
             const formContainer = document.getElementById('formContainer');
             formContainer.classList.add('ring-2', 'ring-amber-400');
             const header = formContainer.querySelector('.bg-gradient-to-r');
@@ -1934,7 +1992,7 @@
             submitBtn.className = "btn-primary w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
             submitBtn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> <span id="submitBtnText">Salvar Alterações</span>`;
 
-            document.getElementById('formTitleText').innerText = "Editando Registro";
+            document.getElementById('formTitleText').innerText = titulo;
             const cancelBtn = document.getElementById('cancelEditBtn');
             cancelBtn.classList.remove('hidden');
             cancelBtn.classList.add('flex');
@@ -2103,9 +2161,22 @@
                         ? `<span class="text-[11px] font-bold ${turnoBg} border flex items-center gap-1 px-2 py-0.5 rounded-full"><i data-lucide="${turnoIcon}" class="w-3 h-3"></i>${rec.turno}</span>`
                         : '';
                     if (rec._equipe) {
+                        const editandoEquipe = rec.id === editingEquipeId;
+                        // Gestor pode corrigir/excluir o que os irrigadores lançaram
+                        const acoesGestor = API.isGestor() ? `
+                        <div class="flex gap-1 shrink-0">
+                            <button type="button" onclick="window.editRecordEquipe('${escapeHtml(rec.id)}')"
+                                class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Editar (gestor)">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                            </button>
+                            <button type="button" onclick="window.deleteRecordEquipe('${escapeHtml(rec.id)}')"
+                                class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Excluir (gestor)">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>` : '';
                         return `
-                    <div class="flex justify-between items-start px-4 py-3.5 border-b border-slate-100 last:border-0 bg-sky-50/60 transition-colors">
-                        <div class="flex flex-col gap-1.5 w-full">
+                    <div class="flex justify-between items-start px-4 py-3.5 border-b border-slate-100 last:border-0 ${editandoEquipe ? 'bg-amber-50 border-l-4 border-l-amber-400' : 'bg-sky-50/60'} transition-colors">
+                        <div class="flex flex-col gap-1.5 w-full ${acoesGestor ? 'mr-3' : ''}">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="text-sm font-bold text-sky-700 flex items-center gap-1">
                                     <i data-lucide="clock" class="w-3.5 h-3.5"></i>
@@ -2120,6 +2191,7 @@
                                 <span class="break-words leading-relaxed">${escapeHtml(rec.observation)}</span>
                             </div>` : ''}
                         </div>
+                        ${acoesGestor}
                     </div>
                     `;
                     }
@@ -2232,6 +2304,8 @@
             const novo = evento.tipo === 'INSERT' && r && r.data === diaEquipe && !registrosEquipe.some(x => x.id === r.id);
             const outros = registrosEquipe.filter(x => x.id !== evento.id);
             registrosEquipe = r && r.data === diaEquipe ? outros.concat(registroEquipeParaLista(r)) : outros;
+            // O registro que o gestor estava editando foi apagado por outra pessoa
+            if (editingEquipeId !== null && !registrosEquipe.some(x => x.id === editingEquipeId)) window.cancelEdit();
             renderList();
             if (novo) {
                 mostrarAvisoEquipe(`${r.responsavel || 'Outro irrigador'} registrou o BLOCO ${String(r.bloco || '').toUpperCase()}` +
