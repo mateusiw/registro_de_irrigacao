@@ -349,12 +349,39 @@
     }
 
     // ------------------------------------------------------------
+    // Dados dos blocos (base do cálculo de litros) — edição só gestor, online
+    // ------------------------------------------------------------
+    function listarDadosBlocos(forcarAtualizacao) {
+        return buscarComCache('dados_bloco',
+            () => sb.from('dados_bloco').select('*').order('id'),
+            forcarAtualizacao ? 0 : 5 * 60 * 1000);
+    }
+
+    async function salvarDadoBloco(linha) {
+        if (!navigator.onLine) throw new Error("Sem conexão. Alterar os dados dos blocos precisa de internet.");
+        const { id, ...valores } = linha;
+        const resp = id
+            ? await sb.from('dados_bloco').update(valores).eq('id', id).select().maybeSingle()
+            : await sb.from('dados_bloco').insert(valores).select().maybeSingle();
+        if (resp.error) throw erroSupabase(resp);
+        if (!resp.data) throw new Error("Sem permissão para alterar os dados dos blocos.");
+        localStorage.removeItem(K.cache('dados_bloco'));
+        return resp.data;
+    }
+
+    async function excluirDadoBloco(id) {
+        if (!navigator.onLine) throw new Error("Sem conexão. Alterar os dados dos blocos precisa de internet.");
+        const resp = await sb.from('dados_bloco').delete().eq('id', id).select();
+        if (resp.error) throw erroSupabase(resp);
+        if (!resp.data || resp.data.length === 0) throw new Error("Sem permissão para excluir.");
+        localStorage.removeItem(K.cache('dados_bloco'));
+    }
+
+    // ------------------------------------------------------------
     // Cálculo de consumo (antigo calcularConsumo do Code.gs)
     // ------------------------------------------------------------
     async function calcularConsumo(registros, responsavel) {
-        const dados = await buscarComCache('dados_bloco',
-            () => sb.from('dados_bloco').select('*').order('id'),
-            5 * 60 * 1000);
+        const dados = await listarDadosBlocos();
         const infoBlocos = {};
 
         // "yyyy-MM-dd" -> "dd/MM"
@@ -756,6 +783,70 @@
     }
 
     // ------------------------------------------------------------
+    // Balanço de água: horas ligado, configurações e registros do dia
+    // ------------------------------------------------------------
+    async function lerConfiguracao(chave, padrao) {
+        try {
+            const lista = await buscarComCache('configuracoes', () => sb.from('configuracoes').select('chave,valor'), 10 * 60 * 1000);
+            const item = (lista || []).find(c => c.chave === chave);
+            return item ? item.valor : padrao;
+        } catch (e) {
+            return padrao;
+        }
+    }
+
+    // Somente gestor, precisa de internet
+    async function salvarConfiguracao(chave, valor) {
+        if (!navigator.onLine) throw new Error("Sem conexão. Alterar configurações precisa de internet.");
+        const resp = await sb.from('configuracoes').upsert({ chave, valor }, { onConflict: 'chave' }).select().maybeSingle();
+        if (resp.error) throw erroSupabase(resp);
+        if (!resp.data) throw new Error("Sem permissão para alterar configurações.");
+        localStorage.removeItem(K.cache('configuracoes'));
+    }
+
+    // Horas ligado por poço/dia no período (datas yyyy-MM-dd, inclusivas)
+    async function listarHorasPocoPeriodo(de, ate) {
+        const lista = await buscarComCache(`horas_poco_${de}_${ate}`,
+            () => sb.from('horas_poco_dia').select('*').gte('data', de).lte('data', ate), 0).catch(() => []);
+        return mesclarPendentes('horas_poco_dia', lista).filter(h => h.data >= de && h.data <= ate);
+    }
+
+    // Leituras de poço no período (dias no horário local do aparelho)
+    async function listarLeiturasPocoPeriodo(de, ate) {
+        const inicio = new Date(de + 'T00:00:00');
+        const fim = new Date(new Date(ate + 'T00:00:00').getTime() + 24 * 3600 * 1000);
+        const lista = await buscarComCache(`leituras_poco_${de}_${ate}`, () => sb.from('leituras_poco').select('*')
+            .gte('data_hora', inicio.toISOString()).lt('data_hora', fim.toISOString()).limit(5000), 0).catch(() => []);
+        return mesclarPendentes('leituras_poco', lista)
+            .filter(l => { const t = new Date(l.data_hora); return t >= inicio && t < fim; });
+    }
+
+    // Cultura de cada bloco (legenda do gráfico de saída)
+    async function listarCulturas() {
+        return buscarComCache('culturas_bloco', () => sb.from('culturas_bloco').select('id,cultura'), 10 * 60 * 1000).catch(() => []);
+    }
+
+    // Somente gestor, precisa de internet
+    async function salvarCultura(bloco, cultura) {
+        if (!navigator.onLine) throw new Error("Sem conexão. Alterar a cultura precisa de internet.");
+        const resp = await sb.from('culturas_bloco').upsert({ id: String(bloco), cultura: cultura || null }, { onConflict: 'id' }).select().maybeSingle();
+        if (resp.error) throw erroSupabase(resp);
+        if (!resp.data) throw new Error("Sem permissão para alterar a cultura.");
+        localStorage.removeItem(K.cache('culturas_bloco'));
+    }
+
+    function salvarHorasPoco(pocoId, data, horas) {
+        enfileirar('horas_poco_dia', 'upsert', { id: pocoId + '_' + data, poco_id: pocoId, data, horas });
+    }
+
+    // Registros de irrigação do período, de todos os irrigadores (saída de água)
+    async function listarRegistrosPeriodo(de, ate) {
+        const lista = await buscarComCache(`registros_${de}_${ate}`,
+            () => sb.from('registros_irrigacao').select('id,data,bloco,minutos').gte('data', de).lte('data', ate).limit(10000), 0).catch(() => []);
+        return mesclarPendentes('registros_irrigacao', lista).filter(r => r.data >= de && r.data <= ate);
+    }
+
+    // ------------------------------------------------------------
     // Log de auditoria (somente gestor, precisa de internet)
     // ------------------------------------------------------------
     async function listarAuditoria(limite) {
@@ -778,9 +869,14 @@
         // irrigação e programação
         enviar, historico, programacaoAtual, salvarProgramacaoItem, excluirProgramacaoItem,
         salvarRegistro, excluirRegistro, salvarMotor, registrarEnvio,
+        // dados dos blocos
+        listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
         // água
         listarPocos, salvarPoco, listarLeiturasPocos, salvarLeituraPoco, excluirLeituraPoco,
         listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, salvarLeituraReservatorio, excluirLeituraReservatorio,
+        // balanço de água
+        lerConfiguracao, salvarConfiguracao, listarHorasPocoPeriodo, salvarHorasPoco, listarRegistrosPeriodo, listarLeiturasPocoPeriodo,
+        listarCulturas, salvarCultura,
         // auditoria
         listarAuditoria
     };
