@@ -313,8 +313,13 @@
                         <i data-lucide="map-pin" class="w-3.5 h-3.5 text-green-500"></i> Localização
                     </label>
                     <input type="text" id="block" required maxlength="2" placeholder="(ex: A ou 1)"
-                        oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"
+                        oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); window.atualizarAvisoBloco()"
                         class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-base font-bold uppercase text-slate-800 tracking-widest transition-all">
+                    <!-- Aviso: bloco já irrigado hoje por outro irrigador -->
+                    <div id="blockAviso" class="hidden mt-2 items-start gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-2">
+                        <i data-lucide="info" class="w-3.5 h-3.5 shrink-0 mt-0.5"></i>
+                        <span id="blockAvisoText"></span>
+                    </div>
                 </div>
 
                 <!-- TEMPO -->
@@ -358,6 +363,10 @@
             <div class="flex justify-between items-end px-1">
                 <div>
                     <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Relatório Diário de Irrigação</h3>
+                    <p class="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                        <span id="equipeAoVivoDot" class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                        Inclui os registros de hoje dos outros irrigadores
+                    </p>
                     <!-- TIMER DE LIMPEZA AUTOMÁTICA -->
                     <span id="autoCleanTimer" class="text-[10px] font-mono text-orange-500 font-bold block h-3 mt-1"></span>
                     <!-- HORA MOTOR DO DIA (valor único, não por bloco) -->
@@ -1036,6 +1045,12 @@
         </div>
     </div>
 
+    <!-- AVISO RÁPIDO: OUTRO IRRIGADOR REGISTROU UM BLOCO -->
+    <div id="equipeToast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[55] w-[calc(100%-2rem)] max-w-sm bg-slate-800 text-white rounded-2xl shadow-2xl px-4 py-3 items-center gap-3">
+        <div class="bg-sky-500 rounded-full p-1.5 shrink-0"><i data-lucide="droplets" class="w-4 h-4"></i></div>
+        <p id="equipeToastText" class="text-xs font-bold leading-snug"></p>
+    </div>
+
     <!-- MODAL DE CONFIRMAÇÃO (EXCLUSÃO / LIMPAR TUDO) -->
     <div id="confirmModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-6 text-center relative">
@@ -1577,6 +1592,9 @@
         const TURNO_ORDER = { 'Madrugada': 0, 'Manhã': 1, 'Tarde': 2, 'Noite': 3 };
 
         let records = JSON.parse(localStorage.getItem('irrigation_records')) || [];
+        // Registros de hoje feitos pelos outros irrigadores (recebidos em tempo real, somente leitura)
+        let registrosEquipe = [];
+        let diaEquipe = null;
         let expirationTime = localStorage.getItem('irrigation_expiration');
         let editingId = null;
 
@@ -1991,14 +2009,27 @@
             );
         }
 
+        // Registros do dia de todos os irrigadores: os do próprio aparelho e os
+        // dos outros (estes marcados com _equipe, sem editar/excluir)
+        function registrosDoDia() {
+            const meuNome = API.nomeUsuario();
+            return records.map(r => Object.assign({}, r, { responsavel: meuNome }))
+                .concat(registrosEquipe.map(r => ({
+                    id: r.id, date: r.data, block: String(r.bloco || '').toUpperCase(), minutes: Number(r.minutos) || 0,
+                    turno: r.turno || '', observation: r.observacao || '', responsavel: r.responsavel || 'Outro irrigador', _equipe: true
+                })));
+        }
+
         function renderList() {
             const list = document.getElementById('recordsList');
             const empty = document.getElementById('emptyState');
             const badge = document.getElementById('recordCountBadge');
 
-            if(badge) badge.innerText = records.length;
+            const todos = registrosDoDia();
+            if(badge) badge.innerText = todos.length;
+            window.atualizarAvisoBloco();
 
-            if (records.length === 0) {
+            if (todos.length === 0) {
                 list.innerHTML = '';
                 if(empty) empty.classList.remove('hidden');
                 return;
@@ -2007,7 +2038,7 @@
             if(empty) empty.classList.add('hidden');
 
             const grouped = {};
-            records.forEach(rec => {
+            todos.forEach(rec => {
                 const key = rec.block;
                 if (!grouped[key]) grouped[key] = [];
                 grouped[key].push(rec);
@@ -2049,6 +2080,27 @@
                     const turnoBadge = rec.turno
                         ? `<span class="text-[11px] font-bold ${turnoBg} border flex items-center gap-1 px-2 py-0.5 rounded-full"><i data-lucide="${turnoIcon}" class="w-3 h-3"></i>${rec.turno}</span>`
                         : '';
+                    if (rec._equipe) {
+                        return `
+                    <div class="flex justify-between items-start px-4 py-3.5 border-b border-slate-100 last:border-0 bg-sky-50/60 transition-colors">
+                        <div class="flex flex-col gap-1.5 w-full">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-bold text-sky-700 flex items-center gap-1">
+                                    <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                                    ${formatDuration(rec.minutes)}
+                                </span>
+                                ${turnoBadge}
+                                <span class="text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-200 flex items-center gap-1 px-2 py-0.5 rounded-full"><i data-lucide="user" class="w-3 h-3"></i>${escapeHtml(rec.responsavel)}</span>
+                            </div>
+                            ${rec.observation ? `
+                            <div class="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500 italic bg-white px-2 py-1.5 rounded-lg border border-slate-100">
+                                <i data-lucide="message-square" class="w-3 h-3 shrink-0 mt-0.5 text-slate-400"></i>
+                                <span class="break-words leading-relaxed">${escapeHtml(rec.observation)}</span>
+                            </div>` : ''}
+                        </div>
+                    </div>
+                    `;
+                    }
                     return `
                     <div class="flex justify-between items-start px-4 py-3.5 border-b border-slate-100 last:border-0 ${bgClass} transition-colors">
                         <div class="flex flex-col gap-1.5 w-full mr-3">
@@ -2100,6 +2152,84 @@
             
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
+
+        // --- TEMPO REAL: REGISTROS DOS OUTROS IRRIGADORES ---
+
+        function registroEquipeParaLista(r) {
+            return { id: r.id, data: r.data, bloco: r.bloco, minutos: r.minutos, turno: r.turno,
+                     observacao: r.observacao, responsavel: r.responsavel, registrado_em: r.registrado_em };
+        }
+
+        // Busca os registros de hoje dos outros irrigadores (também serve de reserva
+        // quando a conexão em tempo real cai, ex.: celular com a tela desligada)
+        async function carregarRegistrosEquipe() {
+            const dia = dataLocalIso();
+            const lista = await API.listarRegistrosEquipe(dia);
+            if (dia !== dataLocalIso() || !API.usuarioAtual()) return; // virou o dia ou saiu enquanto carregava
+            diaEquipe = dia;
+            registrosEquipe = lista.map(registroEquipeParaLista);
+            renderList();
+        }
+
+        function aoMudarRegistroEquipe(evento) {
+            if (diaEquipe !== dataLocalIso()) { carregarRegistrosEquipe(); return; }
+            const r = evento.registro;
+            const novo = evento.tipo === 'INSERT' && r && r.data === diaEquipe && !registrosEquipe.some(x => x.id === r.id);
+            const outros = registrosEquipe.filter(x => x.id !== evento.id);
+            registrosEquipe = r && r.data === diaEquipe ? outros.concat(registroEquipeParaLista(r)) : outros;
+            renderList();
+            if (novo) {
+                mostrarAvisoEquipe(`${r.responsavel || 'Outro irrigador'} registrou o BLOCO ${String(r.bloco || '').toUpperCase()}` +
+                    ` · ${formatDuration(Number(r.minutos) || 0)}${r.turno ? ' · ' + r.turno : ''}`);
+            }
+        }
+
+        let timerAvisoEquipe = null;
+        function mostrarAvisoEquipe(texto) {
+            const toast = document.getElementById('equipeToast');
+            document.getElementById('equipeToastText').innerText = texto;
+            toast.classList.remove('hidden');
+            toast.classList.add('flex');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            clearTimeout(timerAvisoEquipe);
+            timerAvisoEquipe = setTimeout(() => { toast.classList.add('hidden'); toast.classList.remove('flex'); }, 5000);
+        }
+
+        // Ao digitar o bloco, avisa se outro irrigador já irrigou esse bloco hoje
+        window.atualizarAvisoBloco = function() {
+            const aviso = document.getElementById('blockAviso');
+            if (!aviso) return;
+            const bloco = document.getElementById('block').value.trim().toUpperCase();
+            const doBloco = bloco ? registrosEquipe.filter(r => String(r.bloco || '').toUpperCase() === bloco) : [];
+            aviso.classList.toggle('hidden', doBloco.length === 0);
+            aviso.classList.toggle('flex', doBloco.length > 0);
+            if (doBloco.length) {
+                document.getElementById('blockAvisoText').innerText = `Bloco ${bloco} já irrigado hoje: ` + doBloco
+                    .map(r => `${r.responsavel || 'outro irrigador'} (${formatDuration(Number(r.minutos) || 0)}${r.turno ? ', ' + r.turno : ''})`)
+                    .join(' · ');
+            }
+        }
+
+        function iniciarTempoReal() {
+            document.getElementById('equipeAoVivoDot').className = 'w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse';
+            API.assinarRegistros(aoMudarRegistroEquipe);
+            carregarRegistrosEquipe();
+        }
+
+        function pararTempoReal() {
+            API.cancelarAssinaturaRegistros();
+            registrosEquipe = [];
+            diaEquipe = null;
+            document.getElementById('equipeAoVivoDot').className = 'w-1.5 h-1.5 rounded-full bg-slate-300';
+            renderList();
+        }
+
+        // Reserva: reconecta ao voltar para o app ou a internet, e recarrega a cada minuto
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && API.usuarioAtual() && diaEquipe) iniciarTempoReal();
+        });
+        window.addEventListener('online', () => { if (API.usuarioAtual() && diaEquipe) iniciarTempoReal(); });
+        setInterval(() => { if (API.usuarioAtual() && diaEquipe && document.visibilityState === 'visible') carregarRegistrosEquipe(); }, 60 * 1000);
 
         // --- SISTEMA DE ABAS ---
 
@@ -2896,7 +3026,7 @@
         // --- SISTEMA DE MODAL MULTI-STEP ---
 
         window.startReportFlow = function() {
-            if (records.length === 0) {
+            if (registrosDoDia().length === 0) {
                 window.showAlert("Lista Vazia", "Não há registros para enviar no momento.");
                 return;
             }
@@ -2934,18 +3064,22 @@
             
             if(typeof lucide !== 'undefined') lucide.createIcons();
 
+            // O relatório inclui os registros do dia de todos os irrigadores
+            const regs = registrosDoDia();
+            const irrigadores = [...new Set(regs.map(r => r.responsavel).filter(Boolean))];
+
             // Prepara a grid do relatório nos bastidores
-            const reportDateRef = records.length > 0 ? formatDate(records[0].date) : formatDate(new Date().toISOString().split('T')[0]);
+            const reportDateRef = regs.length > 0 ? formatDate(regs[0].date) : formatDate(new Date().toISOString().split('T')[0]);
             document.getElementById('reportDate').innerText = reportDateRef;
             document.getElementById('reportMotorHora').innerText = (motorLigadoHora && motorDesligadoHora)
                 ? `Motor: ${motorLigadoHora} → ${motorDesligadoHora}` : '';
-            document.getElementById('reportTotalCount').innerText = records.length;
+            document.getElementById('reportTotalCount').innerText = regs.length;
 
-            const uniqueBlocks = new Set(records.map(r => r.block)).size;
+            const uniqueBlocks = new Set(regs.map(r => r.block)).size;
             document.getElementById('reportBlockCount').innerText = uniqueBlocks;
 
             let totalMinutes = 0;
-            records.forEach(r => { totalMinutes += r.minutes || 0; });
+            regs.forEach(r => { totalMinutes += r.minutes || 0; });
             const tHours = Math.floor(totalMinutes / 60);
             const tMins = totalMinutes % 60;
             
@@ -2955,7 +3089,9 @@
                 document.getElementById('reportTotalDuration').innerText = `${tHours}h ${tMins}min`;
             }
 
-            document.getElementById('reportCollaborator').innerText = document.getElementById('collaborator').value;
+            document.getElementById('reportCollaborator').innerText = irrigadores.length > 1
+                ? `${document.getElementById('collaborator').value} · Irrigadores: ${irrigadores.join(', ')}`
+                : document.getElementById('collaborator').value;
 
             // --- INTEGRAÇÃO APPS SCRIPT ---
             let infoBlocosImagem = {};
@@ -2970,7 +3106,7 @@
 
             try {
                 const data = await window.IrrigacaoAPI.enviar({
-                    registros: records,
+                    registros: regs,
                     responsavel: nomeResponsavel
                 });
 
@@ -2992,14 +3128,14 @@
                 records.forEach(rec => API.salvarRegistro(rec));
                 API.registrarEnvio({
                     tipo: 'irrigacao',
-                    data: records.length > 0 ? records[0].date : dataLocalIso(),
-                    qtd_registros: records.length,
+                    data: regs.length > 0 ? regs[0].date : dataLocalIso(),
+                    qtd_registros: regs.length,
                     qtd_blocos: uniqueBlocks,
                     total_minutos: totalMinutes,
                     total_litros_mil: totalLitrosEnvio,
                     motor_ligado: motorLigadoHora || null,
                     motor_desligado: motorDesligadoHora || null,
-                    itens: records.map(r => ({ bloco: r.block, minutos: r.minutes, turno: r.turno, observacao: r.observation, data: r.date }))
+                    itens: regs.map(r => ({ bloco: r.block, minutos: r.minutes, turno: r.turno, observacao: r.observation, data: r.date, responsavel: r.responsavel }))
                 });
             } catch (err) {
                 console.error("Erro ao registrar o envio:", err);
@@ -3010,7 +3146,7 @@
 
             // Agrupa por bloco, e dentro do bloco por turno
             const groupedByBlock = {};
-            records.forEach(rec => {
+            regs.forEach(rec => {
                 const k = rec.block;
                 if (!groupedByBlock[k]) groupedByBlock[k] = {};
                 const t = rec.turno || '—';
@@ -3025,7 +3161,7 @@
                     const turnos = Object.keys(turnoMap).sort((a, b) => (TURNO_ORDER[a] ?? 99) - (TURNO_ORDER[b] ?? 99));
 
                     const blocoInfo = infoBlocosImagem[blockKey];
-                    const totalBlocoMin = records
+                    const totalBlocoMin = regs
                         .filter(r => r.block === blockKey)
                         .reduce((s, r) => s + (r.minutes || 0), 0);
                     const bH = Math.floor(totalBlocoMin / 60);
@@ -3052,11 +3188,15 @@
                             aguaTexto = blocoInfo.litrosMil.replace(',', '.') + ' mil L';
                         }
 
-                        const obs = recs.filter(r => r.observation).map(r => r.observation).join(' | ');
+                        const obs = recs.filter(r => r.observation).map(r => escapeHtml(r.observation)).join(' | ');
+                        // Quem irrigou neste turno (só quando há mais de um irrigador no dia)
+                        const quem = irrigadores.length > 1
+                            ? [...new Set(recs.map(r => r.responsavel).filter(Boolean))].map(escapeHtml).join(', ')
+                            : '';
 
                         return `
                         <div style="display:flex; align-items:center; padding:9px 0; border-bottom:1px solid #f1f5f9;">
-                            <div style="width:100px; font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">${turno !== '—' ? turno : '—'}</div>
+                            <div style="width:100px; font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">${turno !== '—' ? turno : '—'}${quem ? `<div style="font-size:8px; font-weight:700; color:#0369a1; text-transform:none; letter-spacing:0; margin-top:2px;">${quem}</div>` : ''}</div>
                             <div style="width:80px; font-size:13px; font-weight:800; color:#1f2937;">${tempoTexto}</div>
                             <div style="flex:1; font-size:13px; font-weight:800; color:#15803d;">${aguaTexto}</div>
                         </div>
@@ -5317,6 +5457,7 @@
             pendingConfirmCallback = async () => {
                 clearInterval(timerContagemOnline);
                 window.fecharOnline();
+                pararTempoReal();
                 await API.logout();
                 progUnlocked = false;
                 window.updateProgLockUI();
@@ -5427,6 +5568,7 @@
             }
             window.switchTab('registro');
             renderList();
+            iniciarTempoReal();
             window.updateProgLockUI();
             await carregarPerfis();
             window.calcularConsumoProgramacao();
