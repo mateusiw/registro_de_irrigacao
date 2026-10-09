@@ -778,6 +778,11 @@
         enfileirar('leituras_poco', 'upsert', Object.assign({ id: novoId(), responsavel: nomeUsuario() }, leitura));
     }
 
+    // Corrige uma leitura já registrada (o dono ou o gestor); quem registrou continua o mesmo
+    function atualizarLeituraPoco(id, valores) {
+        enfileirar('leituras_poco', 'update', { id: String(id), valores });
+    }
+
     function excluirLeituraPoco(id) {
         enfileirar('leituras_poco', 'delete', { id });
     }
@@ -1129,7 +1134,7 @@
         // dados dos blocos
         listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
         // água
-        listarPocos, salvarPoco, listarLeiturasPocos, listarLeiturasDoPoco, salvarLeituraPoco, excluirLeituraPoco,
+        listarPocos, salvarPoco, listarLeiturasPocos, listarLeiturasDoPoco, salvarLeituraPoco, atualizarLeituraPoco, excluirLeituraPoco,
         listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, listarLeiturasReservPeriodo, salvarLeituraReservatorio, atualizarLeituraReservatorio, excluirLeituraReservatorio,
         excluirCadastro, listarManutencoes, salvarManutencao, excluirManutencao,
         // balanço de água
