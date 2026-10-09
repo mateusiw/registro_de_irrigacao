@@ -768,6 +768,22 @@
         return linha;
     }
 
+    // Manutenções dos poços (qualquer usuário registra; funciona offline)
+    async function listarManutencoes() {
+        const lista = await buscarComCache('manutencoes_poco', () => sb.from('manutencoes_poco')
+            .select('*').order('data', { ascending: false }).limit(1000), 0).catch(() => []);
+        return mesclarPendentes('manutencoes_poco', lista)
+            .sort((a, b) => String(b.data).localeCompare(String(a.data)) || String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    }
+
+    function salvarManutencao(manutencao) {
+        enfileirar('manutencoes_poco', 'upsert', Object.assign({ id: novoId(), responsavel: nomeUsuario() }, manutencao));
+    }
+
+    function excluirManutencao(id) {
+        enfileirar('manutencoes_poco', 'delete', { id });
+    }
+
     // Exclui um poço ou reservatório (somente gestor, precisa de internet).
     // Se já tiver leituras, o banco recusa (erro 23503) para preservar o histórico.
     async function excluirCadastro(tabela, id) {
@@ -889,7 +905,7 @@
         // água
         listarPocos, salvarPoco, listarLeiturasPocos, salvarLeituraPoco, excluirLeituraPoco,
         listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, salvarLeituraReservatorio, excluirLeituraReservatorio,
-        excluirCadastro,
+        excluirCadastro, listarManutencoes, salvarManutencao, excluirManutencao,
         // balanço de água
         lerConfiguracao, salvarConfiguracao, listarHorasPocoPeriodo, salvarHorasPoco, listarRegistrosPeriodo, listarLeiturasPocoPeriodo,
         listarCulturas, salvarCultura,
