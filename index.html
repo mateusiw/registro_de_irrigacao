@@ -1305,12 +1305,19 @@
     </div>
 
     <!-- MODAL DO LOG DE ATIVIDADES (SOMENTE GESTOR) -->
-    <div id="auditModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-5 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
-            <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center justify-between">
+    <!-- z-[45]: fica abaixo das janelas de confirmação e alerta (restaurar backup) -->
+    <div id="auditModal" class="fixed inset-0 bg-slate-900/60 z-[45] hidden items-center justify-center p-5 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center justify-between shrink-0">
                 <h3 class="text-base font-bold text-white flex items-center gap-2"><i data-lucide="scroll-text" class="w-5 h-5"></i> Log de Atividades</h3>
-                <button type="button" onclick="window.closeAuditModal()" class="text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <div class="flex items-center gap-1">
+                    <button type="button" onclick="window.openAuditModal()" title="Atualizar" class="p-1.5 text-white/80 hover:text-white"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                    <button type="button" onclick="window.closeAuditModal()" class="p-1.5 text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
             </div>
+            <p class="shrink-0 px-4 py-2 border-b border-slate-100 bg-slate-50 text-[10px] font-medium text-slate-500 leading-relaxed">
+                Toque em uma atividade para ver o <b>antes e depois</b>. Use <b>Restaurar</b> para voltar ao valor que estava naquela hora.
+            </p>
             <div id="auditBody" class="overflow-y-auto divide-y divide-slate-100"></div>
         </div>
     </div>
@@ -2171,7 +2178,40 @@
             renderList();
         }
 
+        // Registro do próprio usuário alterado fora deste aparelho (ex.: restaurado ou
+        // corrigido pelo gestor pelo log): atualiza a lista do aparelho
+        function aoMudarRegistroProprio(evento) {
+            if (evento.idLocal == null) return;
+            const idx = records.findIndex(x => x.id === evento.idLocal);
+            if (evento.tipo === 'DELETE') {
+                if (idx === -1) return;
+                records.splice(idx, 1);
+                if (editingId === evento.idLocal) window.cancelEdit();
+                saveData();
+                return;
+            }
+            const r = evento.registro;
+            if (!r) return;
+            const rec = { id: evento.idLocal, date: r.data, block: String(r.bloco || '').toUpperCase(), minutes: Number(r.minutos) || 0,
+                          turno: r.turno || '', observation: r.observacao || '', registradoEm: r.registrado_em };
+            if (idx !== -1) {
+                records[idx] = Object.assign({}, records[idx], rec);
+            } else if (r.data === dataLocalIso()) {
+                if (records.length === 0) {
+                    expirationTime = Date.now() + (24 * 60 * 60 * 1000);
+                    localStorage.setItem('irrigation_expiration', expirationTime);
+                }
+                records.push(rec);
+            } else {
+                return;
+            }
+            records.sort((a, b) => a.block.localeCompare(b.block, undefined, {numeric: true}));
+            saveData();
+            updateTimerDisplay();
+        }
+
         function aoMudarRegistroEquipe(evento) {
+            if (evento.proprio) { aoMudarRegistroProprio(evento); return; }
             if (diaEquipe !== dataLocalIso()) { carregarRegistrosEquipe(); return; }
             const r = evento.registro;
             const novo = evento.tipo === 'INSERT' && r && r.data === diaEquipe && !registrosEquipe.some(x => x.id === r.id);
@@ -4989,6 +5029,148 @@
             return partes.join(' · ');
         }
 
+        // ----- Antes e depois de cada atividade -----
+
+        const ROTULOS_CAMPO = {
+            data: 'Data', bloco: 'Bloco', minutos: 'Tempo', turno: 'Turno', observacao: 'Observação', responsavel: 'Responsável',
+            dia: 'Dia', litros_estimados: 'Litros estimados (mil)', tipo_aspersor: 'Aspersores', qtd_aspersores: 'Qtd. aspersores',
+            motor_ligado: 'Motor ligado', motor_desligado: 'Motor desligado', numero: 'Número', nome: 'Nome', ativo: 'Ativo',
+            poco_id: 'Poço', reservatorio_id: 'Reservatório', data_hora: 'Data e hora', status: 'Status', segundos_15l: 'Segundos (15 L)',
+            motivo: 'Motivo', data_parada: 'Data da parada', horas_ligado: 'Horas ligado/dia', horas: 'Horas ligado', horas_padrao: 'Bombeia (h/dia)',
+            nivel_m: 'Nível (m)', altura_maxima_m: 'Altura máx. (m)', capacidade_m3: 'Capacidade (m³)', tipo: 'Tipo', descricao: 'Descrição',
+            executado_por: 'Feito por', custo: 'Custo (R$)', cultura: 'Cultura', valvulas: 'Válvulas', data_atualizacao: 'Atualizado em',
+            papel: 'Papel', nome_curto: 'Nome curto', excluido_em: 'Excluído em'
+        };
+        // Campos internos que não interessam no antes/depois
+        const CAMPOS_OCULTOS = ['id', 'created_at', 'updated_at', 'criado_por', 'atualizado_por', 'vazao_lh', 'data_envio', 'registrado_em', 'itens'];
+        // Itens que o gestor pode restaurar pelo log (mesma lista do banco)
+        const TABELAS_RESTAURAVEIS = ['registros_irrigacao', 'programacoes', 'motor_diario', 'pocos', 'leituras_poco', 'reservatorios',
+            'leituras_reservatorio', 'manutencoes_poco', 'horas_poco_dia', 'culturas_bloco', 'dados_bloco'];
+
+        let auditoriaCache = {};   // id do log -> linha (para restaurar)
+
+        function fmtValorAuditoria(campo, v) {
+            if (v === null || v === undefined || v === '') return '—';
+            if (typeof v === 'boolean') return v ? 'Sim' : 'Não';
+            if (campo === 'minutos') return formatDuration(Number(v));
+            if (campo === 'poco_id') { const p = pocosCache.find(x => x.id === v); return p ? `Poço ${p.numero}` : 'Poço'; }
+            if (campo === 'reservatorio_id') { const r = reservCache.find(x => x.id === v); return r ? r.nome : 'Reservatório'; }
+            if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return formatDate(v);
+            if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) return fmtDataHora(v);
+            if (typeof v === 'string' && /^\d{2}:\d{2}:\d{2}$/.test(v)) return v.slice(0, 5);
+            if (typeof v === 'object') return JSON.stringify(v);
+            return String(v);
+        }
+
+        function ehExclusao(l) {
+            return l.acao === 'DELETE' || (l.acao === 'UPDATE' && l.dados_depois && l.dados_depois.excluido_em && !(l.dados_antes || {}).excluido_em);
+        }
+
+        // Frase principal, ex.: "Fulano registrou que irrigou o Bloco 12 por 15min (Manhã) no dia 09/10"
+        function fraseAuditoria(l) {
+            const quem = `<span class="font-black">${escapeHtml(l.usuario_nome || 'Sistema')}</span>`;
+            const d = l.dados_depois || l.dados_antes || {};
+            const a = acaoDaAuditoria(l);
+            if (l.tabela === 'registros_irrigacao') {
+                const bloco = `<b>Bloco ${escapeHtml(d.bloco || '?')}</b>`;
+                const detalhe = `por <b>${formatDuration(Number(d.minutos) || 0)}</b>${d.turno ? ` (${escapeHtml(d.turno)})` : ''}${d.data ? ` no dia ${formatDate(d.data)}` : ''}`;
+                if (l.acao === 'INSERT') return `${quem} registrou que irrigou o ${bloco} ${detalhe}`;
+                if (ehExclusao(l)) return `${quem} excluiu a irrigação do ${bloco} ${detalhe}`;
+                return `${quem} alterou a irrigação do ${bloco}`;
+            }
+            const resumo = resumoAuditoria(l);
+            return `${quem} ${a.verbo} ${ROTULOS_TABELA[l.tabela] || l.tabela}${resumo ? `<span class="text-slate-500"> · ${escapeHtml(resumo)}</span>` : ''}`;
+        }
+
+        // Quadro "antes → depois" (alteração) ou lista dos valores (registro novo / exclusão)
+        function detalhesAuditoriaHtml(l) {
+            const antes = l.dados_antes || {}, depois = l.dados_depois || {};
+            const campos = [...new Set([...Object.keys(antes), ...Object.keys(depois)])].filter(c => !CAMPOS_OCULTOS.includes(c));
+            const rotulo = c => ROTULOS_CAMPO[c] || c.replace(/_/g, ' ');
+            let linhas;
+            if (l.acao === 'UPDATE') {
+                const mudou = campos.filter(c => JSON.stringify(antes[c] ?? null) !== JSON.stringify(depois[c] ?? null));
+                linhas = mudou.length === 0 ? `<p class="text-slate-400">Nenhum campo visível mudou.</p>` : mudou.map(c => `
+                    <div class="flex flex-wrap items-baseline gap-x-1.5 py-1">
+                        <span class="font-bold text-slate-500 w-28 shrink-0">${escapeHtml(rotulo(c))}</span>
+                        <span class="text-red-600 line-through">${escapeHtml(fmtValorAuditoria(c, antes[c]))}</span>
+                        <span class="text-slate-400">→</span>
+                        <span class="text-green-700 font-bold">${escapeHtml(fmtValorAuditoria(c, depois[c]))}</span>
+                    </div>`).join('');
+            } else {
+                const fonte = l.acao === 'DELETE' ? antes : depois;
+                linhas = campos.filter(c => fonte[c] !== null && fonte[c] !== undefined && fonte[c] !== '').map(c => `
+                    <div class="flex gap-1.5 py-1">
+                        <span class="font-bold text-slate-500 w-28 shrink-0">${escapeHtml(rotulo(c))}</span>
+                        <span class="${l.acao === 'DELETE' ? 'text-red-600' : 'text-slate-700'} break-words min-w-0">${escapeHtml(fmtValorAuditoria(c, fonte[c]))}</span>
+                    </div>`).join('') || `<p class="text-slate-400">Sem detalhes.</p>`;
+            }
+            const titulo = l.acao === 'UPDATE' ? 'Antes → Depois' : l.acao === 'DELETE' ? 'Como estava antes de excluir' : 'Valores registrados';
+            const regAparelho = (depois.registrado_em || antes.registrado_em)
+                ? `<p class="text-[10px] text-slate-400 mt-1">Registrado no aparelho em ${fmtDataHora(depois.registrado_em || antes.registrado_em)} · gravado no banco em ${fmtDataHora(l.criado_em)}</p>` : '';
+
+            let botao = '';
+            if (API.isGestor() && TABELAS_RESTAURAVEIS.includes(l.tabela) && ['INSERT', 'UPDATE', 'DELETE'].includes(l.acao)) {
+                const texto = l.acao === 'INSERT' ? 'Desfazer este registro' : `Restaurar como estava às ${fmtHora(l.criado_em)}`;
+                botao = `<button type="button" onclick="event.stopPropagation(); window.restaurarDoLog(${Number(l.id)})"
+                    class="mt-2 w-full flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider py-2 rounded-lg ${l.acao === 'INSERT' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-sky-50 text-sky-700 hover:bg-sky-100'}">
+                    <i data-lucide="${l.acao === 'INSERT' ? 'undo-2' : 'history'}" class="w-3.5 h-3.5"></i> ${texto}</button>`;
+            }
+            return `
+                <div class="mt-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px]">
+                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">${titulo}</p>
+                    ${linhas}
+                    ${regAparelho}
+                    ${botao}
+                </div>`;
+        }
+
+        // Uma linha do log; toque para abrir o antes/depois
+        function itemAuditoriaHtml(l, prefixo, compacto) {
+            auditoriaCache[l.id] = l;
+            const a = acaoDaAuditoria(l);
+            const idDet = `${prefixo}_${l.id}`;
+            return `
+            <div class="flex items-start gap-${compacto ? 2 : 3} ${compacto ? 'py-2' : 'px-4 py-3'} cursor-pointer hover:bg-slate-50/70" onclick="window.alternarDetalheAuditoria('${idDet}')">
+                <div class="${compacto ? 'w-6 h-6' : 'w-7 h-7'} rounded-full ${a.cor} flex items-center justify-center shrink-0"><i data-lucide="${a.icone}" class="${compacto ? 'w-3 h-3' : 'w-3.5 h-3.5'}"></i></div>
+                <div class="min-w-0 flex-1">
+                    <p class="${compacto ? 'text-[11px]' : 'text-xs'} text-slate-700 leading-snug">${fraseAuditoria(l)}</p>
+                    <p class="text-[10px] font-bold text-slate-400 mt-0.5 flex items-center gap-1">${compacto ? fmtHora(l.criado_em) : fmtDataHora(l.criado_em)}
+                        <i data-lucide="chevron-down" class="w-3 h-3"></i></p>
+                    <div id="${idDet}" class="hidden">${detalhesAuditoriaHtml(l)}</div>
+                </div>
+            </div>`;
+        }
+
+        window.alternarDetalheAuditoria = function(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle('hidden');
+        }
+
+        window.restaurarDoLog = function(idLog) {
+            const l = auditoriaCache[idLog];
+            if (!l || !API.isGestor()) return;
+            const d = l.dados_depois || l.dados_antes || {};
+            const item = l.tabela === 'registros_irrigacao' ? `a irrigação do Bloco ${d.bloco || '?'}` : (ROTULOS_TABELA[l.tabela] || l.tabela);
+            const texto = l.acao === 'INSERT'
+                ? `Isso apaga ${item} registrada por ${l.usuario_nome || 'alguém'} em ${fmtDataHora(l.criado_em)}.`
+                : `${item.charAt(0).toUpperCase() + item.slice(1)} volta a ficar como estava antes da ação de ${l.usuario_nome || 'alguém'} em ${fmtDataHora(l.criado_em)}${l.acao === 'DELETE' ? ' (será criada de novo)' : ''}. A restauração também fica registrada no log.`;
+            pendingConfirmCallback = async () => {
+                try {
+                    await API.restaurarAuditoria(idLog);
+                    window.showAlert(l.acao === 'INSERT' ? "Registro desfeito" : "Restaurado", "Pronto. O valor anterior já está no banco de dados.");
+                    carregarRegistrosEquipe();
+                    if (!document.getElementById('tabAgua').classList.contains('hidden')) window.carregarAgua();
+                    if (!document.getElementById('tabProgramacao').classList.contains('hidden') && !progUnlocked) window.syncProgramacaoFromSheet();
+                    if (!document.getElementById('auditModal').classList.contains('hidden')) window.openAuditModal();
+                } catch (err) {
+                    window.showAlert("Não foi possível restaurar", err.message);
+                }
+            };
+            window.showConfirmModal(l.acao === 'INSERT' ? "Desfazer registro?" : "Restaurar valor anterior?", texto,
+                l.acao === 'INSERT' ? "DESFAZER" : "RESTAURAR", l.acao === 'INSERT' ? 'undo-2' : 'history');
+        }
+
         window.openAuditModal = async function() {
             const modal = document.getElementById('auditModal');
             const body = document.getElementById('auditBody');
@@ -5001,23 +5183,7 @@
                 const linhas = await API.listarAuditoria(150);
                 body.innerHTML = linhas.length === 0
                     ? `<p class="text-xs text-slate-400 text-center py-10">Nenhuma atividade registrada.</p>`
-                    : linhas.map(l => {
-                        const excluiu = l.acao === 'DELETE' || (l.acao === 'UPDATE' && l.dados_depois && l.dados_depois.excluido_em && !(l.dados_antes || {}).excluido_em);
-                        const acao = l.acao === 'CRIAR_LOGIN' ? { verbo: 'criou', icone: 'user-plus', cor: 'text-sky-600 bg-sky-50' }
-                                   : l.acao === 'REDEFINIR_SENHA' ? { verbo: 'redefiniu a senha de um', icone: 'key-round', cor: 'text-amber-600 bg-amber-50' }
-                                   : excluiu ? { verbo: 'excluiu', icone: 'trash-2', cor: 'text-red-500 bg-red-50' }
-                                   : l.acao === 'INSERT' ? { verbo: 'registrou', icone: 'plus', cor: 'text-green-600 bg-green-50' }
-                                   : { verbo: 'alterou', icone: 'pencil', cor: 'text-amber-600 bg-amber-50' };
-                        return `
-                        <div class="flex items-start gap-3 px-4 py-3">
-                            <div class="w-7 h-7 rounded-full ${acao.cor} flex items-center justify-center shrink-0"><i data-lucide="${acao.icone}" class="w-3.5 h-3.5"></i></div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-xs text-slate-700"><span class="font-black">${escapeHtml(l.usuario_nome || 'Sistema')}</span> ${acao.verbo} ${ROTULOS_TABELA[l.tabela] || l.tabela}</p>
-                                <p class="text-[11px] text-slate-500 truncate">${escapeHtml(resumoAuditoria(l))}</p>
-                                <p class="text-[10px] font-bold text-slate-400 mt-0.5">${fmtDataHora(l.criado_em)}</p>
-                            </div>
-                        </div>`;
-                    }).join('');
+                    : linhas.map(l => itemAuditoriaHtml(l, 'auditDet', false)).join('');
             } catch (err) {
                 body.innerHTML = `<p class="text-xs font-medium text-red-500 text-center py-10 px-4">Não foi possível carregar: ${escapeHtml(err.message)}</p>`;
             }
@@ -5175,17 +5341,7 @@
             el.innerHTML = linhas.length === 0
                 ? `<p class="text-[11px] text-slate-400 py-3 text-center">Nenhuma alteração nesta sessão (só consultou o app).</p>`
                 : `<p class="text-[10px] font-bold text-slate-400 pt-2 pb-1">${linhas.length} ${linhas.length === 1 ? 'ação' : 'ações'} nesta sessão</p>` +
-                  linhas.map(l => {
-                      const a = acaoDaAuditoria(l);
-                      return `
-                      <div class="flex items-start gap-2 py-2">
-                          <div class="w-6 h-6 rounded-full ${a.cor} flex items-center justify-center shrink-0"><i data-lucide="${a.icone}" class="w-3 h-3"></i></div>
-                          <div class="min-w-0 flex-1 text-[11px]">
-                              <p class="text-slate-700"><b>${fmtHora(l.criado_em)}</b> · ${a.verbo} ${ROTULOS_TABELA[l.tabela] || l.tabela}</p>
-                              <p class="text-slate-500 truncate">${escapeHtml(resumoAuditoria(l))}</p>
-                          </div>
-                      </div>`;
-                  }).join('');
+                  linhas.map(l => itemAuditoriaHtml(l, 'sessDet', true)).join('');
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
