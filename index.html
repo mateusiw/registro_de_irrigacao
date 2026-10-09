@@ -6505,16 +6505,23 @@
             return new URL('./logo.png', location.href).href;
         }
 
+        // Ícone do app instalado e da aba do navegador (continua o ícone antigo;
+        // a logo nova aparece no login e nos relatórios)
+        function getAppIconUri() {
+            return new URL('./icone-app.png', location.href).href;
+        }
+
         function applyBrandAssets() {
             const logoUri = getBrandLogoDataUri();
+            const iconeUri = getAppIconUri();
             const favicon        = document.getElementById('siteFavicon');
             const appleTouchIcon = document.getElementById('siteAppleTouchIcon');
             const manifestLink   = document.getElementById('siteManifest');
             const reportLogo     = document.getElementById('reportLogo');
             const reportLogoProg = document.getElementById('reportLogoProg');
 
-            if (favicon)        favicon.href        = logoUri;
-            if (appleTouchIcon) appleTouchIcon.href = logoUri;
+            if (favicon)        favicon.href        = iconeUri;
+            if (appleTouchIcon) appleTouchIcon.href = iconeUri;
             if (reportLogo)     reportLogo.src      = logoUri;
             if (reportLogoProg) reportLogoProg.src   = logoUri;
             const loginLogo = document.getElementById('loginLogo');
@@ -6532,7 +6539,7 @@
                     theme_color: '#15803d',
                     orientation: 'portrait-primary',
                     icons: [
-                        { src: logoUri, sizes: '600x600', type: 'image/png', purpose: 'any' }
+                        { src: iconeUri, sizes: '567x567', type: 'image/png', purpose: 'any' }
                     ]
                 };
                 manifestLink.href = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
