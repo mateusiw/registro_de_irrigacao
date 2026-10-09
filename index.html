@@ -746,10 +746,13 @@
         <div id="aguaSecPocos" class="agua-sec space-y-6">
 
             <!-- LEITURA DE POÇO -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="bg-gradient-to-r from-teal-600 to-teal-700 px-5 py-4 flex items-center gap-2">
+            <div id="pocoFormCard" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div id="pocoFormHeader" class="bg-gradient-to-r from-teal-600 to-teal-700 px-5 py-4 flex items-center gap-2">
                     <i data-lucide="droplet" class="w-5 h-5 text-white opacity-90"></i>
-                    <h2 class="text-base font-bold text-white">Vazão dos Poços</h2>
+                    <h2 id="pocoFormTitulo" class="text-base font-bold text-white">Vazão dos Poços</h2>
+                    <button id="pocoCancelEditBtn" type="button" onclick="window.cancelarEdicaoLeituraPoco()" class="hidden ml-auto items-center gap-1 text-xs font-bold text-white/80 hover:text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-all">
+                        <i data-lucide="x" class="w-3 h-3"></i> Cancelar
+                    </button>
                 </div>
                 <form onsubmit="window.addLeituraPoco(event)" class="divide-y divide-slate-100">
                     <div class="px-5 py-4">
@@ -4018,8 +4021,8 @@
         }
 
         window.carregarAgua = async function() {
-            document.getElementById('pocoDataHora').value = agoraParaInput();
             // Não troca a data/hora de uma leitura que está sendo editada
+            if (!editandoLeituraPocoId) document.getElementById('pocoDataHora').value = agoraParaInput();
             if (!editandoLeituraReservId) document.getElementById('reservDataHora').value = agoraParaInput();
             if (!document.getElementById('pocoDataParada').value) document.getElementById('pocoDataParada').value = dataLocalIso();
             window.setStatusPoco(statusPocoAtual);
@@ -4195,7 +4198,7 @@
                     const leituras = leiturasPocoDia.filter(l => l.poco_id === p.id);
                     const ultima = leituras[0];
                     const historicoHtml = leituras.map(l => `
-                        <div class="flex justify-between items-center gap-2 py-1.5 text-[11px]">
+                        <div class="flex justify-between items-center gap-2 py-1.5 text-[11px] ${l.id === editandoLeituraPocoId ? 'bg-amber-50 -mx-2 px-2 rounded-lg' : ''}">
                             <div class="min-w-0">
                                 <span class="font-bold text-slate-600">${fmtHora(l.data_hora)}</span>
                                 <span class="text-slate-400 truncate"> · ${escapeHtml(l.responsavel || '')}</span>
@@ -4209,7 +4212,8 @@
                                     ${Number(l.segundos_15l) > 0 ? `<br><span class="text-slate-400 font-medium">${fmtNum(l.segundos_15l, 2)} s</span>` : ''}
                                 </span>
                                 ${l._pendente ? '<i data-lucide="cloud-off" class="w-3.5 h-3.5 text-amber-500"></i>' : ''}
-                                ${podeExcluir(l) ? `<button type="button" onclick="window.excluirLeituraPoco('${escapeHtml(l.id)}')" class="p-1 text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+                                ${podeExcluir(l) ? `<button type="button" onclick="window.editarLeituraPoco('${escapeHtml(l.id)}')" title="Editar" class="p-1 text-slate-300 hover:text-amber-600"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>` : ''}
+                                ${podeExcluir(l) ? `<button type="button" onclick="window.excluirLeituraPoco('${escapeHtml(l.id)}')" title="Excluir" class="p-1 text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
                             </div>
                         </div>`).join('');
 
@@ -4438,16 +4442,83 @@
                 leitura.horas_ligado = horas;
             }
 
-            API.salvarLeituraPoco(leitura);
-            delete document.getElementById('pocoHorasLigado').dataset.editado;
-            // Mostra a situação do dia da leitura que acabou de ser registrada
+            // Mostra a situação do dia da leitura que acabou de ser salva
             document.getElementById('pocosDataFiltro').value = dataLocalIso(new Date(leitura.data_hora));
+            if (editandoLeituraPocoId) {
+                API.atualizarLeituraPoco(editandoLeituraPocoId, Object.assign({ horas_ligado: null }, leitura));
+                window.cancelarEdicaoLeituraPoco();
+                botaoSalvo(document.getElementById('pocoSubmitBtn'), 'Alteração Salva!');
+            } else {
+                API.salvarLeituraPoco(leitura);
+                limparFormLeituraPoco();
+                botaoSalvo(document.getElementById('pocoSubmitBtn'), 'Leitura Salva!');
+            }
+            window.carregarAgua();
+        }
+
+        function limparFormLeituraPoco() {
+            delete document.getElementById('pocoHorasLigado').dataset.editado;
             document.getElementById('pocoSegundos').value = '0,00';
             document.getElementById('pocoVazaoPreview').innerText = '—';
             document.getElementById('pocoObs').value = '';
             document.getElementById('pocoMotivoOutros').value = '';
-            botaoSalvo(document.getElementById('pocoSubmitBtn'), 'Leitura Salva!');
-            window.carregarAgua();
+        }
+
+        // ----- Editar uma leitura de poço (quem registrou ou o gestor) -----
+        let editandoLeituraPocoId = null;
+
+        function modoEdicaoPoco(ativo) {
+            const header = document.getElementById('pocoFormHeader');
+            header.classList.toggle('from-teal-600', !ativo);
+            header.classList.toggle('to-teal-700', !ativo);
+            header.classList.toggle('from-amber-500', ativo);
+            header.classList.toggle('to-amber-600', ativo);
+            document.getElementById('pocoFormCard').classList.toggle('ring-2', ativo);
+            document.getElementById('pocoFormCard').classList.toggle('ring-amber-400', ativo);
+            document.getElementById('pocoFormTitulo').innerText = ativo ? 'Editando Leitura' : 'Vazão dos Poços';
+            const cancelar = document.getElementById('pocoCancelEditBtn');
+            cancelar.classList.toggle('hidden', !ativo);
+            cancelar.classList.toggle('flex', ativo);
+            const btn = document.getElementById('pocoSubmitBtn');
+            btn.className = `btn-primary w-full ${ativo ? 'bg-amber-500 hover:bg-amber-600' : 'bg-teal-600 hover:bg-teal-700'} text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base`;
+            btn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> ${ativo ? 'Salvar Alteração' : 'Registrar Leitura'}`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.editarLeituraPoco = function(id) {
+            const l = leiturasPocoDia.concat(leiturasPocoCache).find(x => String(x.id) === String(id));
+            if (!l || !podeExcluir(l)) return;
+            editandoLeituraPocoId = l.id;
+            document.getElementById('pocoSelect').value = l.poco_id;
+            const d = new Date(l.data_hora);
+            document.getElementById('pocoDataHora').value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+            const motivoSelect = document.getElementById('pocoMotivo');
+            const motivoNaLista = l.motivo && [...motivoSelect.options].some(o => o.value === l.motivo);
+            motivoSelect.value = !l.motivo ? 'TANQUE CHEIO' : motivoNaLista ? l.motivo : 'OUTROS';
+            document.getElementById('pocoMotivoOutros').value = l.motivo && !motivoNaLista ? l.motivo : '';
+            if (l.data_parada) document.getElementById('pocoDataParada').value = l.data_parada;
+            window.setStatusPoco(STATUS_POCO[l.status] ? l.status : 'ligado');
+
+            const segundos = document.getElementById('pocoSegundos');
+            segundos.value = Number(l.segundos_15l) > 0 ? Number(l.segundos_15l).toFixed(2) : '0';
+            window.mascaraSegundos(segundos);
+            const horas = document.getElementById('pocoHorasLigado');
+            if (l.horas_ligado != null) { horas.value = l.horas_ligado; horas.dataset.editado = '1'; }
+            document.getElementById('pocoObs').value = l.observacao || '';
+            modoEdicaoPoco(true);
+            renderAgua();
+            document.getElementById('pocoFormCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        window.cancelarEdicaoLeituraPoco = function() {
+            if (!editandoLeituraPocoId) return;
+            editandoLeituraPocoId = null;
+            limparFormLeituraPoco();
+            document.getElementById('pocoDataHora').value = agoraParaInput();
+            modoEdicaoPoco(false);
+            renderAgua();
+            window.sugerirHorasLigado(false);
         }
 
         window.addLeituraReservatorio = function(e) {
@@ -4530,7 +4601,11 @@
         }
 
         window.excluirLeituraPoco = function(id) {
-            pendingConfirmCallback = () => { API.excluirLeituraPoco(id); window.carregarAgua(); };
+            pendingConfirmCallback = () => {
+                if (String(editandoLeituraPocoId) === String(id)) window.cancelarEdicaoLeituraPoco();
+                API.excluirLeituraPoco(id);
+                window.carregarAgua();
+            };
             window.showConfirmModal("Excluir Leitura?", "Tem certeza que deseja apagar esta leitura do poço?", "EXCLUIR");
         }
 
