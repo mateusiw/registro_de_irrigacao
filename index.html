@@ -2471,7 +2471,58 @@
         function iniciarTempoReal() {
             document.getElementById('equipeAoVivoDot').className = 'w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse';
             API.assinarRegistros(aoMudarRegistroEquipe);
+            API.assinarAgua(aoMudarAgua);
             carregarRegistrosEquipe();
+        }
+
+        // --- TEMPO REAL DA ABA ÁGUA (leituras de poço, níveis e manutenções) ---
+
+        let timerRecargaAgua = null;
+
+        function aoMudarAgua(evento) {
+            const r = evento.registro;
+            // Aviso rápido quando outra pessoa registra algo novo
+            if (r && evento.tipo === 'INSERT' && !evento.proprio) {
+                const quem = r.responsavel || 'Outro usuário';
+                if (evento.tabela === 'leituras_poco') {
+                    const p = pocosCache.find(x => x.id === r.poco_id);
+                    const poco = p ? `Poço ${p.numero}` : 'um poço';
+                    mostrarAvisoEquipe(r.status === 'desligado'
+                        ? `${quem} registrou o ${poco} como desligado${r.motivo ? ' (' + r.motivo + ')' : ''}`
+                        : `${quem} aferiu o ${poco}: ${fmtLh(vazaoLeitura(r))} L/h`);
+                } else if (evento.tabela === 'leituras_reservatorio') {
+                    const res = reservCache.find(x => x.id === r.reservatorio_id);
+                    mostrarAvisoEquipe(`${quem} registrou o nível ${res ? 'do ' + res.nome : 'do reservatório'}: ${fmtNum(r.nivel_m, 2)} m`);
+                } else if (evento.tabela === 'manutencoes_poco') {
+                    const p = pocosCache.find(x => x.id === r.poco_id);
+                    mostrarAvisoEquipe(`${quem} registrou uma manutenção ${p ? 'no Poço ' + p.numero : 'de poço'} (${r.tipo || ''})`);
+                }
+            }
+            // Com a aba Água aberta, atualiza a tela (vários eventos seguidos viram uma recarga só)
+            if (document.getElementById('tabAgua').classList.contains('hidden')) return;
+            clearTimeout(timerRecargaAgua);
+            timerRecargaAgua = setTimeout(recarregarAguaTempoReal, 600);
+        }
+
+        // Recarrega só os dados (não mexe no que está sendo digitado nos formulários)
+        async function recarregarAguaTempoReal() {
+            const filtroPocos = document.getElementById('pocosDataFiltro');
+            const filtroReserv = document.getElementById('reservDataFiltro');
+            const diaPocos = filtroPocos.value || dataLocalIso();
+            const diaReserv = filtroReserv.value || dataLocalIso();
+            const [leiturasPocos, leiturasReserv, manutencoes, doDiaPocos, doDiaReserv] = await Promise.all([
+                API.listarLeiturasPocos(), API.listarLeiturasReservatorios(), API.listarManutencoes(),
+                buscarLeiturasDoDia(diaPocos), API.listarLeiturasReservPeriodo(diaReserv, diaReserv)
+            ]);
+            leiturasPocoCache = leiturasPocos;
+            leiturasReservCache = leiturasReserv;
+            manutencoesCache = manutencoes;
+            // Só aplica as do dia se a data não mudou enquanto carregava
+            if ((filtroPocos.value || dataLocalIso()) === diaPocos) leiturasPocoDia = doDiaPocos;
+            if ((filtroReserv.value || dataLocalIso()) === diaReserv) leiturasReservDia = doDiaReserv;
+            renderAgua();
+            if (fichaPocoId) { renderManutencoesFicha(); renderHistoricoHoras(); }
+            if (aguaSecaoAtual === 'balanco') window.carregarBalanco();
         }
 
         function pararTempoReal() {
