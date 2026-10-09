@@ -1,4 +1,4 @@
-const CACHE = 'irrigacao-v18';
+const CACHE = 'irrigacao-v19';
 
 // Arquivos do próprio app
 const ARQUIVOS_APP = [
