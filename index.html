@@ -46,6 +46,10 @@
 
         #img-grid-container, #img-grid-container-prog { display: flex; flex-wrap: wrap; }
 
+        /* Campos da ficha do poço */
+        .ficha-campo { display: block; width: 100%; margin-top: 2px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 0.6rem; padding: 0.45rem 0.6rem; font-size: 0.8rem; color: #1e293b; }
+        .ficha-campo:disabled { background: #f1f5f9; color: #475569; border-color: #f1f5f9; }
+
         /* ===== LAYOUT DESKTOP (a partir de 1024px; o celular continua igual) =====
            As abas usam :not(.hidden) para nunca exibir uma aba escondida. */
         @media (min-width: 1024px) {
@@ -1115,6 +1119,114 @@
                 <div class="px-5 py-4">
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cadastrados</p>
                     <div id="usersList" class="divide-y divide-slate-100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: FICHA DO POÇO (dados técnicos + manutenções) -->
+    <div id="pocoModal" class="fixed inset-0 bg-slate-900/60 z-[45] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+            <div class="bg-gradient-to-r from-teal-700 to-teal-600 px-5 py-4 flex items-center justify-between shrink-0">
+                <h3 class="text-base font-bold text-white flex items-center gap-2 min-w-0">
+                    <i data-lucide="file-text" class="w-5 h-5 shrink-0"></i>
+                    <span id="pocoModalTitulo" class="truncate">Ficha do Poço</span>
+                </h3>
+                <button type="button" onclick="window.fecharFichaPoco()" class="text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="overflow-y-auto">
+                <!-- DADOS TÉCNICOS -->
+                <form id="fichaPocoForm" onsubmit="window.salvarFichaPoco(event)" class="px-5 py-4 space-y-4 border-b border-slate-100">
+                    <p id="fichaSomenteLeitura" class="hidden text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">Somente o gestor altera os dados do poço. Manutenções podem ser registradas por todos.</p>
+
+                    <div>
+                        <p class="text-[10px] font-black text-teal-700 uppercase tracking-widest mb-2">Identificação</p>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Número *</span>
+                                <input type="text" id="fp_numero" maxlength="10" required class="ficha-campo font-bold"></label>
+                            <label class="block sm:col-span-2"><span class="text-[10px] font-bold text-slate-400 uppercase">Nome / local</span>
+                                <input type="text" id="fp_nome" class="ficha-campo"></label>
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Perfuração</span>
+                                <input type="date" id="fp_data_perfuracao" class="ficha-campo"></label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-[10px] font-black text-teal-700 uppercase tracking-widest mb-2">Poço</p>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Profundidade (m)</span>
+                                <input type="number" id="fp_profundidade_m" step="0.01" min="0" inputmode="decimal" class="ficha-campo"></label>
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Diâmetro</span>
+                                <input type="text" id="fp_diametro" placeholder='ex: 6"' class="ficha-campo"></label>
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Bomba instalada a (m)</span>
+                                <input type="number" id="fp_profundidade_bomba_m" step="0.01" min="0" inputmode="decimal" class="ficha-campo"></label>
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Nível estático (m)</span>
+                                <input type="number" id="fp_nivel_estatico_m" step="0.01" min="0" inputmode="decimal" class="ficha-campo"></label>
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Nível dinâmico (m)</span>
+                                <input type="number" id="fp_nivel_dinamico_m" step="0.01" min="0" inputmode="decimal" class="ficha-campo"></label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-[10px] font-black text-teal-700 uppercase tracking-widest mb-2">Motor / Bomba</p>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <label class="block col-span-2"><span class="text-[10px] font-bold text-slate-400 uppercase">Marca e modelo</span>
+                                <input type="text" id="fp_motor" placeholder="ex: Leão 4R6PA-14" class="ficha-campo"></label>
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Potência (CV)</span>
+                                <input type="number" id="fp_potencia_cv" step="0.1" min="0" inputmode="decimal" class="ficha-campo"></label>
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Tensão</span>
+                                <input type="text" id="fp_tensao" list="listaTensoes" placeholder="ex: 380 V tri" class="ficha-campo"></label>
+                        </div>
+                        <datalist id="listaTensoes">
+                            <option value="220 V monofásico"><option value="220 V trifásico"><option value="380 V trifásico"><option value="440 V trifásico">
+                        </datalist>
+                    </div>
+
+                    <div>
+                        <p class="text-[10px] font-black text-teal-700 uppercase tracking-widest mb-2">Outorga</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Número</span>
+                                <input type="text" id="fp_outorga" class="ficha-campo"></label>
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Validade</span>
+                                <input type="date" id="fp_outorga_validade" class="ficha-campo"></label>
+                        </div>
+                        <p id="fichaOutorgaAviso" class="hidden mt-1.5 text-[11px] font-bold"></p>
+                    </div>
+
+                    <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Observações</span>
+                        <textarea id="fp_observacao" rows="2" class="ficha-campo resize-none"></textarea></label>
+
+                    <p id="fichaErro" class="hidden text-xs font-bold text-red-500"></p>
+                    <button type="submit" id="fichaSalvarBtn"
+                        class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-1.5">
+                        <i data-lucide="save" class="w-4 h-4"></i> Salvar Ficha
+                    </button>
+                </form>
+
+                <!-- MANUTENÇÕES -->
+                <div class="px-5 py-4 space-y-3">
+                    <p class="text-[10px] font-black text-teal-700 uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="wrench" class="w-3.5 h-3.5"></i> Manutenções</p>
+                    <form onsubmit="window.registrarManutencao(event)" class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Data *</span>
+                                <input type="date" id="mn_data" required class="ficha-campo"></label>
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Tipo *</span>
+                                <select id="mn_tipo" class="ficha-campo font-bold">
+                                    <option>Preventiva</option><option>Corretiva</option><option>Troca de motor/bomba</option>
+                                    <option>Limpeza do poço</option><option>Elétrica</option><option>Outros</option>
+                                </select></label>
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Quem fez *</span>
+                                <input type="text" id="mn_executado_por" required placeholder="pessoa ou empresa" class="ficha-campo"></label>
+                            <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">Custo (R$)</span>
+                                <input type="number" id="mn_custo" step="0.01" min="0" inputmode="decimal" placeholder="opcional" class="ficha-campo"></label>
+                        </div>
+                        <label class="block"><span class="text-[10px] font-bold text-slate-400 uppercase">O que foi feito</span>
+                            <textarea id="mn_descricao" rows="2" placeholder="ex: troca do rolamento e do cabo do motor" class="ficha-campo resize-none"></textarea></label>
+                        <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Registrar Manutenção
+                        </button>
+                    </form>
+                    <div id="fichaManutencoes" class="divide-y divide-slate-100"></div>
                 </div>
             </div>
         </div>
@@ -3333,10 +3445,12 @@
             aplicarVisibilidadeGestor();
             window.switchAgua(aguaSecaoAtual);
 
-            [pocosCache, leiturasPocoCache, reservCache, leiturasReservCache] = await Promise.all([
-                API.listarPocos(), API.listarLeiturasPocos(), API.listarReservatorios(), API.listarLeiturasReservatorios()
+            [pocosCache, leiturasPocoCache, reservCache, leiturasReservCache, manutencoesCache] = await Promise.all([
+                API.listarPocos(), API.listarLeiturasPocos(), API.listarReservatorios(), API.listarLeiturasReservatorios(),
+                API.listarManutencoes()
             ]);
             renderAgua();
+            if (fichaPocoId) renderManutencoesFicha();
         }
 
         function preencherSelect(id, itens, rotulo, vazio) {
@@ -3462,6 +3576,23 @@
                         </div>`).join('');
 
                     const desligado = ultima && ultima.status === 'desligado';
+                    // Resumo da ficha técnica e última manutenção
+                    const tecnica = [
+                        p.motor ? escapeHtml(p.motor) : '',
+                        p.potencia_cv ? `${fmtNum(p.potencia_cv, p.potencia_cv % 1 ? 1 : 0)} CV` : '',
+                        p.profundidade_m ? `Prof. ${fmtNum(p.profundidade_m, p.profundidade_m % 1 ? 1 : 0)} m` : ''
+                    ].filter(Boolean).join(' · ');
+                    const ultManut = manutencoesCache.find(m => m.poco_id === p.id);
+                    const outorga = situacaoOutorga(p.outorga_validade);
+                    const fichaResumo = `
+                        <div class="px-4 pt-2.5 space-y-0.5 text-[10px] text-slate-500">
+                            ${tecnica ? `<p class="flex items-center gap-1"><i data-lucide="cog" class="w-3 h-3 text-slate-400 shrink-0"></i><span class="truncate">${tecnica}</span></p>` : ''}
+                            <p class="flex items-center gap-1"><i data-lucide="wrench" class="w-3 h-3 text-slate-400 shrink-0"></i>
+                                <span class="truncate">${ultManut
+                                    ? `Última manutenção: <b class="text-slate-600">${formatDate(ultManut.data)}</b> · ${escapeHtml(ultManut.tipo)} · por ${escapeHtml(ultManut.executado_por || '—')}`
+                                    : 'Nenhuma manutenção registrada'}</span></p>
+                            ${outorga && outorga.nivel !== 'ok' ? `<p class="flex items-center gap-1 font-bold ${outorga.cor}"><i data-lucide="alert-triangle" class="w-3 h-3 shrink-0"></i>${outorga.texto}</p>` : ''}
+                        </div>`;
                     return `
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="bg-gradient-to-r from-teal-700 to-teal-600 px-4 py-3 flex justify-between items-center gap-2">
@@ -3469,8 +3600,15 @@
                                 <span class="text-sm font-bold text-white uppercase tracking-wide">Poço ${escapeHtml(p.numero)}</span>
                                 ${p.nome ? `<span class="ml-1 text-xs font-medium text-teal-100">${escapeHtml(p.nome)}</span>` : ''}
                             </div>
-                            <span class="text-xs font-bold text-teal-100 bg-white/15 px-2.5 py-1 rounded-full shrink-0">${leituras.length} leitura${leituras.length === 1 ? '' : 's'}</span>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <span class="text-xs font-bold text-teal-100 bg-white/15 px-2.5 py-1 rounded-full">${leituras.length} leitura${leituras.length === 1 ? '' : 's'}</span>
+                                <button type="button" onclick="window.abrirFichaPoco('${escapeHtml(p.id)}')"
+                                    class="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-white bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-full">
+                                    <i data-lucide="file-text" class="w-3 h-3"></i> Ficha
+                                </button>
+                            </div>
                         </div>
+                        ${fichaResumo}
                         ${ultima ? `
                         <div class="px-4 pt-3">
                             <div class="flex items-end justify-between gap-3">
@@ -3553,14 +3691,48 @@
                 }).join('');
 
             // Cadastros (gestor), cada um na sua sub-aba
-            const linhaCadastro = (tipo, item, rotulo) => `
-                <div class="flex items-center justify-between gap-2 py-2">
-                    <span class="font-bold ${item.ativo === false ? 'text-slate-300 line-through' : 'text-slate-600'} truncate">${escapeHtml(rotulo)}</span>
-                    <button type="button" onclick="window.alternarAtivo('${tipo}', '${escapeHtml(item.id)}')"
-                        class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${item.ativo === false ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}">
-                        ${item.ativo === false ? 'Reativar' : 'Desativar'}
-                    </button>
+            const campo = 'bg-white border-2 border-slate-200 rounded-lg py-1.5 px-2 text-xs text-slate-800';
+            const formEdicaoCadastro = (tipo, item) => {
+                const id = escapeHtml(item.id);
+                const campos = tipo === 'poco'
+                    ? `<div class="grid grid-cols-3 gap-1.5">
+                           <input type="text" id="editCad_numero" value="${escapeHtml(item.numero)}" maxlength="10" placeholder="Nº" class="${campo} col-span-1 font-bold">
+                           <input type="text" id="editCad_nome" value="${escapeHtml(item.nome || '')}" placeholder="Nome / local (opcional)" class="${campo} col-span-2">
+                       </div>`
+                    : `<input type="text" id="editCad_nome" value="${escapeHtml(item.nome)}" placeholder="Nome" class="${campo} w-full font-bold mb-1.5">
+                       <div class="grid grid-cols-2 gap-1.5">
+                           <input type="number" id="editCad_altura" value="${item.altura_maxima_m ?? ''}" step="0.01" min="0" inputmode="decimal" placeholder="Altura máx. (m)" class="${campo}">
+                           <input type="number" id="editCad_capacidade" value="${item.capacidade_m3 ?? ''}" step="0.01" min="0" inputmode="decimal" placeholder="Capacidade (m³)" class="${campo}">
+                       </div>`;
+                return `
+                <div class="py-2.5 px-2 -mx-2 bg-amber-50 rounded-lg space-y-1.5">
+                    ${campos}
+                    <div class="flex gap-1.5">
+                        <button type="button" onclick="window.editarCadastro(null)" class="flex-1 bg-slate-200 text-slate-600 font-bold py-1.5 rounded-lg text-[11px]">Cancelar</button>
+                        <button type="button" onclick="window.salvarEdicaoCadastro('${tipo}', '${id}')" class="flex-1 bg-slate-800 text-white font-bold py-1.5 rounded-lg text-[11px]">Salvar</button>
+                    </div>
                 </div>`;
+            };
+            const linhaCadastro = (tipo, item, rotulo) => {
+                if (cadastroEditando && cadastroEditando.tipo === tipo && cadastroEditando.id === item.id) return formEdicaoCadastro(tipo, item);
+                const id = escapeHtml(item.id);
+                const detalhe = tipo === 'reservatorio' && (item.altura_maxima_m || item.capacidade_m3)
+                    ? `<span class="block text-[10px] font-medium text-slate-400">${item.altura_maxima_m ? 'máx. ' + fmtNum(item.altura_maxima_m, 2) + ' m' : ''}${item.altura_maxima_m && item.capacidade_m3 ? ' · ' : ''}${item.capacidade_m3 ? fmtNum(item.capacidade_m3, 0) + ' m³' : ''}</span>` : '';
+                return `
+                <div class="flex items-center justify-between gap-2 py-2">
+                    <span class="min-w-0 font-bold ${item.ativo === false ? 'text-slate-300 line-through' : 'text-slate-600'} truncate">${escapeHtml(rotulo)}${detalhe}</span>
+                    <div class="flex items-center gap-0.5 shrink-0">
+                        <button type="button" onclick="${tipo === 'poco' ? `window.abrirFichaPoco('${id}')` : `window.editarCadastro('${tipo}', '${id}')`}" title="${tipo === 'poco' ? 'Ficha do poço' : 'Editar'}"
+                            class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                        <button type="button" onclick="window.excluirCadastro('${tipo}', '${id}')" title="Excluir"
+                            class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                        <button type="button" onclick="window.alternarAtivo('${tipo}', '${id}')"
+                            class="ml-1 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${item.ativo === false ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}">
+                            ${item.ativo === false ? 'Reativar' : 'Desativar'}
+                        </button>
+                    </div>
+                </div>`;
+            };
             document.getElementById('cadastrosPocosLista').innerHTML = pocosCache.length === 0
                 ? `<p class="text-slate-400 py-2">Nenhum poço cadastrado ainda.</p>`
                 : pocosCache.map(p => linhaCadastro('poco', p, rotuloPoco(p))).join('');
@@ -3684,6 +3856,208 @@
             });
             ['novoReservNome', 'novoReservAltura', 'novoReservCapacidade'].forEach(id => document.getElementById(id).value = '');
             window.carregarAgua();
+        }
+
+        // ----- Ficha do poço (dados técnicos + manutenções) -----
+        let manutencoesCache = [];
+        let fichaPocoId = null;
+
+        const CAMPOS_FICHA = ['numero', 'nome', 'data_perfuracao', 'profundidade_m', 'diametro', 'profundidade_bomba_m',
+            'nivel_estatico_m', 'nivel_dinamico_m', 'motor', 'potencia_cv', 'tensao', 'outorga', 'outorga_validade', 'observacao'];
+        const CAMPOS_FICHA_NUMERICOS = ['profundidade_m', 'profundidade_bomba_m', 'nivel_estatico_m', 'nivel_dinamico_m', 'potencia_cv'];
+
+        // Situação da outorga: vencida, vencendo em até 60 dias ou em dia
+        function situacaoOutorga(validade) {
+            if (!validade) return null;
+            const dias = Math.round((new Date(validade + 'T12:00:00') - new Date(dataLocalIso() + 'T12:00:00')) / 86400000);
+            if (dias < 0) return { nivel: 'vencida', texto: `Outorga vencida em ${formatDate(validade)}`, cor: 'text-red-600' };
+            if (dias <= 60) return { nivel: 'vencendo', texto: `Outorga vence em ${dias} dia${dias === 1 ? '' : 's'} (${formatDate(validade)})`, cor: 'text-amber-600' };
+            return { nivel: 'ok', texto: `Outorga válida até ${formatDate(validade)}`, cor: 'text-emerald-600' };
+        }
+
+        window.abrirFichaPoco = function(id) {
+            const p = pocosCache.find(x => x.id === id);
+            if (!p) return;
+            fichaPocoId = id;
+            const gestor = API.isGestor();
+
+            document.getElementById('pocoModalTitulo').innerText = `Ficha do ${rotuloPoco(p)}`;
+            CAMPOS_FICHA.forEach(c => {
+                const el = document.getElementById('fp_' + c);
+                el.value = p[c] ?? '';
+                el.disabled = !gestor;
+            });
+            document.getElementById('fichaSomenteLeitura').classList.toggle('hidden', gestor);
+            document.getElementById('fichaSalvarBtn').classList.toggle('hidden', !gestor);
+            document.getElementById('fichaErro').classList.add('hidden');
+            atualizarAvisoOutorga();
+            document.getElementById('mn_data').value = dataLocalIso();
+
+            renderManutencoesFicha();
+            const modal = document.getElementById('pocoModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.fecharFichaPoco = function() {
+            fichaPocoId = null;
+            const modal = document.getElementById('pocoModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function atualizarAvisoOutorga() {
+            const aviso = document.getElementById('fichaOutorgaAviso');
+            const s = situacaoOutorga(document.getElementById('fp_outorga_validade').value);
+            aviso.classList.toggle('hidden', !s);
+            if (s) { aviso.className = `mt-1.5 text-[11px] font-bold ${s.cor}`; aviso.innerText = s.texto; }
+        }
+        document.addEventListener('change', e => { if (e.target && e.target.id === 'fp_outorga_validade') atualizarAvisoOutorga(); });
+
+        window.salvarFichaPoco = function(e) {
+            e.preventDefault();
+            if (!API.isGestor() || !fichaPocoId) return;
+            const p = pocosCache.find(x => x.id === fichaPocoId);
+            if (!p) return;
+            const erro = document.getElementById('fichaErro');
+            erro.classList.add('hidden');
+
+            const dados = {};
+            CAMPOS_FICHA.forEach(c => {
+                const v = document.getElementById('fp_' + c).value.trim();
+                dados[c] = v === '' ? null : (CAMPOS_FICHA_NUMERICOS.includes(c) ? parseFloat(v) : v);
+            });
+            dados.numero = String(dados.numero || '').toUpperCase();
+            if (/^\d$/.test(dados.numero)) dados.numero = dados.numero.padStart(2, '0');
+            if (!dados.numero) { erro.innerText = "Informe o número do poço."; erro.classList.remove('hidden'); return; }
+            if (pocosCache.some(x => x.id !== p.id && String(x.numero).toUpperCase() === dados.numero)) {
+                erro.innerText = `Já existe outro poço com o número ${dados.numero}.`;
+                erro.classList.remove('hidden');
+                return;
+            }
+
+            API.salvarPoco(Object.assign({ id: p.id, ativo: p.ativo !== false }, dados));
+            botaoSalvo(document.getElementById('fichaSalvarBtn'), 'Ficha Salva!');
+            window.carregarAgua().then(() => {
+                if (fichaPocoId) document.getElementById('pocoModalTitulo').innerText = `Ficha do ${rotuloPoco(pocosCache.find(x => x.id === fichaPocoId) || p)}`;
+            });
+        }
+
+        function renderManutencoesFicha() {
+            const lista = manutencoesCache.filter(m => m.poco_id === fichaPocoId);
+            document.getElementById('fichaManutencoes').innerHTML = lista.length === 0
+                ? `<p class="text-xs text-slate-400 py-3 text-center">Nenhuma manutenção registrada para este poço.</p>`
+                : lista.map(m => `
+                    <div class="py-2.5 flex items-start justify-between gap-2">
+                        <div class="min-w-0 text-[11px]">
+                            <p class="font-black text-slate-700">${formatDate(m.data)} · ${escapeHtml(m.tipo)}
+                                ${m.custo != null ? `<span class="font-bold text-slate-400">· R$ ${fmtNum(m.custo, 2)}</span>` : ''}
+                                ${m._pendente ? '<i data-lucide="cloud-off" class="inline w-3 h-3 text-amber-500"></i>' : ''}</p>
+                            ${m.descricao ? `<p class="text-slate-600 mt-0.5">${escapeHtml(m.descricao)}</p>` : ''}
+                            <p class="text-slate-400 mt-0.5">Feito por <span class="font-bold text-slate-500">${escapeHtml(m.executado_por || '—')}</span>${m.responsavel ? ` · registrado por ${escapeHtml(m.responsavel)}` : ''}</p>
+                        </div>
+                        ${podeExcluir(m) ? `<button type="button" onclick="window.excluirManutencaoPoco('${escapeHtml(m.id)}')" title="Excluir" class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+                    </div>`).join('');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.registrarManutencao = async function(e) {
+            e.preventDefault();
+            if (!fichaPocoId) return;
+            const data = document.getElementById('mn_data').value;
+            const executadoPor = document.getElementById('mn_executado_por').value.trim();
+            if (!data || !executadoPor) { window.showAlert("Manutenção", "Informe a data e quem fez a manutenção."); return; }
+            API.salvarManutencao({
+                poco_id: fichaPocoId,
+                data,
+                tipo: document.getElementById('mn_tipo').value,
+                executado_por: executadoPor,
+                custo: lerNumero('mn_custo'),
+                descricao: document.getElementById('mn_descricao').value.trim() || null
+            });
+            ['mn_executado_por', 'mn_custo', 'mn_descricao'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('mn_data').value = dataLocalIso();
+            await window.carregarAgua();
+            renderManutencoesFicha();
+        }
+
+        window.excluirManutencaoPoco = function(id) {
+            pendingConfirmCallback = async () => {
+                API.excluirManutencao(id);
+                await window.carregarAgua();
+                renderManutencoesFicha();
+            };
+            window.showConfirmModal("Excluir manutenção?", "O registro desta manutenção será apagado do histórico do poço.", "EXCLUIR");
+        }
+
+        // ----- Editar / excluir poços e reservatórios (gestor) -----
+        let cadastroEditando = null; // { tipo: 'poco' | 'reservatorio', id }
+
+        window.editarCadastro = function(tipo, id) {
+            cadastroEditando = tipo ? { tipo, id } : null;
+            renderAgua();
+        }
+
+        window.salvarEdicaoCadastro = function(tipo, id) {
+            if (!API.isGestor()) return;
+            if (tipo === 'poco') {
+                const p = pocosCache.find(x => x.id === id);
+                if (!p) return;
+                let numero = document.getElementById('editCad_numero').value.trim().toUpperCase();
+                if (/^\d$/.test(numero)) numero = numero.padStart(2, '0');
+                const nome = document.getElementById('editCad_nome').value.trim();
+                if (!numero) { window.showAlert("Número obrigatório", "Informe o número do poço."); return; }
+                if (pocosCache.some(x => x.id !== id && String(x.numero).toUpperCase() === numero)) {
+                    window.showAlert("Poço já cadastrado", `Já existe outro poço com o número ${numero}.`);
+                    return;
+                }
+                API.salvarPoco({ id: p.id, numero, nome: nome || null, observacao: p.observacao, ativo: p.ativo !== false });
+            } else {
+                const r = reservCache.find(x => x.id === id);
+                if (!r) return;
+                const nome = document.getElementById('editCad_nome').value.trim();
+                if (!nome) { window.showAlert("Nome obrigatório", "Informe o nome do reservatório."); return; }
+                if (reservCache.some(x => x.id !== id && x.nome.toLowerCase() === nome.toLowerCase())) {
+                    window.showAlert("Reservatório já cadastrado", `Já existe outro reservatório chamado "${nome}".`);
+                    return;
+                }
+                API.salvarReservatorio({
+                    id: r.id, nome,
+                    altura_maxima_m: lerNumero('editCad_altura'),
+                    capacidade_m3: lerNumero('editCad_capacidade'),
+                    ativo: r.ativo !== false
+                });
+            }
+            cadastroEditando = null;
+            window.carregarAgua();
+        }
+
+        window.excluirCadastro = function(tipo, id) {
+            if (!API.isGestor()) return;
+            const ehPoco = tipo === 'poco';
+            const item = (ehPoco ? pocosCache : reservCache).find(x => x.id === id);
+            if (!item) return;
+            const nome = ehPoco ? rotuloPoco(item) : item.nome;
+            const avisoHistorico = `${nome} possui ${ehPoco ? 'leituras ou manutenções' : 'leituras'} registradas. Para não perder o histórico, ele não pode ser excluído — use "Desativar" para tirá-lo das listas.`;
+
+            // Já sabemos que tem histórico: nem tenta excluir
+            const temLeituras = ehPoco
+                ? leiturasPocoCache.some(l => l.poco_id === id) || manutencoesCache.some(m => m.poco_id === id)
+                : leiturasReservCache.some(l => l.reservatorio_id === id);
+            if (temLeituras) { window.showAlert("Não é possível excluir", avisoHistorico); return; }
+
+            pendingConfirmCallback = async () => {
+                try {
+                    await API.excluirCadastro(ehPoco ? 'pocos' : 'reservatorios', id);
+                    if (cadastroEditando && cadastroEditando.id === id) cadastroEditando = null;
+                    window.carregarAgua();
+                } catch (err) {
+                    window.showAlert("Não foi possível excluir", err.code === '23503' ? avisoHistorico : err.message);
+                }
+            };
+            window.showConfirmModal(`Excluir ${ehPoco ? 'poço' : 'reservatório'}?`,
+                `${nome} será apagado do cadastro. Esta ação não pode ser desfeita.`, "EXCLUIR");
         }
 
         window.alternarAtivo = function(tipo, id) {
@@ -4294,7 +4668,8 @@
             registros_irrigacao: 'registro de irrigação', programacoes: 'item da programação', motor_diario: 'hora do motor',
             envios_relatorio: 'envio de relatório', pocos: 'poço', leituras_poco: 'leitura de poço',
             reservatorios: 'reservatório', leituras_reservatorio: 'nível de reservatório', perfis: 'perfil de usuário',
-            dados_bloco: 'dados do bloco', usuarios_login: 'login de usuário'
+            dados_bloco: 'dados do bloco', usuarios_login: 'login de usuário', manutencoes_poco: 'manutenção de poço',
+            horas_poco_dia: 'horas ligado do poço', culturas_bloco: 'cultura do bloco', configuracoes: 'configuração'
         };
 
         function resumoAuditoria(linha) {
@@ -4306,6 +4681,13 @@
             if (d.minutos != null && linha.tabela !== 'envios_relatorio') partes.push(`${d.minutos} min`);
             if (d.motor_ligado || d.motor_desligado) partes.push(`Motor ${d.motor_ligado ? d.motor_ligado.slice(0, 5) : '--:--'} → ${d.motor_desligado ? d.motor_desligado.slice(0, 5) : '--:--'}`);
             if (d.numero) partes.push(`Nº ${d.numero}`);
+            if (linha.tabela === 'manutencoes_poco') {
+                const poco = pocosCache.find(p => p.id === d.poco_id);
+                if (poco) partes.push(`Poço ${poco.numero}`);
+                if (d.data) partes.push(formatDate(d.data));
+                if (d.tipo) partes.push(d.tipo);
+                if (d.executado_por) partes.push(`por ${d.executado_por}`);
+            }
             if (linha.tabela === 'leituras_poco' && d.status) partes.push(d.status === 'desligado' ? `Desligado${d.motivo ? ' (' + d.motivo + ')' : ''}` : d.status === 'religado' ? 'Religado' : 'Ligado');
             if (Number(d.segundos_15l) > 0) partes.push(`${fmtNum(d.segundos_15l, 2)} s/15 L = ${fmtLh(vazaoDe15L(Number(d.segundos_15l)))} L/h`);
             if (d.vazao_m3h != null) partes.push(`${fmtNum(d.vazao_m3h, 2)} m³/h`);
