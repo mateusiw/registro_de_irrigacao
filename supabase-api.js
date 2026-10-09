@@ -750,6 +750,14 @@
         return mesclarPendentes('leituras_poco', lista).sort((a, b) => String(b.data_hora).localeCompare(String(a.data_hora)));
     }
 
+    // Histórico completo de um poço (para o PDF da ficha), da leitura mais recente para a mais antiga
+    async function listarLeiturasDoPoco(pocoId) {
+        const lista = await buscarComCache(`leituras_poco_${pocoId}`, () => sb.from('leituras_poco')
+            .select('*').eq('poco_id', pocoId).order('data_hora', { ascending: false }).limit(5000), 0).catch(() => []);
+        return mesclarPendentes('leituras_poco', lista).filter(l => l.poco_id === pocoId)
+            .sort((a, b) => String(b.data_hora).localeCompare(String(a.data_hora)));
+    }
+
     function salvarLeituraPoco(leitura) {
         enfileirar('leituras_poco', 'upsert', Object.assign({ id: novoId(), responsavel: nomeUsuario() }, leitura));
     }
@@ -893,16 +901,23 @@
 
     let canalRegistros = null;
 
-    // Avisa a cada registro de irrigação criado, alterado ou excluído por outro
-    // usuário. cb({ tipo: 'INSERT'|'UPDATE'|'DELETE', registro, id })
+    // Avisa a cada registro de irrigação criado, alterado ou excluído.
+    // cb({ tipo: 'INSERT'|'UPDATE'|'DELETE', registro, id, proprio, idLocal })
+    // "proprio" = registro do usuário logado (ex.: restaurado ou alterado pelo gestor);
+    // nesse caso "idLocal" é o id usado na lista do aparelho.
     function assinarRegistros(cb) {
         if (canalRegistros) sb.removeChannel(canalRegistros);
         canalRegistros = sb.channel('registros-irrigacao')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'registros_irrigacao' }, payload => {
                 const u = usuarioAtual();
                 const registro = payload.new && payload.new.id ? payload.new : null;
-                if (registro && u && registro.criado_por === u.id) return; // o próprio usuário
-                cb({ tipo: payload.eventType, registro, id: (registro || payload.old || {}).id });
+                const id = String((registro || payload.old || {}).id || '');
+                const prefixo = u ? u.id.slice(0, 8) + '-' : null;
+                const proprio = !!prefixo && id.startsWith(prefixo);
+                // Eco de uma gravação deste aparelho ainda em andamento: ignora
+                if (proprio && pendentesDe('registros_irrigacao').some(op => String(op.dados.id) === id)) return;
+                const idLocal = proprio && /^\d+$/.test(id.slice(prefixo.length)) ? Number(id.slice(prefixo.length)) : null;
+                cb({ tipo: payload.eventType, registro, id, proprio, idLocal });
             })
             .subscribe();
     }
@@ -919,6 +934,24 @@
         if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
         const resp = await sb.from('auditoria').select('*').order('criado_em', { ascending: false }).limit(limite || 100);
         if (resp.error) throw erroSupabase(resp);
+        return resp.data;
+    }
+
+    // Backup: volta o item ao valor que tinha antes da ação registrada no log
+    // (ou desfaz um registro novo). Somente gestor, precisa de internet.
+    async function restaurarAuditoria(idAuditoria) {
+        if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
+        await sincronizar(); // envia antes o que estiver na fila, para não sobrescrever depois
+        const resp = await sb.rpc('restaurar_auditoria', { p_id: idAuditoria });
+        if (resp.error) {
+            if (/function .*restaurar_auditoria|could not find/i.test(resp.error.message)) {
+                throw new Error("Rode o arquivo supabase/backup.sql no SQL Editor do Supabase para ativar a restauração.");
+            }
+            throw erroSupabase(resp);
+        }
+        // Os dados mudaram no banco: descarta as cópias salvas no aparelho
+        Object.keys(localStorage).filter(k => k.startsWith('irrigacao_cache_') && !k.endsWith('perfis'))
+            .forEach(k => localStorage.removeItem(k));
         return resp.data;
     }
 
@@ -943,6 +976,7 @@
     async function enviarSinal() {
         const u = usuarioAtual();
         if (!u || !sessaoId || !navigator.onLine || document.visibilityState === 'hidden') return;
+        lembrarSessao();
         try {
             const { data } = await sb.auth.getSession();
             if (!data.session) return;
@@ -953,9 +987,23 @@
         } catch (e) { /* sinal é opcional: nunca atrapalha o uso do app */ }
     }
 
-    // Abre uma sessão nova (ao entrar no app ou fazer login)
+    // Sessão guardada no aparelho: recarregar a página (ou reabrir o app logo em
+    // seguida) continua a mesma sessão, em vez de aparecer como uma conexão nova
+    const SESSAO_REUSO_MS = 5 * 60 * 1000;
+    const K_SESSAO = 'irrigacao_sessao_atual';
+
+    function lembrarSessao() {
+        const u = usuarioAtual();
+        if (u && sessaoId) gravar(K_SESSAO, { id: sessaoId, usuarioId: u.id, em: Date.now() });
+    }
+
+    // Abre uma sessão (ao entrar no app ou fazer login), reaproveitando a anterior se ainda estiver valendo
     function iniciarSessao(aba) {
-        sessaoId = novoId();
+        const u = usuarioAtual();
+        const anterior = ler(K_SESSAO, null);
+        sessaoId = anterior && u && anterior.usuarioId === u.id && Date.now() - anterior.em < SESSAO_REUSO_MS
+            ? anterior.id : novoId();
+        lembrarSessao();
         sessaoAba = aba || '';
         clearInterval(timerSinal);
         timerSinal = setInterval(enviarSinal, 60 * 1000);
@@ -973,11 +1021,13 @@
         if (sessaoId && navigator.onLine) {
             try { await sb.from('sessoes').update({ fim: new Date().toISOString() }).eq('id', sessaoId); } catch (e) {}
         }
+        localStorage.removeItem(K_SESSAO);
         sessaoId = null;
     }
 
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') enviarSinal(); });
     window.addEventListener('online', enviarSinal);
+    window.addEventListener('pagehide', lembrarSessao);
 
     // Sessões com sinal a partir de "desde" (somente gestor, precisa de internet)
     async function listarSessoes(desdeIso) {
@@ -1013,7 +1063,7 @@
         // dados dos blocos
         listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
         // água
-        listarPocos, salvarPoco, listarLeiturasPocos, salvarLeituraPoco, excluirLeituraPoco,
+        listarPocos, salvarPoco, listarLeiturasPocos, listarLeiturasDoPoco, salvarLeituraPoco, excluirLeituraPoco,
         listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, salvarLeituraReservatorio, excluirLeituraReservatorio,
         excluirCadastro, listarManutencoes, salvarManutencao, excluirManutencao,
         // balanço de água
@@ -1022,6 +1072,6 @@
         // tempo real (registros dos outros irrigadores)
         listarRegistrosEquipe, assinarRegistros, cancelarAssinaturaRegistros,
         // auditoria e sessões
-        listarAuditoria, iniciarSessao, informarAbaSessao, encerrarSessao, listarSessoes, atividadesDaSessao
+        listarAuditoria, restaurarAuditoria, iniciarSessao, informarAbaSessao, encerrarSessao, listarSessoes, atividadesDaSessao
     };
 })();
