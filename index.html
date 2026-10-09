@@ -21,6 +21,11 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js"></script>
 
+    <!-- Supabase (banco de dados) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="./supabase-config.js"></script>
+    <script src="./supabase-api.js"></script>
+
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
         input, select, textarea { user-select: text; }
@@ -68,7 +73,7 @@
             </button>
         </div>
 
-        <!-- Área da Direita: Bloqueio da Programação -->
+        <!-- Área da Direita: Bloqueio da Programação (somente gestor) -->
         <div id="navbarProgAction" class="hidden">
             <button type="button" id="progLockToggleBtn" onclick="window.toggleProgLock()"
                 class="flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-sky-700 rounded-xl shadow border border-sky-100 transition-all active:scale-95 font-bold text-xs">
@@ -90,6 +95,38 @@
                 class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
                 <i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i> Programação
             </button>
+            <button type="button" id="tabBtnAgua" onclick="window.switchTab('agua')"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="waves" class="w-3.5 h-3.5"></i> Água
+            </button>
+        </div>
+
+        <!-- USUÁRIO LOGADO + STATUS DE SINCRONIZAÇÃO -->
+        <div class="flex items-center justify-between gap-2 mt-2 px-1">
+            <div class="flex items-center gap-1.5 min-w-0">
+                <i data-lucide="user-circle" class="w-4 h-4 text-slate-400 shrink-0"></i>
+                <span id="userNameLabel" class="text-xs font-bold text-slate-600 truncate"></span>
+                <span id="userRoleBadge" class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 shrink-0"></span>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+                <button type="button" id="syncStatusBtn" onclick="window.syncAgora()" title="Sincronizar agora"
+                    class="flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full border border-slate-200 bg-white text-slate-500">
+                    <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-300"></span>
+                    <span id="syncStatusText">—</span>
+                </button>
+                <button type="button" id="usersBtn" onclick="window.openUsersModal()" title="Usuários"
+                    class="hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                </button>
+                <button type="button" id="auditBtn" onclick="window.openAuditModal()" title="Log de atividades"
+                    class="hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+                    <i data-lucide="scroll-text" class="w-4 h-4"></i>
+                </button>
+                <button type="button" onclick="window.fazerLogout()" title="Sair"
+                    class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -104,12 +141,9 @@
                 <label class="text-xs font-bold text-green-800 uppercase tracking-wider">Responsável</label>
             </div>
             <div class="px-4 py-3">
-                <select id="collaborator" onchange="window.saveCollaborator()" class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all">
-                    <option value="ANTONIO AIRTON CORDEIRO DE BRITO">ANTONIO AIRTON CORDEIRO DE BRITO</option>
-                    <option value="ALEXANDRO RIBEIRO LIMA">ALEXANDRO RIBEIRO LIMA</option>
-                    <option value="RAFAEL SARAIVA DE LIMA">RAFAEL SARAIVA DE LIMA</option>
-                    <option value="FRANCISCO FÁBIO TEXEIRA PEREIRA">FRANCISCO FÁBIO TEXEIRA PEREIRA</option>
-                </select>
+                <!-- Preenchido com o usuário logado (não pode ser trocado) -->
+                <input type="text" id="collaborator" readonly
+                    class="w-full bg-slate-100 border-2 border-slate-200 text-slate-700 text-sm font-bold rounded-xl py-3 px-3 outline-none cursor-default">
             </div>
         </div>
 
@@ -315,12 +349,9 @@
                 <div class="grid grid-cols-2 gap-3 mb-3">
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Irrigador (Responsável)</label>
+                        <!-- Opções preenchidas a partir dos perfis (valor = nome curto gravado na programação) -->
                         <select id="historyResponsavel" onchange="window.loadHistorico()" class="w-full p-3 border-2 border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:border-sky-500 outline-none font-bold text-slate-700 transition-all">
                             <option value="">Todos</option>
-                            <option value="ANTONIO AIRTON CORDEIRO DE BRITO">ANTONIO AIRTON CORDEIRO DE BRITO</option>
-                            <option value="ALEXANDRO RIBEIRO LIMA">ALEXANDRO RIBEIRO LIMA</option>
-                            <option value="RAFAEL SARAIVA DE LIMA">RAFAEL SARAIVA DE LIMA</option>
-                            <option value="FRANCISCO FÁBIO TEXEIRA PEREIRA">FRANCISCO FÁBIO TEXEIRA PEREIRA</option>
                         </select>
                     </div>
                     <div>
@@ -371,11 +402,8 @@
                     <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
                         <i data-lucide="user" class="w-3.5 h-3.5 text-sky-500"></i> Irrigador (Responsável)
                     </label>
+                    <!-- Opções preenchidas a partir dos perfis cadastrados -->
                     <select id="progResponsavel" onchange="window.saveProgResponsavel()" class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all">
-                        <option value="ANTONIO AIRTON CORDEIRO DE BRITO">ANTONIO AIRTON CORDEIRO DE BRITO</option>
-                        <option value="ALEXANDRO RIBEIRO LIMA">ALEXANDRO RIBEIRO LIMA</option>
-                        <option value="RAFAEL SARAIVA DE LIMA">RAFAEL SARAIVA DE LIMA</option>
-                        <option value="FRANCISCO FÁBIO TEXEIRA PEREIRA">FRANCISCO FÁBIO TEXEIRA PEREIRA</option>
                     </select>
                 </div>
 
@@ -509,10 +537,173 @@
         </section>
     </div>
 
+    <!-- ABA 3: ÁGUA (POÇOS E RESERVATÓRIOS) -->
+    <div id="tabAgua" class="hidden container mx-auto p-4 space-y-6 max-w-md">
+
+        <!-- LEITURA DE POÇO -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-gradient-to-r from-teal-600 to-teal-700 px-5 py-4 flex items-center gap-2">
+                <i data-lucide="droplet" class="w-5 h-5 text-white opacity-90"></i>
+                <h2 class="text-base font-bold text-white">Vazão dos Poços</h2>
+            </div>
+            <form onsubmit="window.addLeituraPoco(event)" class="divide-y divide-slate-100">
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="hash" class="w-3.5 h-3.5 text-teal-500"></i> Poço
+                    </label>
+                    <select id="pocoSelect" required class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all"></select>
+                </div>
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="calendar-clock" class="w-3.5 h-3.5 text-teal-500"></i> Data e Hora da Leitura
+                    </label>
+                    <input type="datetime-local" id="pocoDataHora" required
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                </div>
+                <div class="px-5 py-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                                <i data-lucide="gauge" class="w-3.5 h-3.5 text-teal-500"></i> Hidrômetro
+                            </label>
+                            <input type="number" id="pocoHidrometro" step="0.001" min="0" inputmode="decimal" placeholder="m³ acumulado"
+                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-3 text-sm font-medium text-slate-800 transition-all">
+                        </div>
+                        <div>
+                            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                                <i data-lucide="activity" class="w-3.5 h-3.5 text-teal-500"></i> Vazão
+                            </label>
+                            <input type="number" id="pocoVazao" step="0.001" min="0" inputmode="decimal" placeholder="m³/h"
+                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-3 text-sm font-medium text-slate-800 transition-all">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-400 font-medium mt-2 leading-relaxed">Preencha a leitura do hidrômetro, a vazão, ou os dois. Com duas leituras de hidrômetro, o app calcula a vazão média entre elas.</p>
+                </div>
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="message-square" class="w-3.5 h-3.5 text-teal-500"></i> Observações
+                        <span class="normal-case font-normal text-slate-300 ml-1">(opcional)</span>
+                    </label>
+                    <textarea id="pocoObs" rows="2" placeholder="Alguma observação..."
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-800 resize-none transition-all"></textarea>
+                </div>
+                <div class="px-5 py-4">
+                    <button type="submit" id="pocoSubmitBtn"
+                        class="btn-primary w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base">
+                        <i data-lucide="save" class="w-5 h-5"></i> Registrar Leitura
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <section class="space-y-3">
+            <div class="px-1">
+                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Situação dos Poços</h3>
+                <p class="text-[10px] text-slate-400 font-medium">Última leitura de cada poço</p>
+            </div>
+            <div id="pocosList" class="space-y-3"></div>
+        </section>
+
+        <!-- NÍVEL DO RESERVATÓRIO -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-5 py-4 flex items-center gap-2">
+                <i data-lucide="container" class="w-5 h-5 text-white opacity-90"></i>
+                <h2 class="text-base font-bold text-white">Nível do Reservatório</h2>
+            </div>
+            <form onsubmit="window.addLeituraReservatorio(event)" class="divide-y divide-slate-100">
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="container" class="w-3.5 h-3.5 text-indigo-500"></i> Reservatório
+                    </label>
+                    <select id="reservSelect" required class="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 text-sm font-medium rounded-xl py-3 px-3 outline-none transition-all"></select>
+                </div>
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="calendar-clock" class="w-3.5 h-3.5 text-indigo-500"></i> Data e Hora da Leitura
+                    </label>
+                    <input type="datetime-local" id="reservDataHora" required
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                </div>
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="ruler" class="w-3.5 h-3.5 text-indigo-500"></i> Nível da Água (metros)
+                    </label>
+                    <input type="number" id="reservNivel" required step="0.01" min="0" inputmode="decimal" placeholder="ex: 2,35"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                </div>
+                <div class="px-5 py-4">
+                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                        <i data-lucide="message-square" class="w-3.5 h-3.5 text-indigo-500"></i> Observações
+                        <span class="normal-case font-normal text-slate-300 ml-1">(opcional)</span>
+                    </label>
+                    <textarea id="reservObs" rows="2" placeholder="Alguma observação..."
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm text-slate-800 resize-none transition-all"></textarea>
+                </div>
+                <div class="px-5 py-4">
+                    <button type="submit" id="reservSubmitBtn"
+                        class="btn-primary w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base">
+                        <i data-lucide="save" class="w-5 h-5"></i> Registrar Nível
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <section class="space-y-3">
+            <div class="px-1">
+                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Situação dos Reservatórios</h3>
+                <p class="text-[10px] text-slate-400 font-medium">Último nível registrado</p>
+            </div>
+            <div id="reservList" class="space-y-3"></div>
+        </section>
+
+        <!-- CADASTROS (SOMENTE GESTOR) -->
+        <div id="cadastrosAgua" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
+                <i data-lucide="settings" class="w-5 h-5 text-white opacity-90"></i>
+                <h2 class="text-base font-bold text-white">Cadastros</h2>
+                <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Gestor</span>
+            </div>
+
+            <form onsubmit="window.addPoco(event)" class="px-5 py-4 border-b border-slate-100">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Novo Poço</p>
+                <div class="grid grid-cols-3 gap-2">
+                    <input type="text" id="novoPocoNumero" required placeholder="Nº" maxlength="10"
+                        class="col-span-1 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
+                    <input type="text" id="novoPocoNome" placeholder="Nome / local (opcional)"
+                        class="col-span-2 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                </div>
+                <button type="submit" class="mt-2 w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Poço
+                </button>
+            </form>
+
+            <form onsubmit="window.addReservatorio(event)" class="px-5 py-4 border-b border-slate-100">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Novo Reservatório</p>
+                <input type="text" id="novoReservNome" required placeholder="Nome (ex: Reservatório Principal)"
+                    class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all mb-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" id="novoReservAltura" step="0.01" min="0" inputmode="decimal" placeholder="Altura máx. (m)"
+                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                    <input type="number" id="novoReservCapacidade" step="0.01" min="0" inputmode="decimal" placeholder="Capacidade (m³)"
+                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                </div>
+                <p class="text-[10px] text-slate-400 font-medium mt-1.5">Altura e capacidade são opcionais; servem para mostrar o % cheio e o volume estimado.</p>
+                <button type="submit" class="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Reservatório
+                </button>
+            </form>
+
+            <div class="px-5 py-4">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Cadastrados</p>
+                <div id="cadastrosLista" class="divide-y divide-slate-100 text-xs"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL DE CONFIRMAÇÃO (EXCLUSÃO / LIMPAR TUDO) -->
     <div id="confirmModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-6 text-center relative">
-            <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4 mx-auto">
+            <div id="confirmModalIcon" class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4 mx-auto">
                 <i data-lucide="trash-2" class="w-8 h-8"></i>
             </div>
             <h3 id="confirmModalTitle" class="text-xl font-black text-slate-800 mb-2">Excluir?</h3>
@@ -552,28 +743,89 @@
         </div>
     </div>
 
-    <!-- MODAL DE SENHA DA PROGRAMAÇÃO -->
-    <div id="passwordModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-6 text-center relative">
-            <div class="w-16 h-16 bg-sky-50 text-sky-600 rounded-full flex items-center justify-center mb-4 mx-auto">
-                <i data-lucide="lock-keyhole" class="w-8 h-8"></i>
+    <!-- TELA DE LOGIN -->
+    <div id="loginScreen" class="hidden fixed inset-0 bg-gradient-to-b from-green-700 to-green-900 z-[70] flex-col items-center justify-center p-5">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-7">
+            <div class="flex flex-col items-center mb-6">
+                <img id="loginLogo" src="" alt="Logo" class="h-14 w-auto mb-3">
+                <h1 class="text-lg font-black text-slate-800">Registro Irrigação</h1>
+                <p class="text-xs font-medium text-slate-400">SPG Oásis</p>
             </div>
-            <h3 class="text-xl font-black text-slate-800 mb-2">Desbloquear Edição</h3>
-            <p class="text-[13px] text-slate-500 mb-5 font-medium leading-relaxed px-2">
-                Insira a senha para editar a programação.
-            </p>
-            <input type="password" id="progPasswordInput" placeholder=""
-                onkeydown="if(event.key==='Enter'){event.preventDefault(); window.confirmPasswordUnlock();}"
-                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-center text-sm font-bold text-slate-800 tracking-widest transition-all mb-2">
-            <p id="progPasswordError" class="hidden text-xs font-bold text-red-500 mb-3">Senha incorreta. Tente novamente.</p>
-            <div class="flex gap-3 w-full mt-3">
-                <button type="button" onclick="window.closePasswordModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
-                    CANCELAR
+            <form onsubmit="window.fazerLogin(event)" class="space-y-3">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Usuário</label>
+                    <input type="text" id="loginUsuario" required autocomplete="username" autocapitalize="none" spellcheck="false"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-bold text-slate-800 transition-all">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Senha</label>
+                    <input type="password" id="loginSenha" required autocomplete="current-password"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-bold text-slate-800 transition-all">
+                </div>
+                <p id="loginErro" class="hidden text-xs font-bold text-red-500 text-center"></p>
+                <button type="submit" id="loginBtn"
+                    class="btn-primary w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 text-sm">
+                    <i data-lucide="log-in" class="w-4 h-4"></i> ENTRAR
                 </button>
-                <button type="button" onclick="window.confirmPasswordUnlock()" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-bold py-3.5 rounded-2xl transition-colors shadow-md text-sm">
-                    ENTRAR
-                </button>
+            </form>
+            <p class="text-[10px] text-slate-400 text-center mt-4 leading-relaxed">O primeiro acesso precisa de internet. Depois disso o app funciona offline e envia os dados quando houver sinal.</p>
+        </div>
+    </div>
+
+    <!-- MODAL DE USUÁRIOS (SOMENTE GESTOR) -->
+    <div id="usersModal" class="fixed inset-0 bg-slate-900/60 z-[45] hidden items-center justify-center p-5 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center justify-between shrink-0">
+                <h3 class="text-base font-bold text-white flex items-center gap-2"><i data-lucide="users" class="w-5 h-5"></i> Usuários</h3>
+                <button type="button" onclick="window.closeUsersModal()" class="text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
+            <div class="overflow-y-auto">
+                <!-- NOVO USUÁRIO -->
+                <form onsubmit="window.criarUsuario(event)" class="px-5 py-4 border-b border-slate-100 space-y-2">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Novo Usuário</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="novoUsuarioLogin" required placeholder="Usuário (ex: joao)" autocapitalize="none" spellcheck="false" maxlength="30"
+                            oninput="this.value = this.value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9._-]/g, '')"
+                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
+                        <input type="password" id="novoUsuarioSenha" required minlength="6" placeholder="Senha (mín. 6)" autocomplete="new-password"
+                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                    </div>
+                    <input type="text" id="novoUsuarioNome" required placeholder="Nome completo (aparece no relatório)"
+                        oninput="this.value = this.value.toUpperCase()"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="novoUsuarioNomeCurto" placeholder="Nome curto (ex: João Silva)"
+                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                        <select id="novoUsuarioPapel" class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-700 outline-none">
+                            <option value="irrigador">Irrigador</option>
+                            <option value="gestor">Gestor</option>
+                        </select>
+                    </div>
+                    <p id="novoUsuarioErro" class="hidden text-xs font-bold text-red-500"></p>
+                    <button type="submit" id="novoUsuarioBtn"
+                        class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i> Criar Usuário
+                    </button>
+                    <p class="text-[10px] text-slate-400 leading-relaxed">A pessoa entra no app com o usuário e a senha definidos aqui. Precisa de internet.</p>
+                </form>
+
+                <!-- LISTA -->
+                <div class="px-5 py-4">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cadastrados</p>
+                    <div id="usersList" class="divide-y divide-slate-100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DO LOG DE ATIVIDADES (SOMENTE GESTOR) -->
+    <div id="auditModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-5 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center justify-between">
+                <h3 class="text-base font-bold text-white flex items-center gap-2"><i data-lucide="scroll-text" class="w-5 h-5"></i> Log de Atividades</h3>
+                <button type="button" onclick="window.closeAuditModal()" class="text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="auditBody" class="overflow-y-auto divide-y divide-slate-100"></div>
         </div>
     </div>
 
@@ -594,11 +846,11 @@
                     O relatório será preparado para o WhatsApp.
                 </p>
                 
-                <!-- AVISO DE INTERNET EM VERMELHO -->
-                <div class="bg-red-50 border border-red-100 rounded-xl p-3 mb-6 w-full flex items-start gap-2 text-left">
-                    <i data-lucide="wifi" class="w-5 h-5 text-red-500 shrink-0"></i>
-                    <p class="text-[11px] font-bold text-red-600 leading-tight mt-0.5">
-                        ATENÇÃO: Certifique-se de estar em um local com internet para consultar o banco de dados antes de enviar.
+                <!-- AVISO DE SINCRONIZAÇÃO -->
+                <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-6 w-full flex items-start gap-2 text-left">
+                    <i data-lucide="wifi-off" class="w-5 h-5 text-amber-500 shrink-0"></i>
+                    <p class="text-[11px] font-bold text-amber-700 leading-tight mt-0.5">
+                        Sem internet? Pode enviar: os dados ficam salvos no aparelho e vão para o banco automaticamente quando houver sinal.
                     </p>
                 </div>
 
@@ -661,11 +913,11 @@
                     O relatório da semana será preparado para o WhatsApp.
                 </p>
 
-                <!-- AVISO DE INTERNET EM VERMELHO -->
-                <div class="bg-red-50 border border-red-100 rounded-xl p-3 mb-6 w-full flex items-start gap-2 text-left">
-                    <i data-lucide="wifi" class="w-5 h-5 text-red-500 shrink-0"></i>
-                    <p class="text-[11px] font-bold text-red-600 leading-tight mt-0.5">
-                        ATENÇÃO: Certifique-se de estar em um local com internet para consultar o banco de dados antes de enviar.
+                <!-- AVISO DE SINCRONIZAÇÃO -->
+                <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-6 w-full flex items-start gap-2 text-left">
+                    <i data-lucide="wifi-off" class="w-5 h-5 text-amber-500 shrink-0"></i>
+                    <p class="text-[11px] font-bold text-amber-700 leading-tight mt-0.5">
+                        Sem internet? Pode enviar: os dados ficam salvos no aparelho e vão para o banco automaticamente quando houver sinal.
                     </p>
                 </div>
 
@@ -840,9 +1092,10 @@
         let programacao = JSON.parse(localStorage.getItem('irrigation_programacao')) || [];
         let editingProgId = null;
 
-        // Senha para liberar edição da Programação (troque o valor abaixo se quiser outra senha)
-        const PROG_PASSWORD = "1234@";
+        // Modo edição da Programação (somente usuários com papel "gestor")
         let progUnlocked = false;
+
+        const API = window.IrrigacaoAPI;
 
         // Dados de consumo de água por bloco, usados para exibir os litros junto do tempo na lista
         let consumoBlocosData = {};
@@ -854,7 +1107,11 @@
         let pendingClearAll = false;
         let pendingDeleteProgId = null;
         let pendingClearProgramacao = false;
-        
+        let pendingConfirmCallback = null; // exclusões genéricas (ex.: leituras de poço/reservatório)
+
+        // Perfis de usuário (para listas de responsáveis), guardados no aparelho
+        let perfisCache = [];
+
         // Armazena temporariamente os dados gerados da Imagem e da Planilha
         let currentReportData = {
             file: null,
@@ -866,8 +1123,10 @@
             fileName: ""
         };
 
-        window.saveCollaborator = function() {
-            localStorage.setItem('irrigation_collaborator', document.getElementById('collaborator').value);
+        // Nome abreviado (gravado no banco e no relatório) a partir do nome completo do perfil
+        function nomeCurtoDe(nomeCompleto) {
+            const perfil = perfisCache.find(p => p.nome === nomeCompleto);
+            return perfil ? (perfil.nome_curto || perfil.nome) : nomeCompleto;
         }
 
         window.saveProgResponsavel = function() {
@@ -896,6 +1155,12 @@
             
             if (h === 0) return `${m}min`;
             return `${h}h ${m}min`;
+        }
+
+        // Data local do aparelho no formato yyyy-MM-dd
+        function dataLocalIso(d) {
+            d = d || new Date();
+            return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
         }
 
         function formatDate(isoDate) {
@@ -947,6 +1212,7 @@
         // Acionado pelos botões do formulário: captura a hora atual do relógio do aparelho
         window.registrarHoraMotor = function(tipo) {
             window.registrarHoraMotorValor(tipo, horaAtualDispositivo());
+            API.salvarMotor(document.getElementById('date').value, motorLigadoHora, motorDesligadoHora);
         }
 
         window.resetHoraMotor = function() {
@@ -1061,6 +1327,7 @@
                 const index = records.findIndex(r => r.id === editingId);
                 if (index !== -1) {
                     records[index] = { ...records[index], date, block, minutes, turno, observation };
+                    API.salvarRegistro(records[index]);
                     const btn = document.getElementById('submitBtn');
                     btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Alteração Salva!`;
                     btn.className = "btn-primary w-full bg-green-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
@@ -1080,9 +1347,11 @@
 
                 const newRecord = {
                     id: Date.now(),
-                    date, block, minutes, turno, observation
+                    date, block, minutes, turno, observation,
+                    registradoEm: new Date().toISOString()
                 };
                 records.push(newRecord);
+                API.salvarRegistro(newRecord);
 
                 document.getElementById('observation').value = '';
                 document.querySelectorAll('input[name="turno"]').forEach(r => r.checked = false);
@@ -1152,7 +1421,8 @@
             document.getElementById('alertModal').classList.remove('flex');
         }
 
-        window.showConfirmModal = function(title, text, btnText) {
+        window.showConfirmModal = function(title, text, btnText, icone) {
+            document.getElementById('confirmModalIcon').innerHTML = `<i data-lucide="${icone || 'trash-2'}" class="w-8 h-8"></i>`;
             document.getElementById('confirmModalTitle').innerText = title;
             document.getElementById('confirmModalText').innerText = text;
             document.getElementById('confirmModalBtn').innerText = btnText;
@@ -1168,29 +1438,36 @@
             pendingClearAll = false;
             pendingDeleteProgId = null;
             pendingClearProgramacao = false;
+            pendingConfirmCallback = null;
         }
 
         window.executeConfirmAction = function() {
             if (pendingDeleteId !== null) {
                 records = records.filter(r => r.id !== pendingDeleteId);
+                API.excluirRegistro(pendingDeleteId);
                 if (editingId === pendingDeleteId) window.cancelEdit();
                 saveData();
             } else if (pendingClearAll) {
+                // Só limpa a lista do aparelho: os registros continuam salvos no banco
                 records = [];
                 window.cancelEdit();
                 saveData();
             } else if (pendingDeleteProgId !== null) {
                 if (progUnlocked) {
                     programacao = programacao.filter(p => p.id !== pendingDeleteProgId);
+                    API.excluirProgramacaoItem(pendingDeleteProgId);
                     if (editingProgId === pendingDeleteProgId) window.cancelProgEdit();
                     saveProgramacao();
                 }
             } else if (pendingClearProgramacao) {
                 if (progUnlocked) {
+                    programacao.forEach(p => API.excluirProgramacaoItem(p.id));
                     programacao = [];
                     window.cancelProgEdit();
                     saveProgramacao();
                 }
+            } else if (pendingConfirmCallback) {
+                pendingConfirmCallback();
             }
             window.closeConfirmModal();
         }
@@ -1210,8 +1487,8 @@
             pendingDeleteId = null;
             pendingClearAll = true;
             window.showConfirmModal(
-                "Limpar Tudo?", 
-                "Tem certeza que deseja apagar TODOS os registros? Esta ação não pode ser desfeita.", 
+                "Limpar Tudo?",
+                "Isso limpa a lista deste aparelho. Os registros já salvos continuam no banco de dados.",
                 "LIMPAR TUDO"
             );
         }
@@ -1328,37 +1605,28 @@
 
         // --- SISTEMA DE ABAS ---
 
+        const TABS = {
+            registro:    { painel: 'tabRegistro',    botao: 'tabBtnRegistro',    cor: 'bg-green-600' },
+            programacao: { painel: 'tabProgramacao', botao: 'tabBtnProgramacao', cor: 'bg-sky-600' },
+            agua:        { painel: 'tabAgua',        botao: 'tabBtnAgua',        cor: 'bg-teal-600' }
+        };
+
         window.switchTab = function(tab) {
-            const registroTab = document.getElementById('tabRegistro');
-            const progTab = document.getElementById('tabProgramacao');
-            const btnRegistro = document.getElementById('tabBtnRegistro');
-            const btnProgramacao = document.getElementById('tabBtnProgramacao');
-            const navbarRegistroActions = document.getElementById('navbarRegistroActions');
-            const navbarProgAction = document.getElementById('navbarProgAction');
+            Object.entries(TABS).forEach(([nome, t]) => {
+                const ativo = nome === tab;
+                document.getElementById(t.painel).classList.toggle('hidden', !ativo);
+                const btn = document.getElementById(t.botao);
+                btn.classList.remove('bg-green-600', 'bg-sky-600', 'bg-teal-600', 'text-white', 'shadow-sm', 'text-slate-400');
+                if (ativo) btn.classList.add(t.cor, 'text-white', 'shadow-sm');
+                else btn.classList.add('text-slate-400');
+            });
 
-            const activeClasses = ['bg-green-600', 'text-white', 'shadow-sm'];
-            const inactiveClasses = ['text-slate-400'];
+            document.getElementById('navbarRegistroActions').classList.toggle('hidden', tab !== 'registro');
+            // O botão de desbloquear a edição da programação só aparece para o gestor
+            document.getElementById('navbarProgAction').classList.toggle('hidden', tab !== 'programacao' || !API.isGestor());
 
-            if (tab === 'programacao') {
-                registroTab.classList.add('hidden');
-                progTab.classList.remove('hidden');
-                btnRegistro.classList.remove(...activeClasses);
-                btnRegistro.classList.add(...inactiveClasses);
-                btnProgramacao.classList.remove(...inactiveClasses);
-                btnProgramacao.classList.add('bg-sky-600', 'text-white', 'shadow-sm');
-                navbarRegistroActions.classList.add('hidden');
-                navbarProgAction.classList.remove('hidden');
-                if (!progUnlocked) window.syncProgramacaoFromSheet();
-            } else {
-                progTab.classList.add('hidden');
-                registroTab.classList.remove('hidden');
-                btnProgramacao.classList.remove('bg-sky-600', 'text-white', 'shadow-sm');
-                btnProgramacao.classList.add(...inactiveClasses);
-                btnRegistro.classList.remove(...inactiveClasses);
-                btnRegistro.classList.add(...activeClasses);
-                navbarProgAction.classList.add('hidden');
-                navbarRegistroActions.classList.remove('hidden');
-            }
+            if (tab === 'programacao' && !progUnlocked) window.syncProgramacaoFromSheet();
+            if (tab === 'agua') window.carregarAgua();
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -1418,38 +1686,13 @@
                 window.cancelProgEdit();
                 window.updateProgLockUI();
                 window.updatePasteBarVisibility();
-            } else {
-                window.showPasswordModal();
-            }
-        }
-
-        window.showPasswordModal = function() {
-            const input = document.getElementById('progPasswordInput');
-            input.value = '';
-            document.getElementById('progPasswordError').classList.add('hidden');
-            document.getElementById('passwordModal').classList.remove('hidden');
-            document.getElementById('passwordModal').classList.add('flex');
-            if(typeof lucide !== 'undefined') lucide.createIcons();
-            setTimeout(() => input.focus(), 100);
-        }
-
-        window.closePasswordModal = function() {
-            document.getElementById('passwordModal').classList.add('hidden');
-            document.getElementById('passwordModal').classList.remove('flex');
-        }
-
-        window.confirmPasswordUnlock = function() {
-            const input = document.getElementById('progPasswordInput');
-            if (input.value === PROG_PASSWORD) {
+            } else if (API.isGestor()) {
                 progUnlocked = true;
-                window.closePasswordModal();
                 window.updateProgLockUI();
                 window.updatePasteBarVisibility();
                 window.presyncHistorico();
             } else {
-                document.getElementById('progPasswordError').classList.remove('hidden');
-                input.value = '';
-                input.focus();
+                window.showAlert("Acesso Restrito", "Somente usuários com perfil de gestor podem editar a programação.");
             }
         }
 
@@ -1473,9 +1716,7 @@
             window.showSyncOverlay();
             const inicio = Date.now();
             try {
-                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec?action=historico";
-                const response = await fetch(scriptUrl);
-                const data = await response.json();
+                const data = await window.IrrigacaoAPI.historico();
                 if (data.sucesso) {
                     historicoProgramacoes = data.historico || [];
                     historicoCarregado = true;
@@ -1496,41 +1737,24 @@
             window.calcularConsumoProgramacao();
         }
 
-        // Envia apenas o item editado para o Apps Script, que atualiza a linha
-        // correspondente na planilha "Programações" (pelo ID) em vez de duplicar.
-        // Só tem efeito se o item já havia sido enviado antes via "Enviar Relatório";
-        // caso contrário o Apps Script simplesmente cria a linha na próxima vez.
+        // Grava na hora o item adicionado/editado na tabela "programacoes" (pelo ID,
+        // sem duplicar), já com os litros estimados. Sem internet, entra na fila
+        // de sincronização e é enviado quando houver sinal.
         async function syncProgramacaoItemToSheet(item) {
             const minutosPorBloco = {};
             programacao.forEach(p => {
                 minutosPorBloco[p.block] = (minutosPorBloco[p.block] || 0) + (p.minutes || 0);
             });
             const registrosSimulados = Object.keys(minutosPorBloco).map(block => ({ block, minutes: minutosPorBloco[block] }));
+            const nomeResponsavel = nomeCurtoDe(document.getElementById('progResponsavel').value);
 
-            let nomeResponsavel = document.getElementById('progResponsavel').value;
-            if (nomeResponsavel === "ANTONIO AIRTON CORDEIRO DE BRITO") {
-                nomeResponsavel = "Airton Cordeiro";
-            } else if (nomeResponsavel === "ALEXANDRO RIBEIRO LIMA") {
-                nomeResponsavel = "Alexandro Ribeiro";
-            } else if (nomeResponsavel === "RAFAEL SARAIVA DE LIMA") {
-                nomeResponsavel = "Rafael Saraiva";
-            } else if (nomeResponsavel === "FRANCISCO FÁBIO TEXEIRA PEREIRA") {
-                nomeResponsavel = "Francisco Fábio";
-            }
-
-            try {
-                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec";
-                await fetch(scriptUrl, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        registros: registrosSimulados,
-                        programacao: [item],
-                        responsavel: nomeResponsavel
-                    })
-                });
-            } catch (err) {
-                console.error("Erro ao sincronizar edição com a planilha:", err);
-            }
+            const data = await API.enviar({
+                registros: registrosSimulados,
+                programacao: [item],
+                responsavel: nomeResponsavel
+            });
+            // Sem os dados dos blocos (offline e sem cópia no aparelho): grava sem os litros
+            if (!data.sucesso) API.salvarProgramacaoItem(item, nomeResponsavel);
         }
 
         // Busca a programação oficial da planilha e substitui a lista local,
@@ -1548,9 +1772,7 @@
             }
 
             try {
-                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec?action=programacaoAtual";
-                const response = await fetch(scriptUrl);
-                const data = await response.json();
+                const data = await window.IrrigacaoAPI.programacaoAtual();
 
                 if (data.sucesso) {
                     programacao = data.programacao || [];
@@ -1612,7 +1834,7 @@
 
         window.addProgramacao = function(e) {
             e.preventDefault();
-            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de editar."); return; }
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Toque em Desbloquear (somente gestor) antes de editar."); return; }
 
             const dia = document.getElementById('progDia').value;
             const block = document.getElementById('progBlock').value.toUpperCase();
@@ -1634,6 +1856,7 @@
             } else {
                 const newItem = { id: Date.now(), dia, block, minutes, turno, observation };
                 programacao.push(newItem);
+                syncProgramacaoItemToSheet(newItem);
 
                 document.getElementById('progObservation').value = '';
                 document.getElementById('progTurno').value = '';
@@ -1655,7 +1878,7 @@
         }
 
         window.editProgramacaoItem = function(id) {
-            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de editar."); return; }
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Toque em Desbloquear (somente gestor) antes de editar."); return; }
             const item = programacao.find(p => p.id === id);
             if (!item) return;
 
@@ -1688,7 +1911,7 @@
         }
 
         window.deleteProgramacaoItem = function(id) {
-            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de apagar itens."); return; }
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Toque em Desbloquear (somente gestor) antes de apagar itens."); return; }
             pendingDeleteProgId = id;
             pendingClearProgramacao = false;
             window.showConfirmModal(
@@ -1699,7 +1922,7 @@
         }
 
         window.clearProgramacao = function() {
-            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de apagar a programação."); return; }
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Toque em Desbloquear (somente gestor) antes de apagar a programação."); return; }
             if (programacao.length === 0) return;
             pendingDeleteProgId = null;
             pendingClearProgramacao = true;
@@ -1733,9 +1956,7 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
 
             try {
-                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec?action=historico";
-                const response = await fetch(scriptUrl);
-                const data = await response.json();
+                const data = await window.IrrigacaoAPI.historico();
 
                 if (data.sucesso) {
                     historicoProgramacoes = data.historico || [];
@@ -1837,7 +2058,7 @@
         }
 
         window.copyHistoricoGrupo = function(idx) {
-            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de copiar uma programação."); return; }
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Toque em Desbloquear (somente gestor) antes de copiar uma programação."); return; }
 
             const grupo = historicoFiltrado[idx];
             if (!grupo) return;
@@ -1868,7 +2089,7 @@
         }
 
         window.pasteProgramacaoCopiada = function() {
-            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie com a senha do responsável antes de colar uma programação."); return; }
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Toque em Desbloquear (somente gestor) antes de colar uma programação."); return; }
             if (!_copiedProgramacaoItens || _copiedProgramacaoItens.length === 0) return;
 
             const dia = document.getElementById('pasteProgDaySelect').value;
@@ -1882,6 +2103,7 @@
             }));
 
             programacao = programacao.concat(novosItens);
+            novosItens.forEach(item => syncProgramacaoItemToSheet(item));
             saveProgramacao();
             window.showAlert("Programação Colada", `${novosItens.length} ${novosItens.length === 1 ? 'item foi adicionado' : 'itens foram adicionados'} à programação.`);
         }
@@ -1975,16 +2197,10 @@
             const registrosSimulados = Object.keys(minutosPorBloco).map(block => ({ block, minutes: minutosPorBloco[block] }));
 
             try {
-                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec";
-                const response = await fetch(scriptUrl, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        registros: registrosSimulados,
-                        responsavel: document.getElementById('progResponsavel').value
-                    })
+                const data = await window.IrrigacaoAPI.enviar({
+                    registros: registrosSimulados,
+                    responsavel: document.getElementById('progResponsavel').value
                 });
-
-                const data = await response.json();
 
                 // Descarta a resposta se a programação já mudou de novo enquanto aguardava
                 if (requestToken !== consumoRequestToken) return;
@@ -1995,7 +2211,7 @@
                     consumoStatus = 'done';
                 } else {
                     consumoStatus = 'error';
-                    console.warn("Aviso do Apps Script:", data.erro);
+                    console.warn("Aviso do Supabase:", data.erro);
                 }
             } catch (err) {
                 if (requestToken !== consumoRequestToken) return;
@@ -2246,40 +2462,45 @@
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const year = today.getFullYear();
 
-            // Formatação do nome abreviado
-            let nomeResponsavel = document.getElementById('collaborator').value;
-            if (nomeResponsavel === "ANTONIO AIRTON CORDEIRO DE BRITO") {
-                nomeResponsavel = "Airton Cordeiro";
-            } else if (nomeResponsavel === "ALEXANDRO RIBEIRO LIMA") {
-                nomeResponsavel = "Alexandro Ribeiro";
-            } else if (nomeResponsavel === "RAFAEL SARAIVA DE LIMA") {
-                nomeResponsavel = "Rafael Saraiva";
-            } else if (nomeResponsavel === "FRANCISCO FÁBIO TEXEIRA PEREIRA") {
-                nomeResponsavel = "Francisco Fábio";
-            }
+            // Nome abreviado do usuário logado
+            const nomeResponsavel = API.nomeUsuario();
+            let totalLitrosEnvio = null;
 
             try {
-                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec";
-                const response = await fetch(scriptUrl, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        registros: records,
-                        responsavel: nomeResponsavel
-                    })
+                const data = await window.IrrigacaoAPI.enviar({
+                    registros: records,
+                    responsavel: nomeResponsavel
                 });
-
-                const data = await response.json();
 
                 if (data.sucesso) {
                     if (data.blocos) infoBlocosImagem = data.blocos;
                     if (data.totalLitrosMil) {
+                        totalLitrosEnvio = parseFloat(data.totalLitrosMil.replace(',', '.'));
                         document.getElementById('reportTotalVolume').innerText = data.totalLitrosMil.replace(',', '.');
                     }
                 } else {
-                    console.warn("Aviso do Apps Script:", data.erro);
+                    console.warn("Aviso do Supabase:", data.erro);
                 }
             } catch (err) {
-                console.error("Erro na comunicação com a planilha:", err);
+                console.error("Erro no cálculo de consumo:", err);
+            }
+
+            // Garante que todos os registros estão no banco e grava o log do envio
+            try {
+                records.forEach(rec => API.salvarRegistro(rec));
+                API.registrarEnvio({
+                    tipo: 'irrigacao',
+                    data: records.length > 0 ? records[0].date : dataLocalIso(),
+                    qtd_registros: records.length,
+                    qtd_blocos: uniqueBlocks,
+                    total_minutos: totalMinutes,
+                    total_litros_mil: totalLitrosEnvio,
+                    motor_ligado: motorLigadoHora || null,
+                    motor_desligado: motorDesligadoHora || null,
+                    itens: records.map(r => ({ bloco: r.block, minutos: r.minutes, turno: r.turno, observacao: r.observation, data: r.date }))
+                });
+            } catch (err) {
+                console.error("Erro ao registrar o envio:", err);
             }
 
             // --- GERAÇÃO DOS CARTÕES POR BLOCO (após fetch para ter infoBlocosImagem) ---
@@ -2449,7 +2670,7 @@
         }
 
         window.startProgReportFlow = function() {
-            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Desbloqueie a edição com a senha do responsável para enviar o relatório."); return; }
+            if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Toque em Desbloquear (somente gestor) para enviar o relatório."); return; }
             if (getProgReportScope().items.length === 0) {
                 window.showAlert("Programação Vazia", "Não há itens na programação para o dia selecionado no filtro acima da lista.");
                 return;
@@ -2504,16 +2725,7 @@
 
             document.getElementById('reportTotalDurationProg').innerText = tHours === 0 ? `${tMins}min` : `${tHours}h ${tMins}min`;
 
-            let nomeResponsavel = document.getElementById('progResponsavel').value;
-            if (nomeResponsavel === "ANTONIO AIRTON CORDEIRO DE BRITO") {
-                nomeResponsavel = "Airton Cordeiro";
-            } else if (nomeResponsavel === "ALEXANDRO RIBEIRO LIMA") {
-                nomeResponsavel = "Alexandro Ribeiro";
-            } else if (nomeResponsavel === "RAFAEL SARAIVA DE LIMA") {
-                nomeResponsavel = "Rafael Saraiva";
-            } else if (nomeResponsavel === "FRANCISCO FÁBIO TEXEIRA PEREIRA") {
-                nomeResponsavel = "Francisco Fábio";
-            }
+            const nomeResponsavel = nomeCurtoDe(document.getElementById('progResponsavel').value);
 
             // --- INTEGRAÇÃO APPS SCRIPT (consumo de água por bloco) ---
             let infoBlocosImagem = {};
@@ -2524,17 +2736,11 @@
             const registrosSimulados = Object.keys(minutosPorBloco).map(block => ({ block, minutes: minutosPorBloco[block] }));
 
             try {
-                const scriptUrl = "https://script.google.com/macros/s/AKfycbxGnaUSkJciZjTTTGvdfqijjVILZFXRHMk5aHKDQamAny6-xAiNbeELx81JWox8tLOBIQ/exec";
-                const response = await fetch(scriptUrl, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        registros: registrosSimulados,
-                        programacao: reportItems,
-                        responsavel: nomeResponsavel
-                    })
+                const data = await window.IrrigacaoAPI.enviar({
+                    registros: registrosSimulados,
+                    programacao: reportItems,
+                    responsavel: nomeResponsavel
                 });
-
-                const data = await response.json();
 
                 if (data.sucesso) {
                     if (data.blocos) infoBlocosImagem = data.blocos;
@@ -2542,10 +2748,23 @@
                         document.getElementById('reportTotalVolumeProg').innerText = data.totalLitrosMil.replace(',', '.');
                     }
                 } else {
-                    console.warn("Aviso do Apps Script:", data.erro);
+                    // Sem dados dos blocos: grava os itens mesmo assim, sem os litros
+                    reportItems.forEach(item => API.salvarProgramacaoItem(item, nomeResponsavel));
+                    console.warn("Aviso do Supabase:", data.erro);
                 }
+
+                API.registrarEnvio({
+                    tipo: 'programacao',
+                    data: dataLocalIso(),
+                    responsavel: nomeResponsavel,
+                    qtd_registros: reportItems.length,
+                    qtd_blocos: uniqueBlocks,
+                    total_minutos: totalMinutesGeral,
+                    total_litros_mil: data.sucesso && data.totalLitrosMil ? parseFloat(data.totalLitrosMil.replace(',', '.')) : null,
+                    itens: reportItems.map(p => ({ dia: p.dia, bloco: p.block, minutos: p.minutes, turno: p.turno, observacao: p.observation }))
+                });
             } catch (err) {
-                console.error("Erro na comunicação com a planilha:", err);
+                console.error("Erro ao gravar a programação:", err);
             }
 
             // --- GERAÇÃO DOS CARTÕES POR BLOCO ---
@@ -2686,8 +2905,798 @@
             window.closeProgFlowModal();
         }
 
+        // --- UTILIDADES DE EXIBIÇÃO ---
+
+        function escapeHtml(texto) {
+            return String(texto ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function fmtNum(valor, casas) {
+            return Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
+        }
+
+        function fmtDataHora(iso) {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '—';
+            return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' +
+                   d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Valor para <input type="datetime-local"> com a hora atual do aparelho
+        function agoraParaInput() {
+            const d = new Date();
+            return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        }
+
+        function lerNumero(id) {
+            const v = document.getElementById(id).value;
+            return v === '' ? null : parseFloat(v);
+        }
+
+        function botaoSalvo(btn, texto) {
+            const original = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> ${texto}`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            setTimeout(() => { btn.innerHTML = original; if(typeof lucide !== 'undefined') lucide.createIcons(); }, 1300);
+        }
+
+        function podeExcluir(item) {
+            const u = API.usuarioAtual();
+            return !!u && (API.isGestor() || item._pendente || item.criado_por === u.id);
+        }
+
+        function seloPendente(item) {
+            return item._pendente
+                ? `<span class="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded"><i data-lucide="cloud-off" class="w-3 h-3"></i> Aguardando envio</span>`
+                : '';
+        }
+
+        // --- ÁGUA: POÇOS E RESERVATÓRIOS ---
+
+        let pocosCache = [];
+        let leiturasPocoCache = [];
+        let reservCache = [];
+        let leiturasReservCache = [];
+
+        window.carregarAgua = async function() {
+            document.getElementById('pocoDataHora').value = agoraParaInput();
+            document.getElementById('reservDataHora').value = agoraParaInput();
+            document.getElementById('cadastrosAgua').classList.toggle('hidden', !API.isGestor());
+
+            [pocosCache, leiturasPocoCache, reservCache, leiturasReservCache] = await Promise.all([
+                API.listarPocos(), API.listarLeiturasPocos(), API.listarReservatorios(), API.listarLeiturasReservatorios()
+            ]);
+            renderAgua();
+        }
+
+        function preencherSelect(id, itens, rotulo, vazio) {
+            const select = document.getElementById(id);
+            const atual = select.value;
+            select.innerHTML = itens.length === 0
+                ? `<option value="">${vazio}</option>`
+                : itens.map(i => `<option value="${escapeHtml(i.id)}">${escapeHtml(rotulo(i))}</option>`).join('');
+            if (itens.some(i => i.id === atual)) select.value = atual;
+        }
+
+        function rotuloPoco(p) { return `Poço ${p.numero}${p.nome ? ' — ' + p.nome : ''}`; }
+
+        // Vazão média entre as duas últimas leituras de hidrômetro (m³/h)
+        function vazaoCalculada(leituras) {
+            const comHidrometro = leituras.filter(l => l.leitura_hidrometro_m3 != null);
+            if (comHidrometro.length < 2) return null;
+            const [l1, l2] = comHidrometro;
+            const horas = (new Date(l1.data_hora) - new Date(l2.data_hora)) / 3600000;
+            const volume = Number(l1.leitura_hidrometro_m3) - Number(l2.leitura_hidrometro_m3);
+            if (horas <= 0 || volume < 0) return null;
+            return volume / horas;
+        }
+
+        function renderAgua() {
+            const pocosAtivos = pocosCache.filter(p => p.ativo !== false);
+            const reservAtivos = reservCache.filter(r => r.ativo !== false);
+            preencherSelect('pocoSelect', pocosAtivos, rotuloPoco, 'Nenhum poço cadastrado');
+            preencherSelect('reservSelect', reservAtivos, r => r.nome, 'Nenhum reservatório cadastrado');
+
+            // Poços
+            const pocosList = document.getElementById('pocosList');
+            pocosList.innerHTML = pocosAtivos.length === 0
+                ? `<div class="text-center py-8 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">Nenhum poço cadastrado.${API.isGestor() ? ' Cadastre no fim desta página.' : ' Peça ao gestor para cadastrar.'}</div>`
+                : pocosAtivos.map(p => {
+                    const leituras = leiturasPocoCache.filter(l => l.poco_id === p.id);
+                    const ultima = leituras[0];
+                    const media = vazaoCalculada(leituras);
+                    const stat = (rotulo, valor, unidade) => `
+                        <div class="bg-teal-50 border border-teal-100 rounded-xl px-2 py-2 text-center">
+                            <div class="text-[8px] font-black text-teal-700 uppercase tracking-wider">${rotulo}</div>
+                            <div class="text-sm font-black text-teal-900 leading-tight mt-0.5">${valor}</div>
+                            <div class="text-[9px] text-teal-600">${unidade}</div>
+                        </div>`;
+                    const historicoHtml = leituras.slice(0, 5).map(l => `
+                        <div class="flex justify-between items-center gap-2 py-1.5 text-[11px]">
+                            <div class="min-w-0">
+                                <span class="font-bold text-slate-600">${fmtDataHora(l.data_hora)}</span>
+                                <span class="text-slate-400 truncate"> · ${escapeHtml(l.responsavel || '')}</span>
+                                ${l.observacao ? `<div class="text-slate-400 italic truncate">${escapeHtml(l.observacao)}</div>` : ''}
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <span class="font-bold text-teal-700 text-right">
+                                    ${l.vazao_m3h != null ? fmtNum(l.vazao_m3h, 2) + ' m³/h' : ''}
+                                    ${l.vazao_m3h != null && l.leitura_hidrometro_m3 != null ? '<br>' : ''}
+                                    ${l.leitura_hidrometro_m3 != null ? '<span class="text-slate-500">' + fmtNum(l.leitura_hidrometro_m3, 3) + ' m³</span>' : ''}
+                                </span>
+                                ${l._pendente ? '<i data-lucide="cloud-off" class="w-3.5 h-3.5 text-amber-500"></i>' : ''}
+                                ${podeExcluir(l) ? `<button type="button" onclick="window.excluirLeituraPoco('${escapeHtml(l.id)}')" class="p-1 text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+                            </div>
+                        </div>`).join('');
+
+                    return `
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-teal-700 to-teal-600 px-4 py-3 flex justify-between items-center gap-2">
+                            <div class="min-w-0">
+                                <span class="text-sm font-bold text-white uppercase tracking-wide">Poço ${escapeHtml(p.numero)}</span>
+                                ${p.nome ? `<span class="ml-1 text-xs font-medium text-teal-100">${escapeHtml(p.nome)}</span>` : ''}
+                            </div>
+                            <span class="text-xs font-bold text-teal-100 bg-white/15 px-2.5 py-1 rounded-full shrink-0">${leituras.length} leitura${leituras.length === 1 ? '' : 's'}</span>
+                        </div>
+                        ${ultima ? `
+                        <div class="px-4 pt-3">
+                            <div class="grid grid-cols-3 gap-2">
+                                ${stat('Vazão', ultima.vazao_m3h != null ? fmtNum(ultima.vazao_m3h, 2) : '—', 'm³/h')}
+                                ${stat('Hidrômetro', ultima.leitura_hidrometro_m3 != null ? fmtNum(ultima.leitura_hidrometro_m3, 1) : '—', 'm³')}
+                                ${stat('Média calc.', media != null ? fmtNum(media, 2) : '—', 'm³/h')}
+                            </div>
+                            <div class="flex items-center justify-between gap-2 mt-2">
+                                <span class="text-[10px] font-bold text-slate-400">Última: ${fmtDataHora(ultima.data_hora)}</span>
+                                ${seloPendente(ultima)}
+                            </div>
+                        </div>
+                        <div class="px-4 pb-2 pt-1 divide-y divide-slate-50">${historicoHtml}</div>`
+                        : `<p class="px-4 py-4 text-xs text-slate-400">Nenhuma leitura registrada.</p>`}
+                    </div>`;
+                }).join('');
+
+            // Reservatórios
+            const reservList = document.getElementById('reservList');
+            reservList.innerHTML = reservAtivos.length === 0
+                ? `<div class="text-center py-8 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">Nenhum reservatório cadastrado.${API.isGestor() ? ' Cadastre no fim desta página.' : ' Peça ao gestor para cadastrar.'}</div>`
+                : reservAtivos.map(r => {
+                    const leituras = leiturasReservCache.filter(l => l.reservatorio_id === r.id);
+                    const ultima = leituras[0];
+                    const anterior = leituras[1];
+                    const altura = Number(r.altura_maxima_m) || 0;
+                    const pct = ultima && altura > 0 ? Math.min(100, Math.max(0, Number(ultima.nivel_m) / altura * 100)) : null;
+                    const volume = pct != null && Number(r.capacidade_m3) > 0 ? Number(r.capacidade_m3) * pct / 100 : null;
+                    const variacao = ultima && anterior ? Number(ultima.nivel_m) - Number(anterior.nivel_m) : null;
+
+                    const historicoHtml = leituras.slice(0, 5).map(l => `
+                        <div class="flex justify-between items-center gap-2 py-1.5 text-[11px]">
+                            <div class="min-w-0">
+                                <span class="font-bold text-slate-600">${fmtDataHora(l.data_hora)}</span>
+                                <span class="text-slate-400 truncate"> · ${escapeHtml(l.responsavel || '')}</span>
+                                ${l.observacao ? `<div class="text-slate-400 italic truncate">${escapeHtml(l.observacao)}</div>` : ''}
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <span class="font-bold text-indigo-700">${fmtNum(l.nivel_m, 2)} m</span>
+                                ${l._pendente ? '<i data-lucide="cloud-off" class="w-3.5 h-3.5 text-amber-500"></i>' : ''}
+                                ${podeExcluir(l) ? `<button type="button" onclick="window.excluirLeituraReservatorio('${escapeHtml(l.id)}')" class="p-1 text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+                            </div>
+                        </div>`).join('');
+
+                    return `
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-indigo-700 to-indigo-600 px-4 py-3 flex justify-between items-center gap-2">
+                            <span class="text-sm font-bold text-white uppercase tracking-wide truncate">${escapeHtml(r.nome)}</span>
+                            ${altura > 0 ? `<span class="text-xs font-bold text-indigo-100 bg-white/15 px-2.5 py-1 rounded-full shrink-0">máx. ${fmtNum(altura, 2)} m</span>` : ''}
+                        </div>
+                        ${ultima ? `
+                        <div class="px-4 pt-3">
+                            <div class="flex items-end justify-between gap-3">
+                                <div>
+                                    <div class="text-[9px] font-black text-indigo-700 uppercase tracking-wider">Nível atual</div>
+                                    <div class="text-2xl font-black text-indigo-900 leading-none mt-1">${fmtNum(ultima.nivel_m, 2)} <span class="text-sm">m</span></div>
+                                    ${variacao != null ? `<div class="text-[10px] font-bold mt-1 ${variacao >= 0 ? 'text-green-600' : 'text-red-500'}">${variacao >= 0 ? '▲ +' : '▼ '}${fmtNum(variacao, 2)} m desde a leitura anterior</div>` : ''}
+                                </div>
+                                <div class="text-right">
+                                    ${pct != null ? `<div class="text-lg font-black text-indigo-700 leading-none">${fmtNum(pct, 0)}%</div>` : ''}
+                                    ${volume != null ? `<div class="text-[10px] font-bold text-slate-500 mt-1">≈ ${fmtNum(volume, 0)} m³</div>` : ''}
+                                </div>
+                            </div>
+                            ${pct != null ? `<div class="w-full h-2.5 bg-indigo-50 rounded-full mt-2 overflow-hidden border border-indigo-100"><div class="h-full bg-indigo-500 rounded-full" style="width:${pct}%"></div></div>` : ''}
+                            <div class="flex items-center justify-between gap-2 mt-2">
+                                <span class="text-[10px] font-bold text-slate-400">Última: ${fmtDataHora(ultima.data_hora)}</span>
+                                ${seloPendente(ultima)}
+                            </div>
+                        </div>
+                        <div class="px-4 pb-2 pt-1 divide-y divide-slate-50">${historicoHtml}</div>`
+                        : `<p class="px-4 py-4 text-xs text-slate-400">Nenhuma leitura registrada.</p>`}
+                    </div>`;
+                }).join('');
+
+            // Cadastros (gestor)
+            const cadastros = document.getElementById('cadastrosLista');
+            const linhaCadastro = (tipo, item, rotulo) => `
+                <div class="flex items-center justify-between gap-2 py-2">
+                    <span class="font-bold ${item.ativo === false ? 'text-slate-300 line-through' : 'text-slate-600'} truncate">${escapeHtml(rotulo)}</span>
+                    <button type="button" onclick="window.alternarAtivo('${tipo}', '${escapeHtml(item.id)}')"
+                        class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${item.ativo === false ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}">
+                        ${item.ativo === false ? 'Reativar' : 'Desativar'}
+                    </button>
+                </div>`;
+            cadastros.innerHTML = (pocosCache.length + reservCache.length) === 0
+                ? `<p class="text-slate-400 py-2">Nada cadastrado ainda.</p>`
+                : pocosCache.map(p => linhaCadastro('poco', p, rotuloPoco(p))).join('') +
+                  reservCache.map(r => linhaCadastro('reservatorio', r, r.nome)).join('');
+
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function salvarLeituraPocoConfirmada(leitura) {
+            API.salvarLeituraPoco(leitura);
+            document.getElementById('pocoHidrometro').value = '';
+            document.getElementById('pocoVazao').value = '';
+            document.getElementById('pocoObs').value = '';
+            botaoSalvo(document.getElementById('pocoSubmitBtn'), 'Leitura Salva!');
+            window.carregarAgua();
+        }
+
+        window.addLeituraPoco = function(e) {
+            e.preventDefault();
+            const pocoId = document.getElementById('pocoSelect').value;
+            const hidrometro = lerNumero('pocoHidrometro');
+            const vazao = lerNumero('pocoVazao');
+            if (!pocoId) { window.showAlert("Sem poço", "Nenhum poço cadastrado. Peça ao gestor para cadastrar."); return; }
+            if (hidrometro === null && vazao === null) {
+                window.showAlert("Leitura vazia", "Preencha a leitura do hidrômetro, a vazão, ou os dois.");
+                return;
+            }
+
+            const leitura = {
+                poco_id: pocoId,
+                data_hora: new Date(document.getElementById('pocoDataHora').value).toISOString(),
+                leitura_hidrometro_m3: hidrometro,
+                vazao_m3h: vazao,
+                observacao: document.getElementById('pocoObs').value.trim()
+            };
+
+            // Hidrômetro menor que a leitura anterior costuma ser erro de digitação
+            const anterior = leiturasPocoCache.find(l => l.poco_id === pocoId && l.leitura_hidrometro_m3 != null);
+            if (hidrometro !== null && anterior && hidrometro < Number(anterior.leitura_hidrometro_m3)) {
+                pendingConfirmCallback = () => salvarLeituraPocoConfirmada(leitura);
+                window.showConfirmModal("Confira a leitura",
+                    `A leitura do hidrômetro (${fmtNum(hidrometro, 3)} m³) é menor que a anterior (${fmtNum(anterior.leitura_hidrometro_m3, 3)} m³). Salvar mesmo assim?`,
+                    "SALVAR", "alert-triangle");
+                return;
+            }
+            salvarLeituraPocoConfirmada(leitura);
+        }
+
+        window.addLeituraReservatorio = function(e) {
+            e.preventDefault();
+            const reservId = document.getElementById('reservSelect').value;
+            const nivel = lerNumero('reservNivel');
+            if (!reservId) { window.showAlert("Sem reservatório", "Nenhum reservatório cadastrado. Peça ao gestor para cadastrar."); return; }
+            if (nivel === null || nivel < 0) { window.showAlert("Nível inválido", "Informe o nível da água em metros."); return; }
+
+            const reserv = reservCache.find(r => r.id === reservId);
+            if (reserv && Number(reserv.altura_maxima_m) > 0 && nivel > Number(reserv.altura_maxima_m)) {
+                window.showAlert("Confira o nível", `O nível informado (${fmtNum(nivel, 2)} m) é maior que a altura máxima do reservatório (${fmtNum(reserv.altura_maxima_m, 2)} m).`);
+                return;
+            }
+
+            API.salvarLeituraReservatorio({
+                reservatorio_id: reservId,
+                data_hora: new Date(document.getElementById('reservDataHora').value).toISOString(),
+                nivel_m: nivel,
+                observacao: document.getElementById('reservObs').value.trim()
+            });
+            document.getElementById('reservNivel').value = '';
+            document.getElementById('reservObs').value = '';
+            botaoSalvo(document.getElementById('reservSubmitBtn'), 'Nível Salvo!');
+            window.carregarAgua();
+        }
+
+        window.excluirLeituraPoco = function(id) {
+            pendingConfirmCallback = () => { API.excluirLeituraPoco(id); window.carregarAgua(); };
+            window.showConfirmModal("Excluir Leitura?", "Tem certeza que deseja apagar esta leitura do poço?", "EXCLUIR");
+        }
+
+        window.excluirLeituraReservatorio = function(id) {
+            pendingConfirmCallback = () => { API.excluirLeituraReservatorio(id); window.carregarAgua(); };
+            window.showConfirmModal("Excluir Leitura?", "Tem certeza que deseja apagar esta leitura do reservatório?", "EXCLUIR");
+        }
+
+        window.addPoco = function(e) {
+            e.preventDefault();
+            if (!API.isGestor()) return;
+            const numero = document.getElementById('novoPocoNumero').value.trim().toUpperCase();
+            const nome = document.getElementById('novoPocoNome').value.trim();
+            if (pocosCache.some(p => String(p.numero).toUpperCase() === numero)) {
+                window.showAlert("Poço já cadastrado", `Já existe um poço com o número ${numero}.`);
+                return;
+            }
+            API.salvarPoco({ numero, nome: nome || null });
+            document.getElementById('novoPocoNumero').value = '';
+            document.getElementById('novoPocoNome').value = '';
+            window.carregarAgua();
+        }
+
+        window.addReservatorio = function(e) {
+            e.preventDefault();
+            if (!API.isGestor()) return;
+            const nome = document.getElementById('novoReservNome').value.trim();
+            if (reservCache.some(r => r.nome.toLowerCase() === nome.toLowerCase())) {
+                window.showAlert("Reservatório já cadastrado", `Já existe um reservatório chamado "${nome}".`);
+                return;
+            }
+            API.salvarReservatorio({
+                nome,
+                altura_maxima_m: lerNumero('novoReservAltura'),
+                capacidade_m3: lerNumero('novoReservCapacidade')
+            });
+            ['novoReservNome', 'novoReservAltura', 'novoReservCapacidade'].forEach(id => document.getElementById(id).value = '');
+            window.carregarAgua();
+        }
+
+        window.alternarAtivo = function(tipo, id) {
+            if (!API.isGestor()) return;
+            if (tipo === 'poco') {
+                const p = pocosCache.find(x => x.id === id);
+                if (p) API.salvarPoco({ id: p.id, numero: p.numero, nome: p.nome, observacao: p.observacao, ativo: p.ativo === false });
+            } else {
+                const r = reservCache.find(x => x.id === id);
+                if (r) API.salvarReservatorio({ id: r.id, nome: r.nome, altura_maxima_m: r.altura_maxima_m, capacidade_m3: r.capacidade_m3, ativo: r.ativo === false });
+            }
+            window.carregarAgua();
+        }
+
+        // --- LOG DE ATIVIDADES (GESTOR) ---
+
+        const ROTULOS_TABELA = {
+            registros_irrigacao: 'registro de irrigação', programacoes: 'item da programação', motor_diario: 'hora do motor',
+            envios_relatorio: 'envio de relatório', pocos: 'poço', leituras_poco: 'leitura de poço',
+            reservatorios: 'reservatório', leituras_reservatorio: 'nível de reservatório', perfis: 'perfil de usuário',
+            dados_bloco: 'dados do bloco', usuarios_login: 'login de usuário'
+        };
+
+        function resumoAuditoria(linha) {
+            const d = linha.dados_depois || linha.dados_antes || {};
+            const partes = [];
+            if (linha.tabela === 'envios_relatorio') partes.push(`Relatório de ${d.tipo === 'programacao' ? 'programação' : 'irrigação'} · ${d.qtd_registros ?? 0} itens`);
+            if (d.bloco) partes.push(`Bloco ${d.bloco}`);
+            if (d.dia) partes.push(d.dia);
+            if (d.minutos != null && linha.tabela !== 'envios_relatorio') partes.push(`${d.minutos} min`);
+            if (d.motor_ligado || d.motor_desligado) partes.push(`Motor ${d.motor_ligado ? d.motor_ligado.slice(0, 5) : '--:--'} → ${d.motor_desligado ? d.motor_desligado.slice(0, 5) : '--:--'}`);
+            if (d.numero) partes.push(`Nº ${d.numero}`);
+            if (d.vazao_m3h != null) partes.push(`${fmtNum(d.vazao_m3h, 2)} m³/h`);
+            if (d.leitura_hidrometro_m3 != null) partes.push(`${fmtNum(d.leitura_hidrometro_m3, 3)} m³`);
+            if (d.nivel_m != null) partes.push(`${fmtNum(d.nivel_m, 2)} m`);
+            if (d.nome && ['reservatorios', 'perfis', 'pocos'].includes(linha.tabela)) partes.push(d.nome);
+            if (d.usuario && ['perfis', 'usuarios_login'].includes(linha.tabela)) partes.push('@' + d.usuario);
+            if (linha.tabela === 'perfis' && linha.acao === 'UPDATE' && linha.dados_antes && linha.dados_depois) {
+                if (linha.dados_antes.papel !== linha.dados_depois.papel) partes.push(`papel: ${linha.dados_depois.papel}`);
+                if (linha.dados_antes.ativo !== linha.dados_depois.ativo) partes.push(linha.dados_depois.ativo ? 'reativado' : 'desativado');
+            }
+            return partes.join(' · ');
+        }
+
+        window.openAuditModal = async function() {
+            const modal = document.getElementById('auditModal');
+            const body = document.getElementById('auditBody');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            body.innerHTML = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-10"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            try {
+                const linhas = await API.listarAuditoria(150);
+                body.innerHTML = linhas.length === 0
+                    ? `<p class="text-xs text-slate-400 text-center py-10">Nenhuma atividade registrada.</p>`
+                    : linhas.map(l => {
+                        const excluiu = l.acao === 'DELETE' || (l.acao === 'UPDATE' && l.dados_depois && l.dados_depois.excluido_em && !(l.dados_antes || {}).excluido_em);
+                        const acao = l.acao === 'CRIAR_LOGIN' ? { verbo: 'criou', icone: 'user-plus', cor: 'text-sky-600 bg-sky-50' }
+                                   : l.acao === 'REDEFINIR_SENHA' ? { verbo: 'redefiniu a senha de um', icone: 'key-round', cor: 'text-amber-600 bg-amber-50' }
+                                   : excluiu ? { verbo: 'excluiu', icone: 'trash-2', cor: 'text-red-500 bg-red-50' }
+                                   : l.acao === 'INSERT' ? { verbo: 'registrou', icone: 'plus', cor: 'text-green-600 bg-green-50' }
+                                   : { verbo: 'alterou', icone: 'pencil', cor: 'text-amber-600 bg-amber-50' };
+                        return `
+                        <div class="flex items-start gap-3 px-4 py-3">
+                            <div class="w-7 h-7 rounded-full ${acao.cor} flex items-center justify-center shrink-0"><i data-lucide="${acao.icone}" class="w-3.5 h-3.5"></i></div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs text-slate-700"><span class="font-black">${escapeHtml(l.usuario_nome || 'Sistema')}</span> ${acao.verbo} ${ROTULOS_TABELA[l.tabela] || l.tabela}</p>
+                                <p class="text-[11px] text-slate-500 truncate">${escapeHtml(resumoAuditoria(l))}</p>
+                                <p class="text-[10px] font-bold text-slate-400 mt-0.5">${fmtDataHora(l.criado_em)}</p>
+                            </div>
+                        </div>`;
+                    }).join('');
+            } catch (err) {
+                body.innerHTML = `<p class="text-xs font-medium text-red-500 text-center py-10 px-4">Não foi possível carregar: ${escapeHtml(err.message)}</p>`;
+            }
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.closeAuditModal = function() {
+            const modal = document.getElementById('auditModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // --- USUÁRIOS (GESTOR) ---
+
+        let usuariosLista = [];
+        let usuarioEditando = null;
+
+        window.openUsersModal = async function() {
+            if (!API.isGestor()) return;
+            const modal = document.getElementById('usersModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            usuarioEditando = null;
+            document.getElementById('novoUsuarioErro').classList.add('hidden');
+            document.getElementById('usersList').innerHTML = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-8"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            await recarregarUsuarios();
+        }
+
+        window.closeUsersModal = function() {
+            const modal = document.getElementById('usersModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function recarregarUsuarios() {
+            const lista = document.getElementById('usersList');
+            if (!navigator.onLine) {
+                lista.innerHTML = `<p class="text-xs font-medium text-red-500 text-center py-6">Sem conexão. A gestão de usuários precisa de internet.</p>`;
+                return;
+            }
+            try {
+                usuariosLista = await API.listarPerfis(true);
+                perfisCache = usuariosLista;
+                preencherSelectsResponsaveis();
+                renderUsuarios();
+            } catch (err) {
+                lista.innerHTML = `<p class="text-xs font-medium text-red-500 text-center py-6">Não foi possível carregar: ${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        function renderUsuarios() {
+            const eu = API.usuarioAtual() || {};
+            const nomeExibido = p => p.nome_curto || p.nome;
+            const ordenados = usuariosLista.slice().sort((a, b) =>
+                (Number(b.ativo) - Number(a.ativo)) ||
+                ((a.papel === 'gestor' ? 0 : 1) - (b.papel === 'gestor' ? 0 : 1)) ||
+                nomeExibido(a).localeCompare(nomeExibido(b)));
+
+            document.getElementById('usersList').innerHTML = ordenados.map(p => {
+                const souEu = p.id === eu.id;
+                const gestor = p.papel === 'gestor';
+                const id = escapeHtml(p.id);
+                const formEdicao = usuarioEditando !== p.id ? '' : `
+                    <div class="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                        <input type="text" id="editUsuarioNome" value="${escapeHtml(p.nome)}" placeholder="Nome completo"
+                            oninput="this.value = this.value.toUpperCase()"
+                            class="w-full bg-white border-2 border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800">
+                        <input type="text" id="editUsuarioNomeCurto" value="${escapeHtml(p.nome_curto || '')}" placeholder="Nome curto"
+                            class="w-full bg-white border-2 border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800">
+                        <input type="password" id="editUsuarioSenha" placeholder="Nova senha (deixe vazio para manter)" autocomplete="new-password"
+                            class="w-full bg-white border-2 border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800">
+                        <p id="editUsuarioErro" class="hidden text-[11px] font-bold text-red-500"></p>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="window.editarUsuario(null)" class="flex-1 bg-slate-200 text-slate-600 font-bold py-2 rounded-lg text-xs">Cancelar</button>
+                            <button type="button" id="editUsuarioBtn" onclick="window.salvarEdicaoUsuario('${id}')" class="flex-1 bg-slate-800 text-white font-bold py-2 rounded-lg text-xs">Salvar</button>
+                        </div>
+                    </div>`;
+
+                return `
+                <div class="py-3 ${p.ativo ? '' : 'opacity-60'}">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-bold text-slate-700 truncate">${escapeHtml(nomeExibido(p))}${souEu ? ' <span class="text-[10px] font-medium text-slate-400">(você)</span>' : ''}</p>
+                            <p class="text-[11px] text-slate-400 truncate">@${escapeHtml(p.usuario)} · ${escapeHtml(p.nome)}</p>
+                            <div class="flex gap-1 mt-1">
+                                <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${gestor ? 'bg-sky-100 text-sky-700' : 'bg-green-100 text-green-700'}">${gestor ? 'Gestor' : 'Irrigador'}</span>
+                                ${p.ativo ? '' : '<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-100 text-red-600">Desativado</span>'}
+                            </div>
+                        </div>
+                        <button type="button" onclick="window.editarUsuario('${id}')" title="Editar" class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg shrink-0">
+                            <i data-lucide="pencil" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    ${souEu ? '' : `
+                    <div class="flex flex-wrap gap-1.5 mt-2">
+                        <button type="button" onclick="window.alternarPapelUsuario('${id}')"
+                            class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${gestor ? 'bg-green-50 text-green-700' : 'bg-sky-50 text-sky-700'}">
+                            ${gestor ? 'Tornar irrigador' : 'Tornar gestor'}
+                        </button>
+                        <button type="button" onclick="window.alternarAtivoUsuario('${id}')"
+                            class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${p.ativo ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}">
+                            ${p.ativo ? 'Desativar' : 'Reativar'}
+                        </button>
+                    </div>`}
+                    ${formEdicao}
+                </div>`;
+            }).join('') || `<p class="text-xs text-slate-400 py-4">Nenhum usuário.</p>`;
+
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.editarUsuario = function(id) {
+            usuarioEditando = id;
+            renderUsuarios();
+        }
+
+        window.salvarEdicaoUsuario = async function(id) {
+            const nome = document.getElementById('editUsuarioNome').value.trim();
+            const nomeCurto = document.getElementById('editUsuarioNomeCurto').value.trim();
+            const senha = document.getElementById('editUsuarioSenha').value;
+            const erro = document.getElementById('editUsuarioErro');
+            const btn = document.getElementById('editUsuarioBtn');
+            const mostrarErro = msg => { erro.innerText = msg; erro.classList.remove('hidden'); };
+
+            if (!nome) return mostrarErro("Informe o nome completo.");
+            if (senha && senha.length < 6) return mostrarErro("A senha precisa ter pelo menos 6 caracteres.");
+
+            btn.disabled = true;
+            btn.innerText = 'Salvando...';
+            try {
+                await API.atualizarUsuario(id, { nome, nome_curto: nomeCurto || null });
+                if (senha) await API.redefinirSenha(id, senha);
+                usuarioEditando = null;
+                await recarregarUsuarios();
+                if (id === (API.usuarioAtual() || {}).id) aplicarUsuarioNaTela();
+                if (senha) window.showAlert("Senha alterada", "A nova senha já vale para o próximo login dessa pessoa.");
+            } catch (err) {
+                mostrarErro(err.message);
+                btn.disabled = false;
+                btn.innerText = 'Salvar';
+            }
+        }
+
+        // Confirmação + gravação de uma alteração de perfil (papel ou ativo)
+        function confirmarAlteracaoUsuario(id, valores, titulo, texto, botao, icone) {
+            pendingConfirmCallback = async () => {
+                try {
+                    await API.atualizarUsuario(id, valores);
+                    await recarregarUsuarios();
+                } catch (err) {
+                    window.showAlert("Não foi possível alterar", err.message);
+                }
+            };
+            window.showConfirmModal(titulo, texto, botao, icone);
+        }
+
+        window.alternarPapelUsuario = function(id) {
+            const p = usuariosLista.find(x => x.id === id);
+            if (!p) return;
+            const nome = p.nome_curto || p.nome;
+            if (p.papel === 'gestor') {
+                confirmarAlteracaoUsuario(id, { papel: 'irrigador' }, "Tornar irrigador?",
+                    `${nome} deixará de editar a programação, os cadastros e os usuários.`, "CONFIRMAR", "user-minus");
+            } else {
+                confirmarAlteracaoUsuario(id, { papel: 'gestor' }, "Tornar gestor?",
+                    `${nome} poderá editar a programação, os cadastros, os usuários e ver o log de atividades.`, "CONFIRMAR", "shield-check");
+            }
+        }
+
+        window.alternarAtivoUsuario = function(id) {
+            const p = usuariosLista.find(x => x.id === id);
+            if (!p) return;
+            const nome = p.nome_curto || p.nome;
+            if (p.ativo) {
+                confirmarAlteracaoUsuario(id, { ativo: false }, "Desativar usuário?",
+                    `${nome} perde o acesso ao app. Tudo o que já registrou continua salvo.`, "DESATIVAR", "user-x");
+            } else {
+                confirmarAlteracaoUsuario(id, { ativo: true }, "Reativar usuário?",
+                    `${nome} volta a ter acesso ao app.`, "REATIVAR", "user-check");
+            }
+        }
+
+        window.criarUsuario = async function(e) {
+            e.preventDefault();
+            const erro = document.getElementById('novoUsuarioErro');
+            const btn = document.getElementById('novoUsuarioBtn');
+            const dados = {
+                usuario: document.getElementById('novoUsuarioLogin').value.trim(),
+                senha: document.getElementById('novoUsuarioSenha').value,
+                nome: document.getElementById('novoUsuarioNome').value.trim(),
+                nome_curto: document.getElementById('novoUsuarioNomeCurto').value.trim(),
+                papel: document.getElementById('novoUsuarioPapel').value
+            };
+            erro.classList.add('hidden');
+
+            if (dados.usuario.length < 2) { erro.innerText = "O usuário precisa ter pelo menos 2 caracteres."; erro.classList.remove('hidden'); return; }
+            if (usuariosLista.some(p => p.usuario === dados.usuario)) { erro.innerText = `O usuário "${dados.usuario}" já existe.`; erro.classList.remove('hidden'); return; }
+
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Criando...`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            try {
+                await API.criarUsuario(dados);
+                ['novoUsuarioLogin', 'novoUsuarioSenha', 'novoUsuarioNome', 'novoUsuarioNomeCurto'].forEach(id => document.getElementById(id).value = '');
+                document.getElementById('novoUsuarioPapel').value = 'irrigador';
+                await recarregarUsuarios();
+                window.showAlert("Usuário criado", `Login: ${dados.usuario}\nA pessoa já pode entrar no app com essa senha.`);
+            } catch (err) {
+                erro.innerText = err.message;
+                erro.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Criar Usuário`;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
+        // --- LOGIN E SINCRONIZAÇÃO ---
+
+        function mostrarLogin(mensagem) {
+            const tela = document.getElementById('loginScreen');
+            tela.classList.remove('hidden');
+            tela.classList.add('flex');
+            const erro = document.getElementById('loginErro');
+            erro.innerText = mensagem || '';
+            erro.classList.toggle('hidden', !mensagem);
+            const ultimo = API.usuarioAtual();
+            if (ultimo && !document.getElementById('loginUsuario').value) document.getElementById('loginUsuario').value = ultimo.usuario;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function esconderLogin() {
+            const tela = document.getElementById('loginScreen');
+            tela.classList.add('hidden');
+            tela.classList.remove('flex');
+            document.getElementById('loginSenha').value = '';
+        }
+
+        window.fazerLogin = async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const erro = document.getElementById('loginErro');
+            erro.classList.add('hidden');
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> ENTRANDO...`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            try {
+                const { trocouDeUsuario } = await API.login(
+                    document.getElementById('loginUsuario').value,
+                    document.getElementById('loginSenha').value
+                );
+                // Outro usuário neste aparelho: a lista do dia anterior não é dele
+                if (trocouDeUsuario) {
+                    records = [];
+                    editingId = null;
+                    saveData();
+                }
+                esconderLogin();
+                iniciarApp();
+            } catch (err) {
+                erro.innerText = err.message;
+                erro.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="log-in" class="w-4 h-4"></i> ENTRAR`;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
+        window.fazerLogout = function() {
+            const s = API.status();
+            const texto = s.pendentes > 0
+                ? `Há ${s.pendentes} dado(s) ainda não enviado(s) ao banco. Eles ficam guardados neste aparelho e serão enviados quando você entrar de novo com internet.`
+                : 'Deseja sair do aplicativo?';
+            pendingConfirmCallback = async () => {
+                await API.logout();
+                progUnlocked = false;
+                window.updateProgLockUI();
+                window.switchTab('registro');
+                mostrarLogin();
+            };
+            window.showConfirmModal("Sair?", texto, "SAIR", "log-out");
+        }
+
+        function renderStatusSync(s) {
+            const dot = document.getElementById('syncStatusDot');
+            const text = document.getElementById('syncStatusText');
+            if (!dot || !text) return;
+
+            const pend = s.pendentes > 0 ? `${s.pendentes} pendente${s.pendentes > 1 ? 's' : ''}` : '';
+            let cor, msg;
+            if (s.falhas > 0)            { cor = 'bg-red-500';                  msg = `${s.falhas} com erro`; }
+            else if (s.sessaoExpirada)   { cor = 'bg-amber-500';                msg = 'Entrar de novo'; }
+            else if (!s.online)          { cor = 'bg-slate-400';                msg = pend ? `Offline · ${pend}` : 'Offline'; }
+            else if (s.sincronizando)    { cor = 'bg-sky-500 animate-pulse';    msg = 'Sincronizando...'; }
+            else if (s.pendentes > 0)    { cor = 'bg-amber-500';                msg = pend; }
+            else                         { cor = 'bg-green-500';                msg = 'Sincronizado'; }
+
+            dot.className = `w-2 h-2 rounded-full ${cor}`;
+            text.innerText = msg;
+
+            // Sessão vencida com internet: pede login de novo (a fila é mantida)
+            if (s.sessaoExpirada && API.usuarioAtual() && document.getElementById('loginScreen').classList.contains('hidden')) {
+                mostrarLogin('Sua sessão expirou. Entre novamente para enviar os dados pendentes.');
+            }
+        }
+
+        window.syncAgora = function() {
+            const s = API.status();
+            if (s.falhas > 0) {
+                const detalhes = API.falhasSync().slice(0, 3).map(f => `• ${ROTULOS_TABELA[f.tabela] || f.tabela}: ${f.erro}`).join('\n');
+                pendingConfirmCallback = () => API.limparFalhasSync();
+                window.showConfirmModal("Dados recusados pelo servidor",
+                    `${s.falhas} gravação(ões) foram recusadas após 3 tentativas:\n${detalhes}\n\nDescartar da lista de erros?`,
+                    "DESCARTAR", "alert-triangle");
+                return;
+            }
+            if (!s.online) {
+                window.showAlert("Sem conexão", "Os dados estão salvos no aparelho e serão enviados automaticamente quando houver internet.");
+                return;
+            }
+            API.sincronizar();
+        }
+
+        function aplicarUsuarioNaTela() {
+            const u = API.usuarioAtual();
+            if (!u) return;
+            const gestor = API.isGestor();
+            document.getElementById('userNameLabel').innerText = u.nome_curto || u.nome;
+            const badge = document.getElementById('userRoleBadge');
+            badge.innerText = gestor ? 'Gestor' : 'Irrigador';
+            badge.className = `text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 ${gestor ? 'bg-sky-100 text-sky-700' : 'bg-green-100 text-green-700'}`;
+            document.getElementById('collaborator').value = u.nome;
+            document.getElementById('auditBtn').classList.toggle('hidden', !gestor);
+            document.getElementById('usersBtn').classList.toggle('hidden', !gestor);
+            if (!gestor) window.closeUsersModal();
+            document.getElementById('cadastrosAgua').classList.toggle('hidden', !gestor);
+            const naProgramacao = !document.getElementById('tabProgramacao').classList.contains('hidden');
+            document.getElementById('navbarProgAction').classList.toggle('hidden', !naProgramacao || !gestor);
+            if (!gestor && progUnlocked) {
+                progUnlocked = false;
+                window.updateProgLockUI();
+            }
+        }
+
+        function preencherSelectsResponsaveis() {
+            const u = API.usuarioAtual();
+            let ativos = perfisCache.filter(p => p.ativo !== false);
+            if (ativos.length === 0 && u) ativos = [u];
+
+            const progSelect = document.getElementById('progResponsavel');
+            progSelect.innerHTML = ativos.map(p => `<option value="${escapeHtml(p.nome)}">${escapeHtml(p.nome)}</option>`).join('');
+            const salvo = localStorage.getItem('irrigation_prog_responsavel');
+            const padrao = ativos.find(p => p.nome === salvo) || ativos.find(p => p.papel === 'irrigador') || ativos[0];
+            if (padrao) progSelect.value = padrao.nome;
+
+            const histSelect = document.getElementById('historyResponsavel');
+            const atualHist = histSelect.value;
+            histSelect.innerHTML = `<option value="">Todos</option>` +
+                ativos.map(p => `<option value="${escapeHtml(p.nome_curto || p.nome)}">${escapeHtml(p.nome_curto || p.nome)}</option>`).join('');
+            histSelect.value = atualHist;
+        }
+
+        async function carregarPerfis() {
+            try { perfisCache = await API.listarPerfis(); } catch (e) { perfisCache = []; }
+            preencherSelectsResponsaveis();
+        }
+
+        async function iniciarApp() {
+            aplicarUsuarioNaTela();
+            window.switchTab('registro');
+            renderList();
+            window.updateProgLockUI();
+            await carregarPerfis();
+            window.calcularConsumoProgramacao();
+            API.sincronizar();
+            // Papel/nome podem ter sido alterados pelo gestor desde o último acesso
+            API.atualizarPerfil().then(perfil => {
+                if (perfil) { aplicarUsuarioNaTela(); return; }
+                // Acesso desativado pelo gestor
+                progUnlocked = false;
+                window.updateProgLockUI();
+                mostrarLogin("Seu acesso foi desativado. Fale com o gestor.");
+            }).catch(() => {});
+        }
+
         // --- INICIALIZAÇÃO E EXPOSIÇÃO GERAL ---
-        window.saveCollaborator = saveCollaborator;
         window.addRecord = addRecord;
         window.editRecord = editRecord;
         window.cancelEdit = cancelEdit;
@@ -2712,6 +3721,8 @@
             if (appleTouchIcon) appleTouchIcon.href = logoUri;
             if (reportLogo)     reportLogo.src      = logoUri;
             if (reportLogoProg) reportLogoProg.src   = logoUri;
+            const loginLogo = document.getElementById('loginLogo');
+            if (loginLogo)      loginLogo.src        = logoUri;
             if (manifestLink) {
                 const manifest = {
                     name: 'Registro Irrigação',
@@ -2738,22 +3749,6 @@
             const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
             document.getElementById('date').value = localDate;
             
-            const savedCollab = localStorage.getItem('irrigation_collaborator');
-            if(savedCollab) {
-                const collabSelect = document.getElementById('collaborator');
-                if([...collabSelect.options].some(o => o.value === savedCollab)) {
-                    collabSelect.value = savedCollab;
-                }
-            }
-
-            const savedProgResponsavel = localStorage.getItem('irrigation_prog_responsavel');
-            if(savedProgResponsavel) {
-                const progRespSelect = document.getElementById('progResponsavel');
-                if([...progRespSelect.options].some(o => o.value === savedProgResponsavel)) {
-                    progRespSelect.value = savedProgResponsavel;
-                }
-            }
-
             if (motorLigadoHora) window.registrarHoraMotorValor('ligar', motorLigadoHora);
             if (motorDesligadoHora) window.registrarHoraMotorValor('desligar', motorDesligadoHora);
 
@@ -2761,9 +3756,12 @@
             updateTimerDisplay();
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
-            renderList();
-            window.updateProgLockUI();
-            window.calcularConsumoProgramacao();
+
+            API.onStatus(renderStatusSync);
+
+            // Usuário já logado neste aparelho entra direto (funciona offline)
+            if (API.usuarioAtual()) iniciarApp();
+            else mostrarLogin();
         });
 
     </script>
