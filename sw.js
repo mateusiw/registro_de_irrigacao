@@ -1,4 +1,4 @@
-const CACHE = 'irrigacao-v16';
+const CACHE = 'irrigacao-v17';
 
 // Arquivos do próprio app
 const ARQUIVOS_APP = [
@@ -15,7 +15,9 @@ const ARQUIVOS_CDN = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/lucide@latest',
-  'https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js'
+  'https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'
 ];
 
 // Guarda cada arquivo separadamente: se um falhar, os outros continuam
