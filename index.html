@@ -861,6 +861,10 @@
                             class="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
                         <button type="button" onclick="window.mudarDiaPocos(0)"
                             class="text-[10px] font-black uppercase tracking-wider px-2.5 py-2 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100">Hoje</button>
+                        <button type="button" id="pocosDiaPdfBtn" onclick="window.baixarPdfVazoesDia()" title="Baixar PDF das vazões do dia"
+                            class="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-700 shadow-sm">
+                            <i data-lucide="file-down" class="w-3.5 h-3.5"></i> PDF
+                        </button>
                     </div>
                 </div>
                 <div id="pocosResumo" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
@@ -897,10 +901,13 @@
         <div id="aguaSecReserv" class="agua-sec hidden space-y-6">
 
             <!-- NÍVEL DO RESERVATÓRIO -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-5 py-4 flex items-center gap-2">
+            <div id="reservFormCard" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div id="reservFormHeader" class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-5 py-4 flex items-center gap-2">
                     <i data-lucide="container" class="w-5 h-5 text-white opacity-90"></i>
-                    <h2 class="text-base font-bold text-white">Nível do Reservatório</h2>
+                    <h2 id="reservFormTitulo" class="text-base font-bold text-white">Nível do Reservatório</h2>
+                    <button id="reservCancelEditBtn" type="button" onclick="window.cancelarEdicaoLeituraReserv()" class="hidden ml-auto items-center gap-1 text-xs font-bold text-white/80 hover:text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-all">
+                        <i data-lucide="x" class="w-3 h-3"></i> Cancelar
+                    </button>
                 </div>
                 <form onsubmit="window.addLeituraReservatorio(event)" class="divide-y divide-slate-100">
                     <div class="px-5 py-4">
@@ -942,9 +949,22 @@
 
             <!-- SITUAÇÃO DOS RESERVATÓRIOS -->
             <section class="space-y-3">
-                <div class="px-1">
-                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Situação dos Reservatórios</h3>
-                    <p class="text-[10px] text-slate-400 font-medium">Último nível registrado</p>
+                <div class="px-1 flex flex-wrap items-end justify-between gap-2">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Situação dos Reservatórios</h3>
+                        <p id="reservDiaRotulo" class="text-[10px] text-slate-400 font-medium">Leituras do dia</p>
+                    </div>
+                    <!-- SELETOR DE DATA: mostra só as leituras do dia escolhido -->
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="window.mudarDiaReserv(-1)" title="Dia anterior"
+                            class="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                        <input type="date" id="reservDataFiltro" onchange="window.carregarLeiturasDiaReserv()" aria-label="Data das leituras do reservatório"
+                            class="bg-white border-2 border-slate-200 rounded-lg py-1.5 px-2 text-sm font-bold text-slate-700">
+                        <button type="button" onclick="window.mudarDiaReserv(1)" title="Próximo dia"
+                            class="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                        <button type="button" onclick="window.mudarDiaReserv(0)"
+                            class="text-[10px] font-black uppercase tracking-wider px-2.5 py-2 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100">Hoje</button>
+                    </div>
                 </div>
                 <div id="reservList" class="space-y-3"></div>
             </section>
@@ -987,7 +1007,11 @@
                         <h2 class="text-base font-bold text-white leading-tight">Dados dos Blocos</h2>
                         <p class="text-[10px] text-green-100 font-medium">Base do cálculo de litros de cada bloco</p>
                     </div>
-                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Gestor</span>
+                    <button type="button" id="blocosPdfBtn" onclick="window.baixarPdfBlocos()"
+                        class="ml-auto flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-white text-green-800 hover:bg-green-50 shadow-sm">
+                        <i data-lucide="file-down" class="w-4 h-4"></i> Baixar PDF
+                    </button>
+                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white">Gestor</span>
                 </div>
 
                 <form id="dadoBlocoForm" onsubmit="window.salvarDadoBloco(event)" class="px-5 py-4 border-b border-slate-100 space-y-2">
@@ -3856,7 +3880,8 @@
 
         window.carregarAgua = async function() {
             document.getElementById('pocoDataHora').value = agoraParaInput();
-            document.getElementById('reservDataHora').value = agoraParaInput();
+            // Não troca a data/hora de uma leitura que está sendo editada
+            if (!editandoLeituraReservId) document.getElementById('reservDataHora').value = agoraParaInput();
             if (!document.getElementById('pocoDataParada').value) document.getElementById('pocoDataParada').value = dataLocalIso();
             window.setStatusPoco(statusPocoAtual);
             aplicarVisibilidadeGestor();
@@ -3864,9 +3889,11 @@
 
             const filtroDia = document.getElementById('pocosDataFiltro');
             if (!filtroDia.value) filtroDia.value = dataLocalIso();
-            [pocosCache, leiturasPocoCache, reservCache, leiturasReservCache, manutencoesCache, leiturasPocoDia] = await Promise.all([
+            const filtroReserv = document.getElementById('reservDataFiltro');
+            if (!filtroReserv.value) filtroReserv.value = dataLocalIso();
+            [pocosCache, leiturasPocoCache, reservCache, leiturasReservCache, manutencoesCache, leiturasPocoDia, leiturasReservDia] = await Promise.all([
                 API.listarPocos(), API.listarLeiturasPocos(), API.listarReservatorios(), API.listarLeiturasReservatorios(),
-                API.listarManutencoes(), buscarLeiturasDoDia(filtroDia.value)
+                API.listarManutencoes(), buscarLeiturasDoDia(filtroDia.value), API.listarLeiturasReservPeriodo(filtroReserv.value, filtroReserv.value)
             ]);
             renderAgua();
             window.sugerirHorasLigado(false);
@@ -3898,6 +3925,27 @@
             const base = filtro.value ? new Date(filtro.value + 'T12:00:00') : new Date();
             filtro.value = delta === 0 ? dataLocalIso() : dataLocalIso(new Date(base.getTime() + delta * 86400000));
             window.carregarLeiturasDiaPocos();
+        }
+
+        // ----- Situação dos reservatórios por dia (seletor de data) -----
+        let leiturasReservDia = [];
+
+        window.carregarLeiturasDiaReserv = async function() {
+            const filtro = document.getElementById('reservDataFiltro');
+            if (!filtro.value) filtro.value = dataLocalIso();
+            const dia = filtro.value;
+            const lista = await API.listarLeiturasReservPeriodo(dia, dia);
+            if (filtro.value !== dia) return; // a data mudou enquanto carregava
+            leiturasReservDia = lista;
+            renderAgua();
+        }
+
+        // -1 = dia anterior, +1 = próximo dia, 0 = hoje
+        window.mudarDiaReserv = function(delta) {
+            const filtro = document.getElementById('reservDataFiltro');
+            const base = filtro.value ? new Date(filtro.value + 'T12:00:00') : new Date();
+            filtro.value = delta === 0 ? dataLocalIso() : dataLocalIso(new Date(base.getTime() + delta * 86400000));
+            window.carregarLeiturasDiaReserv();
         }
 
         function preencherSelect(id, itens, rotulo, vazio) {
@@ -4085,21 +4133,28 @@
                     </div>`;
                 }).join('');
 
-            // Reservatórios
+            // Reservatórios: só as leituras do dia escolhido no seletor de data
+            const diaReserv = document.getElementById('reservDataFiltro').value || dataLocalIso();
+            document.getElementById('reservDiaRotulo').innerText = diaReserv === dataLocalIso()
+                ? `Leituras de hoje (${formatDate(diaReserv)})` : `Leituras de ${formatDate(diaReserv)}`;
+            const fimDiaReserv = new Date(new Date(diaReserv + 'T00:00:00').getTime() + 86400000).toISOString();
             const reservList = document.getElementById('reservList');
             reservList.innerHTML = reservAtivos.length === 0
                 ? `<div class="text-center py-8 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">Nenhum reservatório cadastrado.${API.isGestor() ? ' Use o Cadastro de Reservatórios nesta aba.' : ' Peça ao gestor para cadastrar.'}</div>`
                 : reservAtivos.map(r => {
-                    const leituras = leiturasReservCache.filter(l => l.reservatorio_id === r.id);
+                    const leituras = leiturasReservDia.filter(l => l.reservatorio_id === r.id);
                     const ultima = leituras[0];
-                    const anterior = leituras[1];
+                    // Leitura anterior (mesmo que seja de outro dia), para mostrar a variação
+                    const anterior = ultima ? (leituras[1] || leiturasReservCache.find(l => l.reservatorio_id === r.id && new Date(l.data_hora) < new Date(ultima.data_hora))) : null;
+                    // Sem leitura no dia: mostra o último nível conhecido até aquele dia
+                    const ultimaConhecida = ultima ? null : leiturasReservCache.find(l => l.reservatorio_id === r.id && new Date(l.data_hora).toISOString() < fimDiaReserv);
                     const altura = Number(r.altura_maxima_m) || 0;
                     const pct = ultima && altura > 0 ? Math.min(100, Math.max(0, Number(ultima.nivel_m) / altura * 100)) : null;
                     const volume = pct != null && Number(r.capacidade_m3) > 0 ? Number(r.capacidade_m3) * pct / 100 : null;
                     const variacao = ultima && anterior ? Number(ultima.nivel_m) - Number(anterior.nivel_m) : null;
 
-                    const historicoHtml = leituras.slice(0, 5).map(l => `
-                        <div class="flex justify-between items-center gap-2 py-1.5 text-[11px]">
+                    const historicoHtml = leituras.map(l => `
+                        <div class="flex justify-between items-center gap-2 py-1.5 text-[11px] ${l.id === editandoLeituraReservId ? 'bg-amber-50 -mx-2 px-2 rounded-lg' : ''}">
                             <div class="min-w-0">
                                 <span class="font-bold text-slate-600">${fmtDataHora(l.data_hora)}</span>
                                 <span class="text-slate-400 truncate"> · ${escapeHtml(l.responsavel || '')}</span>
@@ -4108,7 +4163,8 @@
                             <div class="flex items-center gap-1 shrink-0">
                                 <span class="font-bold text-indigo-700">${fmtNum(l.nivel_m, 2)} m</span>
                                 ${l._pendente ? '<i data-lucide="cloud-off" class="w-3.5 h-3.5 text-amber-500"></i>' : ''}
-                                ${podeExcluir(l) ? `<button type="button" onclick="window.excluirLeituraReservatorio('${escapeHtml(l.id)}')" class="p-1 text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+                                ${podeExcluir(l) ? `<button type="button" onclick="window.editarLeituraReservatorio('${escapeHtml(l.id)}')" title="Editar" class="p-1 text-slate-300 hover:text-amber-600"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>` : ''}
+                                ${podeExcluir(l) ? `<button type="button" onclick="window.excluirLeituraReservatorio('${escapeHtml(l.id)}')" title="Excluir" class="p-1 text-slate-300 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
                             </div>
                         </div>`).join('');
 
@@ -4116,7 +4172,10 @@
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="bg-gradient-to-r from-indigo-700 to-indigo-600 px-4 py-3 flex justify-between items-center gap-2">
                             <span class="text-sm font-bold text-white uppercase tracking-wide truncate">${escapeHtml(r.nome)}</span>
-                            ${altura > 0 ? `<span class="text-xs font-bold text-indigo-100 bg-white/15 px-2.5 py-1 rounded-full shrink-0">máx. ${fmtNum(altura, 2)} m</span>` : ''}
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <span class="text-xs font-bold text-indigo-100 bg-white/15 px-2.5 py-1 rounded-full">${leituras.length} leitura${leituras.length === 1 ? '' : 's'} no dia</span>
+                                ${altura > 0 ? `<span class="text-xs font-bold text-indigo-100 bg-white/15 px-2.5 py-1 rounded-full">máx. ${fmtNum(altura, 2)} m</span>` : ''}
+                            </div>
                         </div>
                         ${ultima ? `
                         <div class="px-4 pt-3">
@@ -4133,12 +4192,13 @@
                             </div>
                             ${pct != null ? `<div class="w-full h-2.5 bg-indigo-50 rounded-full mt-2 overflow-hidden border border-indigo-100"><div class="h-full bg-indigo-500 rounded-full" style="width:${pct}%"></div></div>` : ''}
                             <div class="flex items-center justify-between gap-2 mt-2">
-                                <span class="text-[10px] font-bold text-slate-400">Última: ${fmtDataHora(ultima.data_hora)}</span>
+                                <span class="text-[10px] font-bold text-slate-400">Última leitura do dia: ${fmtHora(ultima.data_hora)}</span>
                                 ${seloPendente(ultima)}
                             </div>
                         </div>
                         <div class="px-4 pb-2 pt-1 divide-y divide-slate-50">${historicoHtml}</div>`
-                        : `<p class="px-4 py-4 text-xs text-slate-400">Nenhuma leitura registrada.</p>`}
+                        : `<div class="px-4 py-4 text-xs text-slate-400">Sem leitura em ${formatDate(diaReserv)}.${ultimaConhecida
+                            ? `<div class="mt-1 text-[11px] text-slate-500">Último nível conhecido: <b class="text-indigo-700">${fmtNum(ultimaConhecida.nivel_m, 2)} m</b> em ${fmtDataHora(ultimaConhecida.data_hora)}</div>` : ''}</div>`}
                     </div>`;
                 }).join('');
 
@@ -4264,16 +4324,70 @@
                 return;
             }
 
-            API.salvarLeituraReservatorio({
+            const valores = {
                 reservatorio_id: reservId,
                 data_hora: new Date(document.getElementById('reservDataHora').value).toISOString(),
                 nivel_m: nivel,
                 observacao: document.getElementById('reservObs').value.trim()
-            });
+            };
+            // Mostra a situação do dia da leitura que acabou de ser salva
+            document.getElementById('reservDataFiltro').value = dataLocalIso(new Date(valores.data_hora));
+            if (editandoLeituraReservId) {
+                API.atualizarLeituraReservatorio(editandoLeituraReservId, valores);
+                window.cancelarEdicaoLeituraReserv();
+                botaoSalvo(document.getElementById('reservSubmitBtn'), 'Alteração Salva!');
+            } else {
+                API.salvarLeituraReservatorio(valores);
+                document.getElementById('reservNivel').value = '';
+                document.getElementById('reservObs').value = '';
+                botaoSalvo(document.getElementById('reservSubmitBtn'), 'Nível Salvo!');
+            }
+            window.carregarAgua();
+        }
+
+        // ----- Editar uma leitura de reservatório (quem registrou ou o gestor) -----
+        let editandoLeituraReservId = null;
+
+        function modoEdicaoReserv(ativo) {
+            const header = document.getElementById('reservFormHeader');
+            header.classList.toggle('from-indigo-600', !ativo);
+            header.classList.toggle('to-indigo-700', !ativo);
+            header.classList.toggle('from-amber-500', ativo);
+            header.classList.toggle('to-amber-600', ativo);
+            document.getElementById('reservFormCard').classList.toggle('ring-2', ativo);
+            document.getElementById('reservFormCard').classList.toggle('ring-amber-400', ativo);
+            document.getElementById('reservFormTitulo').innerText = ativo ? 'Editando Leitura' : 'Nível do Reservatório';
+            const cancelar = document.getElementById('reservCancelEditBtn');
+            cancelar.classList.toggle('hidden', !ativo);
+            cancelar.classList.toggle('flex', ativo);
+            const btn = document.getElementById('reservSubmitBtn');
+            btn.className = `btn-primary w-full ${ativo ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base`;
+            btn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> ${ativo ? 'Salvar Alteração' : 'Registrar Nível'}`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.editarLeituraReservatorio = function(id) {
+            const l = leiturasReservDia.concat(leiturasReservCache).find(x => String(x.id) === String(id));
+            if (!l || !podeExcluir(l)) return;
+            editandoLeituraReservId = l.id;
+            document.getElementById('reservSelect').value = l.reservatorio_id;
+            const d = new Date(l.data_hora);
+            document.getElementById('reservDataHora').value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            document.getElementById('reservNivel').value = l.nivel_m;
+            document.getElementById('reservObs').value = l.observacao || '';
+            modoEdicaoReserv(true);
+            renderAgua();
+            document.getElementById('reservFormCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        window.cancelarEdicaoLeituraReserv = function() {
+            if (!editandoLeituraReservId) return;
+            editandoLeituraReservId = null;
             document.getElementById('reservNivel').value = '';
             document.getElementById('reservObs').value = '';
-            botaoSalvo(document.getElementById('reservSubmitBtn'), 'Nível Salvo!');
-            window.carregarAgua();
+            document.getElementById('reservDataHora').value = agoraParaInput();
+            modoEdicaoReserv(false);
+            renderAgua();
         }
 
         window.excluirLeituraPoco = function(id) {
@@ -4282,7 +4396,11 @@
         }
 
         window.excluirLeituraReservatorio = function(id) {
-            pendingConfirmCallback = () => { API.excluirLeituraReservatorio(id); window.carregarAgua(); };
+            pendingConfirmCallback = () => {
+                if (String(editandoLeituraReservId) === String(id)) window.cancelarEdicaoLeituraReserv();
+                API.excluirLeituraReservatorio(id);
+                window.carregarAgua();
+            };
             window.showConfirmModal("Excluir Leitura?", "Tem certeza que deseja apagar esta leitura do reservatório?", "EXCLUIR");
         }
 
@@ -5273,6 +5391,269 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
+        // ----- PDF das vazões dos poços no dia escolhido em "Situação dos Poços" -----
+        window.baixarPdfVazoesDia = async function() {
+            const dia = document.getElementById('pocosDataFiltro').value || dataLocalIso();
+            const btn = document.getElementById('pocosDiaPdfBtn');
+            const textoOriginal = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-circle" class="w-3.5 h-3.5 animate-spin"></i> PDF`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            try {
+                await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+                await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+                const [leituras, horasRegs, logo] = await Promise.all([
+                    API.listarLeiturasPocoPeriodo(dia, dia), API.listarHorasPocoPeriodo(dia, dia), logoDataUrl()
+                ]);
+                leituras.sort((a, b) => String(a.data_hora).localeCompare(String(b.data_hora)));
+                const pocosAtivos = pocosCache.filter(p => p.ativo !== false);
+                const numeroPoco = id => { const p = pocosCache.find(x => x.id === id); return p ? p.numero : '?'; };
+
+                // Mesma conta do Balanço: média das aferições do dia (L/h) × horas ligado
+                const entrada = calcularEntradaPocos(pocosAtivos, leituras, horasRegs);
+                const porPoco = pocosAtivos.map(p => {
+                    const doPoco = leituras.filter(l => l.poco_id === p.id);
+                    const ultima = doPoco[doPoco.length - 1];
+                    const vazoes = doPoco.filter(l => l.status !== 'desligado' && vazaoLeitura(l) > 0).map(vazaoLeitura);
+                    const e = entrada.find(x => x.poco.id === p.id) || {};
+                    return { p, doPoco, ultima, vazoes, e };
+                });
+                const comLeitura = porPoco.filter(x => x.doPoco.length);
+                const semLeitura = porPoco.filter(x => !x.doPoco.length);
+                const operando = comLeitura.filter(x => x.ultima.status !== 'desligado');
+                const vazaoTotal = operando.reduce((s, x) => s + vazaoLeitura(x.ultima), 0);
+                const volumeTotal = porPoco.reduce((s, x) => s + (x.e.volume || 0), 0);
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+                const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 14;
+                const TEAL = [15, 118, 110];
+                let y = 0;
+                const secao = (titulo) => {
+                    y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 9;
+                    if (y > H - 35) { doc.addPage(); y = 20; }
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...TEAL);
+                    doc.text(titulo.toUpperCase(), M, y);
+                    doc.setDrawColor(...TEAL); doc.setLineWidth(0.4); doc.line(M, y + 1.5, W - M, y + 1.5);
+                    y += 4;
+                };
+                const tabela = (opcoes) => doc.autoTable(Object.assign({
+                    startY: y, margin: { left: M, right: M }, theme: 'grid',
+                    styles: { font: 'helvetica', fontSize: 8, cellPadding: 1.8, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
+                    headStyles: { fillColor: TEAL, textColor: 255, fontStyle: 'bold' },
+                    alternateRowStyles: { fillColor: [248, 250, 252] }
+                }, opcoes));
+
+                // ----- Cabeçalho -----
+                if (logo) { try { doc.addImage(logo, 'PNG', M, 10, 18, 18); } catch (e) {} }
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(30, 41, 59);
+                doc.text(`Vazão dos Poços - ${formatDate(dia)}`, M + 22, 17);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
+                doc.text('Aferições pelo balde de 15 L (vazão = 15 ÷ segundos × 3600)', M + 22, 22.5);
+                doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')} ${fmtHora(new Date().toISOString())} por ${API.nomeUsuario()}`, M + 22, 27);
+                y = 32;
+
+                // ----- Resumo do dia -----
+                secao('Resumo do dia');
+                tabela({
+                    theme: 'plain', styles: { fontSize: 8.5, cellPadding: 1.5 },
+                    columnStyles: { 0: { fontStyle: 'bold', textColor: [100, 116, 139], cellWidth: 42 }, 1: { cellWidth: 49 }, 2: { fontStyle: 'bold', textColor: [100, 116, 139], cellWidth: 42 } },
+                    body: [
+                        ['Vazão total (última de cada)', `${fmtLh(vazaoTotal)} L/h`, 'Média por poço', operando.length ? `${fmtLh(vazaoTotal / operando.length)} L/h` : '—'],
+                        ['Poços operando', `${operando.length} de ${pocosAtivos.length}`, 'Poços com leitura', `${comLeitura.length} de ${pocosAtivos.length}`],
+                        ['Leituras no dia', String(leituras.length), 'Volume estimado do dia', `${fmtLh(volumeTotal)} L`]
+                    ]
+                });
+
+                // ----- Um poço por linha -----
+                secao('Vazão por poço');
+                tabela(comLeitura.length ? {
+                    head: [['Poço', 'Situação (última)', 'Última vazão (L/h)', 'Média do dia (L/h)', 'Mín. / máx. (L/h)', 'Aferições', 'Horas ligado', 'Volume estimado (L)']],
+                    body: comLeitura.map(x => [
+                        x.p.numero + (x.p.nome ? ` - ${x.p.nome}` : ''),
+                        (STATUS_POCO[x.ultima.status] || STATUS_POCO.ligado).rotulo + (motivoParada(x.ultima) ? ` (${motivoParada(x.ultima)})` : ''),
+                        x.ultima.status === 'desligado' ? '0' : fmtLh(vazaoLeitura(x.ultima)),
+                        x.vazoes.length ? fmtLh(x.vazoes.reduce((s, v) => s + v, 0) / x.vazoes.length) : '—',
+                        x.vazoes.length ? `${fmtLh(Math.min(...x.vazoes))} / ${fmtLh(Math.max(...x.vazoes))}` : '—',
+                        String(x.vazoes.length),
+                        x.e.horas != null && !x.e.semDados ? `${fmtNum(x.e.horas, x.e.horas % 1 ? 1 : 0)} h` : '—',
+                        x.e.volume ? fmtLh(x.e.volume) : '—'
+                    ]),
+                    foot: [['Total', '', fmtLh(vazaoTotal), '', '', String(comLeitura.reduce((s, x) => s + x.vazoes.length, 0)), '', fmtLh(volumeTotal)]],
+                    footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
+                    columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right', fontStyle: 'bold' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' } }
+                } : { body: [['Nenhuma leitura de poço neste dia.']], theme: 'plain' });
+
+                if (semLeitura.length) {
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 116, 139);
+                    const texto = doc.splitTextToSize(`Sem leitura neste dia: ${semLeitura.map(x => 'Poço ' + x.p.numero).join(', ')}.`, W - 2 * M);
+                    y = doc.lastAutoTable.finalY + 5;
+                    doc.text(texto, M, y);
+                    y += texto.length * 3.5;
+                }
+
+                // ----- Todas as leituras do dia -----
+                secao(`Leituras do dia (${leituras.length})`);
+                tabela(leituras.length ? {
+                    head: [['Hora', 'Poço', 'Status', 'Seg. (15 L)', 'Vazão (L/h)', 'Horas/dia', 'Motivo / observação', 'Responsável']],
+                    body: leituras.map(l => [
+                        fmtHora(l.data_hora), numeroPoco(l.poco_id),
+                        (STATUS_POCO[l.status] || STATUS_POCO.ligado).rotulo,
+                        Number(l.segundos_15l) > 0 ? fmtNum(l.segundos_15l, 2) : '—',
+                        l.status === 'desligado' ? '0' : fmtLh(vazaoLeitura(l)),
+                        l.horas_ligado != null ? fmtNum(l.horas_ligado, l.horas_ligado % 1 ? 1 : 0) : '—',
+                        [motivoParada(l), l.observacao].filter(Boolean).join(' - ') || '—',
+                        l.responsavel || '—'
+                    ]),
+                    columnStyles: { 1: { fontStyle: 'bold' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' }, 5: { halign: 'right' }, 6: { cellWidth: 50 } }
+                } : { body: [['Nenhuma leitura neste dia.']], theme: 'plain' });
+
+                // ----- Rodapé -----
+                const paginas = doc.getNumberOfPages();
+                for (let i = 1; i <= paginas; i++) {
+                    doc.setPage(i);
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
+                    doc.text(`SPG Oásis · Vazão dos Poços ${formatDate(dia)}`, M, H - 8);
+                    doc.text(`Página ${i} de ${paginas}`, W - M, H - 8, { align: 'right' });
+                }
+
+                doc.save(`Vazão dos Poços - ${formatDate(dia).replace(/\//g, '-')}.pdf`);
+            } catch (err) {
+                console.error(err);
+                window.showAlert("Erro ao gerar o PDF", err.message || "Não foi possível gerar o PDF das vazões.");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
+        // ----- PDF dos dados dos blocos (aspersores, válvulas, vazão, cultura e data de atualização) -----
+        window.baixarPdfBlocos = async function() {
+            const btn = document.getElementById('blocosPdfBtn');
+            const textoOriginal = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Gerando...`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            try {
+                await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+                await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+                const [dados, culturas, logo] = await Promise.all([API.listarDadosBlocos(), API.listarCulturas(), logoDataUrl()]);
+                const linhasBlocos = dados.map(lerDadoBloco);
+                if (linhasBlocos.length === 0) { window.showAlert("Sem dados", "Nenhum bloco cadastrado para gerar o PDF."); return; }
+
+                // Agrupa por bloco, com os mesmos totais mostrados na tela
+                const grupos = {};
+                linhasBlocos.forEach(d => { (grupos[d.bloco] = grupos[d.bloco] || []).push(d); });
+                const hoje = new Date(dataLocalIso() + 'T12:00:00');
+                const diasDesde = iso => iso ? Math.round((hoje - new Date(iso + 'T12:00:00')) / 86400000) : null;
+                const blocos = Object.keys(grupos).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(bloco => {
+                    const ls = grupos[bloco];
+                    const valv = ls.reduce((s, d) => s + d.valvulas, 0);
+                    const asp = ls.reduce((s, d) => s + d.qtd, 0);
+                    const vazao = ls.reduce((s, d) => s + d.qtd * d.vazao, 0);
+                    const ultima = ls.map(d => d.data).filter(Boolean).sort().pop() || null;
+                    const cultura = ((culturas || []).find(c => String(c.id) === bloco) || {}).cultura || '';
+                    return { bloco, linhas: ls, valv, asp, vazao, milLh: valv > 0 ? vazao / valv / 1000 : 0, ultima, cultura };
+                });
+                const totalAsp = blocos.reduce((s, b) => s + b.asp, 0);
+                const totalValv = blocos.reduce((s, b) => s + b.valv, 0);
+                const maisRecente = blocos.map(b => b.ultima).filter(Boolean).sort().pop();
+                const maisAntiga = blocos.map(b => b.ultima).filter(Boolean).sort()[0];
+                const rotuloData = iso => iso ? `${formatDate(iso)} (há ${diasDesde(iso)} dia${diasDesde(iso) === 1 ? '' : 's'})` : '—';
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+                const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 14;
+                const VERDE = [22, 101, 52];
+                let y = 0;
+                const secao = (titulo) => {
+                    y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 9;
+                    if (y > H - 35) { doc.addPage(); y = 20; }
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...VERDE);
+                    doc.text(titulo.toUpperCase(), M, y);
+                    doc.setDrawColor(...VERDE); doc.setLineWidth(0.4); doc.line(M, y + 1.5, W - M, y + 1.5);
+                    y += 4;
+                };
+                const tabela = (opcoes) => doc.autoTable(Object.assign({
+                    startY: y, margin: { left: M, right: M }, theme: 'grid',
+                    styles: { font: 'helvetica', fontSize: 8, cellPadding: 1.8, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
+                    headStyles: { fillColor: VERDE, textColor: 255, fontStyle: 'bold' },
+                    alternateRowStyles: { fillColor: [248, 250, 252] }
+                }, opcoes));
+
+                // ----- Cabeçalho -----
+                if (logo) { try { doc.addImage(logo, 'PNG', M, 10, 18, 18); } catch (e) {} }
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(30, 41, 59);
+                doc.text('Dados dos Blocos', M + 22, 17);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
+                doc.text('Aspersores, válvulas e vazão de cada bloco (base do cálculo de litros)', M + 22, 22.5);
+                doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')} ${fmtHora(new Date().toISOString())} por ${API.nomeUsuario()}`, M + 22, 27);
+                y = 32;
+
+                // ----- Resumo geral -----
+                secao('Resumo geral');
+                tabela({
+                    theme: 'plain', styles: { fontSize: 8.5, cellPadding: 1.5 },
+                    columnStyles: { 0: { fontStyle: 'bold', textColor: [100, 116, 139], cellWidth: 42 }, 1: { cellWidth: 49 }, 2: { fontStyle: 'bold', textColor: [100, 116, 139], cellWidth: 42 } },
+                    body: [
+                        ['Blocos cadastrados', String(blocos.length), 'Total de aspersores', fmtNum(totalAsp, 0)],
+                        ['Total de válvulas', String(totalValv), 'Linhas cadastradas', String(linhasBlocos.length)],
+                        ['Atualização mais recente', rotuloData(maisRecente), 'Atualização mais antiga', rotuloData(maisAntiga)]
+                    ]
+                });
+
+                // ----- Um bloco por linha -----
+                secao('Resumo por bloco');
+                tabela({
+                    head: [['Bloco', 'Cultura', 'Aspersores', 'Válvulas', 'Vazão total (L/h)', 'Irrigação (mil L/h)', 'Última atualização']],
+                    body: blocos.map(b => [b.bloco === 'E' ? 'E (Tâmaras)' : b.bloco, b.cultura || '—', fmtNum(b.asp, 0), String(b.valv),
+                        fmtNum(b.vazao, 0), fmtNum(b.milLh, 3), rotuloData(b.ultima)]),
+                    foot: [['Total', '', fmtNum(totalAsp, 0), String(totalValv), '', '', '']],
+                    footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
+                    columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right', fontStyle: 'bold' } }
+                });
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
+                const yNota = doc.lastAutoTable.finalY + 4;
+                doc.text('Irrigação (mil L/h) = vazão total do bloco ÷ válvulas: litros gastos por hora de irrigação (mesma conta dos relatórios).', M, yNota);
+                y = yNota;
+
+                // ----- Detalhe: cada tipo de aspersor -----
+                secao('Detalhe por tipo de aspersor');
+                const corpo = [];
+                blocos.forEach(b => b.linhas.forEach((d, i) => corpo.push([
+                    i === 0 ? (b.bloco === 'E' ? 'E (Tâmaras)' : b.bloco) : '',
+                    d.tipo, fmtNum(d.vazao, d.vazao % 1 ? 1 : 0), fmtNum(d.qtd, 0), String(d.valvulas),
+                    fmtNum(d.qtd * d.vazao, 0), d.data ? formatDate(d.data) : '—'
+                ])));
+                tabela({
+                    head: [['Bloco', 'Tipo', 'Vazão (L/h cada)', 'Aspersores', 'Válvulas', 'Vazão da linha (L/h)', 'Atualizado em']],
+                    body: corpo,
+                    columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } }
+                });
+
+                // ----- Rodapé -----
+                const paginas = doc.getNumberOfPages();
+                for (let i = 1; i <= paginas; i++) {
+                    doc.setPage(i);
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
+                    doc.text('SPG Oásis · Dados dos Blocos', M, H - 8);
+                    doc.text(`Página ${i} de ${paginas}`, W - M, H - 8, { align: 'right' });
+                }
+
+                doc.save(`Dados dos Blocos - ${formatDate(dataLocalIso()).replace(/\//g, '-')}.pdf`);
+            } catch (err) {
+                console.error(err);
+                window.showAlert("Erro ao gerar o PDF", err.message || "Não foi possível gerar o PDF dos blocos.");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
         window.editarDadoBloco = function(id) {
             const d = id == null ? null : dadosBlocosCache.find(x => x.id === id);
             dadoBlocoEditando = d ? d.id : null;
@@ -6151,7 +6532,7 @@
                     theme_color: '#15803d',
                     orientation: 'portrait-primary',
                     icons: [
-                        { src: logoUri, sizes: '567x567', type: 'image/png', purpose: 'any' }
+                        { src: logoUri, sizes: '600x600', type: 'image/png', purpose: 'any' }
                     ]
                 };
                 manifestLink.href = `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`;
