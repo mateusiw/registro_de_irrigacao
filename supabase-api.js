@@ -830,6 +830,17 @@
         return mesclarPendentes('leituras_reservatorio', lista).sort((a, b) => String(b.data_hora).localeCompare(String(a.data_hora)));
     }
 
+    // Leituras de reservatório no período (dias no horário local do aparelho)
+    async function listarLeiturasReservPeriodo(de, ate) {
+        const inicio = new Date(de + 'T00:00:00');
+        const fim = new Date(new Date(ate + 'T00:00:00').getTime() + 24 * 3600 * 1000);
+        const lista = await buscarComCache(`leituras_reserv_${de}_${ate}`, () => sb.from('leituras_reservatorio').select('*')
+            .gte('data_hora', inicio.toISOString()).lt('data_hora', fim.toISOString()).limit(5000), 0).catch(() => []);
+        return mesclarPendentes('leituras_reservatorio', lista)
+            .filter(l => { const t = new Date(l.data_hora); return t >= inicio && t < fim; })
+            .sort((a, b) => String(b.data_hora).localeCompare(String(a.data_hora)));
+    }
+
     function salvarLeituraReservatorio(leitura) {
         enfileirar('leituras_reservatorio', 'upsert', Object.assign({ id: novoId(), responsavel: nomeUsuario() }, leitura));
     }
@@ -1088,7 +1099,7 @@
         listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
         // água
         listarPocos, salvarPoco, listarLeiturasPocos, listarLeiturasDoPoco, salvarLeituraPoco, excluirLeituraPoco,
-        listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, salvarLeituraReservatorio, atualizarLeituraReservatorio, excluirLeituraReservatorio,
+        listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, listarLeiturasReservPeriodo, salvarLeituraReservatorio, atualizarLeituraReservatorio, excluirLeituraReservatorio,
         excluirCadastro, listarManutencoes, salvarManutencao, excluirManutencao,
         // balanço de água
         lerConfiguracao, salvarConfiguracao, listarHorasPocoPeriodo, salvarHorasPoco, listarRegistrosPeriodo, listarLeiturasPocoPeriodo,
