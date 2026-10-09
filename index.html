@@ -365,8 +365,19 @@
                     <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Relatório Diário de Irrigação</h3>
                     <p class="text-[10px] text-slate-400 font-medium flex items-center gap-1">
                         <span id="equipeAoVivoDot" class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                        Inclui os registros de hoje dos outros irrigadores
+                        <span id="listaDiaRotulo">Inclui os registros de hoje dos outros irrigadores</span>
                     </p>
+                    <!-- SELETOR DE DATA: hoje (lista do aparelho + equipe) ou um dia anterior (busca no banco) -->
+                    <div class="flex items-center gap-1 mt-2">
+                        <button type="button" onclick="window.mudarDiaLista(-1)" title="Dia anterior"
+                            class="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                        <input type="date" id="listaDataFiltro" onchange="window.trocarDiaLista()" aria-label="Data dos registros"
+                            class="bg-white border-2 border-slate-200 rounded-lg py-1 px-2 text-xs font-bold text-slate-700">
+                        <button type="button" onclick="window.mudarDiaLista(1)" title="Próximo dia"
+                            class="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                        <button type="button" onclick="window.mudarDiaLista(0)"
+                            class="text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100">Hoje</button>
+                    </div>
                     <!-- TIMER DE LIMPEZA AUTOMÁTICA -->
                     <span id="autoCleanTimer" class="text-[10px] font-mono text-orange-500 font-bold block h-3 mt-1"></span>
                     <!-- HORA MOTOR DO DIA (valor único, não por bloco) -->
@@ -375,7 +386,7 @@
                         <span id="listMotorHoraText"></span>
                     </div>
                 </div>
-                <button type="button" onclick="window.clearAll()" class="text-xs text-red-400 hover:text-red-600 font-semibold underline cursor-pointer mb-1">Limpar Tudo</button>
+                <button type="button" id="limparTudoBtn" onclick="window.clearAll()" class="text-xs text-red-400 hover:text-red-600 font-semibold underline cursor-pointer mb-1">Limpar Tudo</button>
             </div>
             
             <!-- Lista -->
@@ -1910,13 +1921,14 @@
             const turnoEl = document.querySelector('input[name="turno"]:checked');
             const turno = turnoEl ? turnoEl.value : '';
 
-            // Gestor corrigindo o registro de outro irrigador
+            // Corrigindo um registro do banco (de outro irrigador, ou de um dia anterior)
             if (editingEquipeId !== null) {
-                const reg = registrosEquipe.find(r => r.id === editingEquipeId);
-                if (!API.isGestor() || !reg) { window.cancelEdit(); return; }
+                const reg = registrosServidorNaTela().find(r => r.id === editingEquipeId);
+                if (!reg || !podeEditarRegistroServidor(reg)) { window.cancelEdit(); return; }
                 API.atualizarRegistroEquipe(reg.id, { date, block, minutes, turno, observation });
                 Object.assign(reg, { data: date, bloco: block, minutos: minutes, turno, observacao: observation });
-                if (date !== diaEquipe) registrosEquipe = registrosEquipe.filter(r => r.id !== reg.id);
+                // Mudou a data: sai da lista do dia que está na tela
+                if (date !== (diaVisualizado || diaEquipe)) removerDaListaServidor(reg.id);
                 editingEquipeId = null;
                 const btn = document.getElementById('submitBtn');
                 btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Alteração Salva!`;
@@ -1995,11 +2007,16 @@
             aplicarModoEdicao("Editando Registro");
         }
 
-        // Gestor: abre no formulário o registro lançado por outro irrigador
+        function removerDaListaServidor(id) {
+            if (diaVisualizado) registrosHistorico = registrosHistorico.filter(r => r.id !== id);
+            else registrosEquipe = registrosEquipe.filter(r => r.id !== id);
+        }
+
+        // Abre no formulário um registro do banco: de outro irrigador (gestor) ou
+        // de um dia anterior (quem lançou ou o gestor)
         window.editRecordEquipe = function(id) {
-            if (!API.isGestor()) return;
-            const reg = registrosEquipe.find(r => r.id === id);
-            if (!reg) return;
+            const reg = registrosServidorNaTela().find(r => r.id === id);
+            if (!reg || !podeEditarRegistroServidor(reg)) return;
 
             document.getElementById('date').value = reg.data;
             document.getElementById('block').value = String(reg.bloco || '').toUpperCase();
@@ -2010,16 +2027,15 @@
 
             editingId = null;
             editingEquipeId = id;
-            aplicarModoEdicao(`Editando registro de ${reg.responsavel || 'outro irrigador'}`);
+            aplicarModoEdicao(`Editando registro de ${reg.responsavel || 'outro irrigador'}${diaVisualizado ? ` (${formatDate(reg.data)})` : ''}`);
         }
 
         window.deleteRecordEquipe = function(id) {
-            if (!API.isGestor()) return;
-            const reg = registrosEquipe.find(r => r.id === id);
-            if (!reg) return;
+            const reg = registrosServidorNaTela().find(r => r.id === id);
+            if (!reg || !podeEditarRegistroServidor(reg)) return;
             pendingConfirmCallback = () => {
                 API.excluirRegistroEquipe(reg.id);
-                registrosEquipe = registrosEquipe.filter(r => r.id !== reg.id);
+                removerDaListaServidor(reg.id);
                 if (editingEquipeId === reg.id) window.cancelEdit();
                 renderList();
             };
@@ -2135,9 +2151,68 @@
             );
         }
 
-        // Registros do dia de todos os irrigadores: os do próprio aparelho e os
-        // dos outros (estes marcados com _equipe, sem editar/excluir)
+        // ----- Dia mostrado na lista: hoje (null) ou um dia anterior consultado no banco -----
+        let diaVisualizado = null;
+        let registrosHistorico = [];
+        let timerRecargaHistorico = null;
+
+        // Quem pode editar/excluir um registro vindo do banco: o gestor ou quem lançou
+        function podeEditarRegistroServidor(r) {
+            const u = API.usuarioAtual();
+            return !!u && (API.isGestor() || r.criado_por === u.id || String(r.id).startsWith(u.id.slice(0, 8) + '-'));
+        }
+
+        // Lista de registros do banco que está na tela (equipe de hoje ou o dia consultado)
+        function registrosServidorNaTela() {
+            return diaVisualizado ? registrosHistorico : registrosEquipe;
+        }
+
+        async function carregarHistoricoDia() {
+            const dia = diaVisualizado;
+            if (!dia) return;
+            document.getElementById('recordsList').innerHTML = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-8 col-span-full">
+                <i data-lucide="loader-circle" class="w-4 h-4 animate-spin text-green-500"></i> Carregando registros de ${formatDate(dia)}...</div>`;
+            document.getElementById('emptyState').classList.add('hidden');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            const lista = await API.listarRegistrosDia(dia);
+            if (diaVisualizado !== dia) return; // trocou de dia enquanto carregava
+            registrosHistorico = lista.map(r => Object.assign(registroEquipeParaLista(r), { criado_por: r.criado_por }));
+            renderList();
+        }
+
+        window.trocarDiaLista = function() {
+            const input = document.getElementById('listaDataFiltro');
+            if (!input.value || input.value > dataLocalIso()) input.value = dataLocalIso();
+            const hoje = input.value === dataLocalIso();
+            diaVisualizado = hoje ? null : input.value;
+            registrosHistorico = [];
+            if (editingEquipeId !== null) window.cancelEdit();
+            document.getElementById('listaDiaRotulo').innerText = hoje
+                ? 'Inclui os registros de hoje dos outros irrigadores'
+                : `Registros de ${formatDate(input.value)} (todos os irrigadores)`;
+            document.getElementById('limparTudoBtn').classList.toggle('hidden', !hoje);
+            document.getElementById('autoCleanTimer').classList.toggle('hidden', !hoje);
+            if (hoje) renderList(); else carregarHistoricoDia();
+        }
+
+        // -1 = dia anterior, +1 = próximo dia, 0 = hoje
+        window.mudarDiaLista = function(delta) {
+            const input = document.getElementById('listaDataFiltro');
+            const base = input.value ? new Date(input.value + 'T12:00:00') : new Date();
+            input.value = delta === 0 ? dataLocalIso() : dataLocalIso(new Date(base.getTime() + delta * 86400000));
+            window.trocarDiaLista();
+        }
+
+        // Registros do dia na tela. Hoje: os do próprio aparelho e os dos outros
+        // irrigadores (estes marcados com _equipe). Dia anterior: todos, vindos do banco.
         function registrosDoDia() {
+            if (diaVisualizado) {
+                return registrosHistorico.map(r => ({
+                    id: r.id, date: r.data, block: String(r.bloco || '').toUpperCase(), minutes: Number(r.minutos) || 0,
+                    turno: r.turno || '', observation: r.observacao || '', responsavel: r.responsavel || 'Irrigador',
+                    _equipe: true, _podeEditar: podeEditarRegistroServidor(r)
+                }));
+            }
             const meuNome = API.nomeUsuario();
             return records.map(r => Object.assign({}, r, { responsavel: meuNome }))
                 .concat(registrosEquipe.map(r => ({
@@ -2209,7 +2284,7 @@
                     if (rec._equipe) {
                         const editandoEquipe = rec.id === editingEquipeId;
                         // Gestor pode corrigir/excluir o que os irrigadores lançaram
-                        const acoesGestor = API.isGestor() ? `
+                        const acoesGestor = (rec._podeEditar ?? API.isGestor()) ? `
                         <div class="flex gap-1 shrink-0">
                             <button type="button" onclick="window.editRecordEquipe('${escapeHtml(rec.id)}')"
                                 class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Editar (gestor)">
@@ -2344,14 +2419,22 @@
         }
 
         function aoMudarRegistroEquipe(evento) {
+            // Consultando um dia anterior: recarrega se a mudança for daquele dia
+            if (diaVisualizado) {
+                const r = evento.registro;
+                if ((r && r.data === diaVisualizado) || registrosHistorico.some(x => x.id === evento.id)) {
+                    clearTimeout(timerRecargaHistorico);
+                    timerRecargaHistorico = setTimeout(carregarHistoricoDia, 500);
+                }
+            }
             if (evento.proprio) { aoMudarRegistroProprio(evento); return; }
             if (diaEquipe !== dataLocalIso()) { carregarRegistrosEquipe(); return; }
             const r = evento.registro;
             const novo = evento.tipo === 'INSERT' && r && r.data === diaEquipe && !registrosEquipe.some(x => x.id === r.id);
             const outros = registrosEquipe.filter(x => x.id !== evento.id);
             registrosEquipe = r && r.data === diaEquipe ? outros.concat(registroEquipeParaLista(r)) : outros;
-            // O registro que o gestor estava editando foi apagado por outra pessoa
-            if (editingEquipeId !== null && !registrosEquipe.some(x => x.id === editingEquipeId)) window.cancelEdit();
+            // O registro que estava sendo editado foi apagado por outra pessoa
+            if (editingEquipeId !== null && !registrosServidorNaTela().some(x => x.id === editingEquipeId)) window.cancelEdit();
             renderList();
             if (novo) {
                 mostrarAvisoEquipe(`${r.responsavel || 'Outro irrigador'} registrou o BLOCO ${String(r.bloco || '').toUpperCase()}` +
@@ -2395,6 +2478,9 @@
             API.cancelarAssinaturaRegistros();
             registrosEquipe = [];
             diaEquipe = null;
+            // Ao sair, a lista volta para hoje
+            document.getElementById('listaDataFiltro').value = dataLocalIso();
+            window.trocarDiaLista();
             document.getElementById('equipeAoVivoDot').className = 'w-1.5 h-1.5 rounded-full bg-slate-300';
             renderList();
         }
@@ -3211,9 +3297,11 @@
                 return;
             }
 
-            // Primeiro passo: nível do reservatório (se houver reservatório cadastrado)
+            // Primeiro passo: nível do reservatório (se houver reservatório cadastrado).
+            // Relatório de um dia anterior não pergunta o nível (é o nível de agora).
             document.getElementById('flowModal').classList.remove('hidden');
-            abrirPassoNivel();
+            if (diaVisualizado) { nivelInformadoRelatorio = []; mostrarPassoRelatorio('step-confirm'); }
+            else abrirPassoNivel();
         }
 
         // Mostra só um passo do envio do relatório
@@ -6552,6 +6640,8 @@
             const today = new Date();
             const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
             document.getElementById('date').value = localDate;
+            document.getElementById('listaDataFiltro').value = localDate;
+            document.getElementById('listaDataFiltro').max = localDate;
             
             document.getElementById('horaMotorSection').classList.toggle('hidden', !HORA_MOTOR_ATIVA);
             if (motorLigadoHora) window.registrarHoraMotorValor('ligar', motorLigadoHora);
