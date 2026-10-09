@@ -705,6 +705,22 @@
         enfileirar('registros_irrigacao', 'delete', { id: idRegistro(localId) });
     }
 
+    // Gestor corrigindo o registro de outro irrigador (pelo id do banco).
+    // O responsável continua sendo quem irrigou; o log guarda quem alterou.
+    function atualizarRegistroEquipe(id, rec) {
+        enfileirar('registros_irrigacao', 'update', { id: String(id), valores: {
+            data: rec.date,
+            bloco: limparNomeBloco(rec.block),
+            minutos: Number(rec.minutes) || 0,
+            turno: rec.turno || "",
+            observacao: rec.observation || ""
+        } });
+    }
+
+    function excluirRegistroEquipe(id) {
+        enfileirar('registros_irrigacao', 'delete', { id: String(id) });
+    }
+
     function salvarMotor(data, ligado, desligado) {
         const u = usuarioAtual();
         if (!u || !data) return;
@@ -894,9 +910,12 @@
     // Registros do dia feitos por outros usuários (sem conexão, usa a última cópia salva)
     async function listarRegistrosEquipe(data) {
         const u = usuarioAtual();
+        const prefixo = u ? u.id.slice(0, 8) + '-' : null;
         const lista = await buscarComCache(`registros_equipe_${data}`,
             () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('data', data).limit(2000), 0).catch(() => []);
-        return lista.filter(r => !u || r.criado_por !== u.id);
+        // Aplica as correções do gestor ainda na fila; tira os do próprio usuário
+        return mesclarPendentes('registros_irrigacao', lista)
+            .filter(r => r.data === data && (!u || (r.criado_por !== u.id && !String(r.id).startsWith(prefixo))));
     }
 
     let canalRegistros = null;
@@ -1059,7 +1078,7 @@
         sincronizar, onStatus, status, falhasSync, limparFalhasSync,
         // irrigação e programação
         enviar, historico, programacaoAtual, salvarProgramacaoItem, excluirProgramacaoItem,
-        salvarRegistro, excluirRegistro, salvarMotor, registrarEnvio,
+        salvarRegistro, excluirRegistro, atualizarRegistroEquipe, excluirRegistroEquipe, salvarMotor, registrarEnvio,
         // dados dos blocos
         listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
         // água
