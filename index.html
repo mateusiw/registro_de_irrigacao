@@ -1341,6 +1341,27 @@
     <div id="flowModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-5 backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-100 p-8 text-center relative">
             
+            <!-- STEP 0: NÍVEL DO RESERVATÓRIO (obrigatório antes de enviar o relatório do dia) -->
+            <div id="step-nivel" class="hidden flex-col items-center">
+                <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-5 mx-auto">
+                    <i data-lucide="container" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-xl font-black text-[#1e293b] mb-2">Nível do Reservatório</h3>
+                <p class="text-[13px] text-slate-500 mb-5 font-medium px-2 leading-relaxed">
+                    Antes de enviar o relatório, informe o nível atual da água.
+                </p>
+                <div id="nivelCampos" class="w-full space-y-3 text-left mb-3"></div>
+                <p id="nivelErro" class="hidden w-full text-xs font-bold text-red-500 mb-3"></p>
+                <div class="flex gap-3 w-full">
+                    <button type="button" onclick="window.closeFlowModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
+                        VOLTAR
+                    </button>
+                    <button type="button" onclick="window.salvarNivelEContinuar()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl transition-colors shadow-md text-sm">
+                        CONTINUAR
+                    </button>
+                </div>
+            </div>
+
             <!-- STEP 1: CONFIRMAR ENVIO -->
             <div id="step-confirm" class="hidden flex-col items-center">
                 <div class="w-16 h-16 bg-[#eef7fd] text-[#0084c7] rounded-full flex items-center justify-center mb-5 mx-auto">
@@ -1490,6 +1511,7 @@
                     <div style="font-size:8px; font-weight:700; color:#9ca3af; letter-spacing:4px; text-transform:uppercase; margin-bottom:4px;">EMISSÃO</div>
                     <div id="reportDate" style="font-size:20px; font-weight:900; color:#16a34a; letter-spacing:1px;"></div>
                     <div id="reportMotorHora" style="font-size:9px; font-weight:700; color:#166534; letter-spacing:0.5px; margin-top:3px;"></div>
+                    <div id="reportNivelReserv" style="font-size:9px; font-weight:700; color:#4338ca; letter-spacing:0.5px; margin-top:3px;"></div>
                 </div>
             </div>
 
@@ -3165,18 +3187,78 @@
                 return;
             }
 
-            // Mostra o modal e esconde os outros passos, deixando só o Passo 1
+            // Primeiro passo: nível do reservatório (se houver reservatório cadastrado)
             document.getElementById('flowModal').classList.remove('hidden');
-            document.getElementById('step-confirm').classList.remove('hidden');
-            document.getElementById('step-confirm').classList.add('flex');
-            
-            document.getElementById('step-loading').classList.add('hidden');
-            document.getElementById('step-loading').classList.remove('flex');
-            
-            document.getElementById('step-success').classList.add('hidden');
-            document.getElementById('step-success').classList.remove('flex');
-            
+            abrirPassoNivel();
+        }
+
+        // Mostra só um passo do envio do relatório
+        function mostrarPassoRelatorio(passo) {
+            ['step-nivel', 'step-confirm', 'step-loading', 'step-success'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.toggle('hidden', id !== passo);
+                el.classList.toggle('flex', id === passo);
+            });
             if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // ----- Nível do reservatório informado no envio do relatório -----
+        let reservatoriosNivel = [];
+        let nivelInformadoRelatorio = []; // [{ nome, nivel, pct }] para a imagem do relatório
+
+        async function abrirPassoNivel() {
+            nivelInformadoRelatorio = [];
+            try { reservCache = await API.listarReservatorios(); } catch (e) {}
+            reservatoriosNivel = reservCache.filter(r => r.ativo !== false);
+            // Sem reservatório cadastrado: vai direto para a confirmação
+            if (reservatoriosNivel.length === 0) { mostrarPassoRelatorio('step-confirm'); return; }
+            try { leiturasReservCache = await API.listarLeiturasReservatorios(); } catch (e) {}
+
+            document.getElementById('nivelErro').classList.add('hidden');
+            document.getElementById('nivelCampos').innerHTML = reservatoriosNivel.map(r => {
+                const ultima = leiturasReservCache.find(l => l.reservatorio_id === r.id);
+                const altura = Number(r.altura_maxima_m) || 0;
+                return `
+                <div class="bg-indigo-50/60 border border-indigo-100 rounded-xl px-3 py-2.5">
+                    <label for="nivel_${escapeHtml(r.id)}" class="block text-xs font-black text-indigo-900">${escapeHtml(r.nome)}</label>
+                    <p class="text-[10px] text-slate-500 mb-1.5">${ultima
+                        ? `Última leitura: <b>${fmtNum(ultima.nivel_m, 2)} m</b> em ${fmtDataHora(ultima.data_hora)}`
+                        : 'Nenhuma leitura anterior'}${altura > 0 ? ` · máx. ${fmtNum(altura, 2)} m` : ''}</p>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="nivel_${escapeHtml(r.id)}" step="0.01" min="0" ${altura > 0 ? `max="${altura}"` : ''} inputmode="decimal" placeholder="ex: 2,35"
+                            class="flex-1 bg-white border-2 border-indigo-200 rounded-xl py-2.5 px-3 text-lg font-black text-indigo-900 text-center">
+                        <span class="text-sm font-bold text-indigo-700">m</span>
+                    </div>
+                </div>`;
+            }).join('');
+            mostrarPassoRelatorio('step-nivel');
+            const primeiro = document.querySelector('#nivelCampos input');
+            if (primeiro) setTimeout(() => primeiro.focus(), 50);
+        }
+
+        window.salvarNivelEContinuar = function() {
+            const erro = document.getElementById('nivelErro');
+            const mostrarErro = msg => { erro.innerText = msg; erro.classList.remove('hidden'); };
+            const leituras = [];
+            for (const r of reservatoriosNivel) {
+                const valor = String(document.getElementById('nivel_' + r.id).value).replace(',', '.');
+                const nivel = parseFloat(valor);
+                if (valor === '' || isNaN(nivel) || nivel < 0) return mostrarErro(`Informe o nível de "${r.nome}" em metros.`);
+                const altura = Number(r.altura_maxima_m) || 0;
+                if (altura > 0 && nivel > altura) return mostrarErro(`O nível de "${r.nome}" (${fmtNum(nivel, 2)} m) é maior que a altura máxima (${fmtNum(altura, 2)} m).`);
+                leituras.push({ r, nivel, altura });
+            }
+
+            // Funciona sem internet: entra na fila e vai para o banco quando houver sinal
+            const agora = new Date().toISOString();
+            leituras.forEach(({ r, nivel }) => API.salvarLeituraReservatorio({
+                reservatorio_id: r.id, data_hora: agora, nivel_m: nivel,
+                observacao: 'Informado no envio do relatório diário'
+            }));
+            nivelInformadoRelatorio = leituras.map(({ r, nivel, altura }) => ({
+                nome: r.nome, nivel, pct: altura > 0 ? nivel / altura * 100 : null
+            }));
+            mostrarPassoRelatorio('step-confirm');
         }
 
         window.closeFlowModal = function() {
@@ -3202,6 +3284,9 @@
             document.getElementById('reportDate').innerText = reportDateRef;
             document.getElementById('reportMotorHora').innerText = (motorLigadoHora && motorDesligadoHora)
                 ? `Motor: ${motorLigadoHora} → ${motorDesligadoHora}` : '';
+            document.getElementById('reportNivelReserv').innerText = nivelInformadoRelatorio
+                .map(n => `${nivelInformadoRelatorio.length > 1 ? n.nome + ': ' : 'Reservatório: '}${fmtNum(n.nivel, 2)} m${n.pct != null ? ` (${fmtNum(n.pct, 0)}%)` : ''}`)
+                .join(' · ');
             document.getElementById('reportTotalCount').innerText = regs.length;
 
             const uniqueBlocks = new Set(regs.map(r => r.block)).size;
