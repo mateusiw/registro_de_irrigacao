@@ -1,4 +1,4 @@
-const CACHE = 'irrigacao-v24';
+const CACHE = 'irrigacao-v25';
 
 // Arquivos do próprio app
 const ARQUIVOS_APP = [
@@ -6,7 +6,8 @@ const ARQUIVOS_APP = [
   './index.html',
   './supabase-config.js',
   './supabase-api.js',
-  './logo.png'
+  './logo.png',
+  './icone-app.png'
 ];
 
 // Bibliotecas externas (CDNs). Alguns CDNs não liberam CORS, então são guardadas
