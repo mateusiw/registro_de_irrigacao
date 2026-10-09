@@ -1,4 +1,4 @@
-const CACHE = 'irrigacao-v4';
+const CACHE = 'irrigacao-v5';
 const ASSETS = [
   './index.html',
   './supabase-config.js',
