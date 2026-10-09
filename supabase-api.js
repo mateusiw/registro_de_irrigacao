@@ -968,6 +968,29 @@
     function cancelarAssinaturaRegistros() {
         if (canalRegistros) sb.removeChannel(canalRegistros);
         canalRegistros = null;
+        cancelarAssinaturaAgua();
+    }
+
+    // Tempo real da aba Água: leituras de poço, níveis de reservatório e manutenções.
+    // cb({ tabela, tipo: 'INSERT'|'UPDATE'|'DELETE', registro, proprio })
+    let canalAgua = null;
+
+    function assinarAgua(cb) {
+        cancelarAssinaturaAgua();
+        let canal = sb.channel('agua');
+        ['leituras_poco', 'leituras_reservatorio', 'manutencoes_poco'].forEach(tabela => {
+            canal = canal.on('postgres_changes', { event: '*', schema: 'public', table: tabela }, payload => {
+                const u = usuarioAtual();
+                const registro = payload.new && payload.new.id ? payload.new : null;
+                cb({ tabela, tipo: payload.eventType, registro, proprio: !!(registro && u && registro.criado_por === u.id) });
+            });
+        });
+        canalAgua = canal.subscribe();
+    }
+
+    function cancelarAssinaturaAgua() {
+        if (canalAgua) sb.removeChannel(canalAgua);
+        canalAgua = null;
     }
 
     // ------------------------------------------------------------
@@ -1113,7 +1136,7 @@
         lerConfiguracao, salvarConfiguracao, listarHorasPocoPeriodo, salvarHorasPoco, listarRegistrosPeriodo, listarLeiturasPocoPeriodo,
         listarCulturas, salvarCultura,
         // tempo real (registros dos outros irrigadores)
-        listarRegistrosEquipe, listarRegistrosDia, assinarRegistros, cancelarAssinaturaRegistros,
+        listarRegistrosEquipe, listarRegistrosDia, assinarRegistros, cancelarAssinaturaRegistros, assinarAgua,
         // auditoria e sessões
         listarAuditoria, restaurarAuditoria, iniciarSessao, informarAbaSessao, encerrarSessao, listarSessoes, atividadesDaSessao
     };
