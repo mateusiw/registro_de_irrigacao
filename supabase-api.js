@@ -834,6 +834,11 @@
         enfileirar('leituras_reservatorio', 'upsert', Object.assign({ id: novoId(), responsavel: nomeUsuario() }, leitura));
     }
 
+    // Corrige uma leitura já registrada (o dono ou o gestor); quem registrou continua o mesmo
+    function atualizarLeituraReservatorio(id, valores) {
+        enfileirar('leituras_reservatorio', 'update', { id: String(id), valores });
+    }
+
     function excluirLeituraReservatorio(id) {
         enfileirar('leituras_reservatorio', 'delete', { id });
     }
@@ -1083,7 +1088,7 @@
         listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
         // água
         listarPocos, salvarPoco, listarLeiturasPocos, listarLeiturasDoPoco, salvarLeituraPoco, excluirLeituraPoco,
-        listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, salvarLeituraReservatorio, excluirLeituraReservatorio,
+        listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, salvarLeituraReservatorio, atualizarLeituraReservatorio, excluirLeituraReservatorio,
         excluirCadastro, listarManutencoes, salvarManutencao, excluirManutencao,
         // balanço de água
         lerConfiguracao, salvarConfiguracao, listarHorasPocoPeriodo, salvarHorasPoco, listarRegistrosPeriodo, listarLeiturasPocoPeriodo,
