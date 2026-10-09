@@ -73,6 +73,8 @@
 
     function usuarioAtual() { return ler(K.usuario, null); }
     function isGestor() { const u = usuarioAtual(); return !!u && u.papel === 'gestor'; }
+    // Único gestor que pode gerenciar usuários
+    function isAdmin() { const u = usuarioAtual(); return isGestor() && u.administrador === true; }
     function nomeUsuario(u) { u = u || usuarioAtual(); return u ? (u.nome_curto || u.nome) : ''; }
 
     async function login(usuario, senha) {
@@ -299,7 +301,7 @@
 
     async function listarPerfis(forcarAtualizacao) {
         return buscarComCache('perfis',
-            () => sb.from('perfis').select('id,usuario,nome,nome_curto,papel,ativo').order('nome'),
+            () => sb.from('perfis').select('id,usuario,nome,nome_curto,papel,ativo,administrador').order('nome'),
             forcarAtualizacao ? 0 : 10 * 60 * 1000);
     }
 
@@ -768,7 +770,7 @@
 
     window.IrrigacaoAPI = {
         // login
-        login, logout, usuarioAtual, isGestor, nomeUsuario, atualizarPerfil, listarPerfis,
+        login, logout, usuarioAtual, isGestor, isAdmin, nomeUsuario, atualizarPerfil, listarPerfis,
         // gestão de usuários
         criarUsuario, atualizarUsuario, redefinirSenha,
         // sincronização
