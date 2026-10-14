@@ -57,6 +57,14 @@
         .ficha-campo { display: block; width: 100%; margin-top: 2px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 0.6rem; padding: 0.45rem 0.6rem; font-size: 0.8rem; color: #1e293b; }
         .ficha-campo:disabled { background: #f1f5f9; color: #475569; border-color: #f1f5f9; }
 
+        /* Gráficos: linha-guia do dia ao passar o dedo/mouse */
+        .gdia .gguia { opacity: 0; }
+        .gdia:hover .gguia { opacity: 1; }
+        .graf-tabela { width: 100%; font-size: 11px; border-collapse: collapse; }
+        .graf-tabela th { text-align: right; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; padding: 6px 8px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+        .graf-tabela td { text-align: right; padding: 6px 8px; border-bottom: 1px solid #f1f5f9; color: #334155; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .graf-tabela th:first-child, .graf-tabela td:first-child { text-align: left; }
+
         /* ===== LAYOUT DESKTOP (a partir de 1024px; o celular continua igual) =====
            As abas usam :not(.hidden) para nunca exibir uma aba escondida. */
         @media (min-width: 1024px) {
@@ -70,10 +78,14 @@
 
             /* Abas à esquerda, usuário e status à direita, numa linha só */
             #navTabs { max-width: var(--largura-desktop); display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
-            #tabBar { width: 520px; flex: none; }
+            #tabBar { width: 640px; flex: none; }
             #statusBar { margin-top: 0; justify-content: flex-end; gap: 1.25rem; }
 
-            #tabRegistro, #tabProgramacao, #tabAgua { max-width: var(--largura-desktop); padding-top: 1.5rem; }
+            #tabRegistro, #tabProgramacao, #tabAgua, #tabGraficos { max-width: var(--largura-desktop); padding-top: 1.5rem; }
+
+            /* Gráficos: dois por linha */
+            #grafCards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+            #grafCards > * { margin-top: 0 !important; }
 
             /* Registro: formulário à esquerda, lista do dia à direita */
             #tabRegistro:not(.hidden) {
@@ -172,6 +184,10 @@
             <button type="button" id="tabBtnAgua" onclick="window.switchTab('agua')"
                 class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
                 <i data-lucide="waves" class="w-3.5 h-3.5"></i> Água
+            </button>
+            <button type="button" id="tabBtnGraficos" onclick="window.switchTab('graficos')"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="chart-line" class="w-3.5 h-3.5"></i> Gráficos
             </button>
         </div>
 
@@ -1081,6 +1097,108 @@
                 <datalist id="listaCulturas"></datalist>
             </div>
         </div>
+    </div>
+
+    <!-- ABA 4: GRÁFICOS (tendências de água, tanque, irrigação e poços) -->
+    <div id="tabGraficos" class="hidden container mx-auto p-4 space-y-4 max-w-md">
+
+        <!-- PERÍODO -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-end gap-4">
+            <div>
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Período</label>
+                <div class="flex items-center gap-1.5">
+                    <input type="date" id="grafDe" onchange="window.ajustarPeriodoGraficos('de')" aria-label="De"
+                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-2 text-sm font-bold text-slate-800">
+                    <span class="text-xs font-bold text-slate-400">até</span>
+                    <input type="date" id="grafAte" onchange="window.ajustarPeriodoGraficos('ate')" aria-label="Até"
+                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-2 text-sm font-bold text-slate-800">
+                </div>
+                <div id="grafAtalhos" class="flex gap-1 mt-1.5">
+                    <button type="button" data-graf-dias="7" onclick="window.periodoGraficos(7)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">7 dias</button>
+                    <button type="button" data-graf-dias="15" onclick="window.periodoGraficos(15)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">15 dias</button>
+                    <button type="button" data-graf-dias="30" onclick="window.periodoGraficos(30)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">30 dias</button>
+                    <button type="button" data-graf-dias="90" onclick="window.periodoGraficos(90)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">90 dias</button>
+                </div>
+            </div>
+            <p class="text-[10px] text-slate-400 font-medium leading-relaxed flex-1 min-w-[200px]">
+                Médias por dia com registro. A tendência (subindo, caindo ou estável) vem da reta que melhor acompanha os dias do período;
+                abaixo de 5% de variação conta como estável. "vs anterior" compara com o mesmo número de dias logo antes.
+            </p>
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="window.carregarGraficos()" title="Atualizar"
+                    class="flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-white border-2 border-slate-200 text-slate-600 hover:border-slate-300">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Atualizar
+                </button>
+                <button type="button" id="grafPdfBtn" onclick="window.baixarPdfGraficos()" title="Baixar PDF da aba Gráficos"
+                    class="flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
+                    <i data-lucide="file-down" class="w-4 h-4"></i> PDF
+                </button>
+            </div>
+            <!-- FILTROS (poços e blocos, várias opções) -->
+            <div id="grafFiltros" class="w-full flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100"></div>
+        </div>
+
+        <!-- RESUMO -->
+        <div id="grafResumo" class="grid grid-cols-2 lg:grid-cols-4 gap-2"></div>
+
+        <!-- GRÁFICOS DIÁRIOS -->
+        <div id="grafCards" class="space-y-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Entrada × Uso de água por dia (L)</h3>
+                    <div id="grafLegendaAgua"></div>
+                </div>
+                <div class="overflow-x-auto"><div id="grafAgua" class="min-w-[560px]"></div></div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 id="grafNivelTitulo" class="text-xs font-black text-slate-600 uppercase tracking-wider">Nível do tanque</h3>
+                    <div id="grafLegendaNivel"></div>
+                </div>
+                <div class="overflow-x-auto"><div id="grafNivel" class="min-w-[560px]"></div></div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Horas de irrigação por dia</h3>
+                <div class="overflow-x-auto"><div id="grafHoras" class="min-w-[560px]"></div></div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Blocos irrigados por dia</h3>
+                <div class="overflow-x-auto"><div id="grafBlocos" class="min-w-[560px]"></div></div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Vazão total dos poços por dia (L/h)</h3>
+                <p class="text-[10px] text-slate-400 font-medium">Soma das vazões médias dos poços aferidos em cada dia.</p>
+                <div class="overflow-x-auto"><div id="grafVazao" class="min-w-[560px]"></div></div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Uso de água por hora de irrigação (L/h)</h3>
+                <p class="text-[10px] text-slate-400 font-medium">Litros usados no dia ÷ horas irrigadas. Subindo = blocos que gastam mais água por hora.</p>
+                <div class="overflow-x-auto"><div id="grafEficiencia" class="min-w-[560px]"></div></div>
+            </div>
+        </div>
+
+        <!-- VAZÃO DE CADA POÇO -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-4">
+            <div>
+                <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Vazão média de cada poço</h3>
+                <p class="text-[10px] text-slate-400 font-medium mb-2">Linha = vazão média do dia (L/h). A seta mostra se o poço está subindo ou caindo no período.</p>
+                <div id="grafPocos" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"></div>
+            </div>
+        </div>
+
+        <!-- BLOCOS -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-4 pt-4">
+                <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Irrigação por bloco no período</h3>
+            </div>
+            <div id="grafTabelaBlocos" class="overflow-x-auto px-4 pb-3"></div>
+        </div>
+
+        <!-- TABELA DIÁRIA -->
+        <details class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <summary class="px-4 py-3 text-xs font-black text-slate-600 uppercase tracking-wider cursor-pointer select-none">Ver tabela dia a dia</summary>
+            <div id="grafTabelaDias" class="overflow-x-auto px-4 pb-3"></div>
+        </details>
     </div>
 
     <!-- AVISO RÁPIDO: OUTRO IRRIGADOR REGISTROU UM BLOCO -->
@@ -2501,6 +2619,12 @@
                     mostrarAvisoEquipe(`${quem} registrou uma manutenção ${p ? 'no Poço ' + p.numero : 'de poço'} (${r.tipo || ''})`);
                 }
             }
+            // Com a aba Gráficos aberta, recarrega os gráficos (vários eventos seguidos viram uma recarga só)
+            if (!document.getElementById('tabGraficos').classList.contains('hidden')) {
+                clearTimeout(timerRecargaAgua);
+                timerRecargaAgua = setTimeout(window.carregarGraficos, 1500);
+                return;
+            }
             // Com a aba Água aberta, atualiza a tela (vários eventos seguidos viram uma recarga só)
             if (document.getElementById('tabAgua').classList.contains('hidden')) return;
             clearTimeout(timerRecargaAgua);
@@ -2551,7 +2675,8 @@
         const TABS = {
             registro:    { painel: 'tabRegistro',    botao: 'tabBtnRegistro',    cor: 'bg-green-600' },
             programacao: { painel: 'tabProgramacao', botao: 'tabBtnProgramacao', cor: 'bg-sky-600' },
-            agua:        { painel: 'tabAgua',        botao: 'tabBtnAgua',        cor: 'bg-teal-600' }
+            agua:        { painel: 'tabAgua',        botao: 'tabBtnAgua',        cor: 'bg-teal-600' },
+            graficos:    { painel: 'tabGraficos',    botao: 'tabBtnGraficos',    cor: 'bg-indigo-600' }
         };
 
         window.switchTab = function(tab) {
@@ -2559,7 +2684,7 @@
                 const ativo = nome === tab;
                 document.getElementById(t.painel).classList.toggle('hidden', !ativo);
                 const btn = document.getElementById(t.botao);
-                btn.classList.remove('bg-green-600', 'bg-sky-600', 'bg-teal-600', 'text-white', 'shadow-sm', 'text-slate-400');
+                btn.classList.remove('bg-green-600', 'bg-sky-600', 'bg-teal-600', 'bg-indigo-600', 'text-white', 'shadow-sm', 'text-slate-400');
                 if (ativo) btn.classList.add(t.cor, 'text-white', 'shadow-sm');
                 else btn.classList.add('text-slate-400');
             });
@@ -2571,6 +2696,7 @@
             API.informarAbaSessao(tab);
             if (tab === 'programacao' && !progUnlocked) window.syncProgramacaoFromSheet();
             if (tab === 'agua') window.carregarAgua();
+            if (tab === 'graficos') window.carregarGraficos();
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -5497,6 +5623,926 @@
             }
         }
 
+        // --- GRÁFICOS (tendências do período: água, tanque, irrigação e poços) ---
+
+        const COR_SAIDA = '#eb6834';
+        const COR_NIVEL = '#4a3aa7';
+        const COR_HORAS = '#1baf7a';
+        const COR_BLOCOS = '#eda100';
+        let graficosPedido = 0;
+
+        window.periodoGraficos = function(dias) {
+            const hoje = new Date();
+            document.getElementById('grafAte').value = dataLocalIso(hoje);
+            document.getElementById('grafDe').value = dataLocalIso(new Date(hoje.getTime() - (dias - 1) * 86400000));
+            window.carregarGraficos();
+        }
+
+        window.ajustarPeriodoGraficos = function(campo) {
+            const de = document.getElementById('grafDe');
+            const ate = document.getElementById('grafAte');
+            if (!de.value) de.value = ate.value || dataLocalIso();
+            if (!ate.value) ate.value = de.value;
+            if (de.value > ate.value) { if (campo === 'de') ate.value = de.value; else de.value = ate.value; }
+            window.carregarGraficos();
+        }
+
+        function mediaDe(valores) {
+            const v = valores.filter(x => x != null);
+            return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null;
+        }
+
+        function somaDe(valores) { return valores.reduce((s, x) => s + (x || 0), 0); }
+
+        // Tendência pela reta de mínimos quadrados: variação estimada do início ao fim do
+        // período, em % da média. Menos de 3 dias com dado = sem tendência.
+        function tendencia(valores) {
+            const pts = valores.map((v, i) => [i, v]).filter(p => p[1] != null);
+            if (pts.length < 3) return null;
+            const mx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+            const my = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+            let num = 0, den = 0;
+            pts.forEach(([x, y]) => { num += (x - mx) * (y - my); den += (x - mx) * (x - mx); });
+            const variacao = (den ? num / den : 0) * (pts[pts.length - 1][0] - pts[0][0]);
+            const pct = my ? variacao / Math.abs(my) * 100 : 0;
+            return { pct, dir: Math.abs(pct) < 5 ? 0 : Math.sign(pct) };
+        }
+
+        function seloTendencia(t) {
+            if (!t) return `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400"><i data-lucide="minus" class="w-3 h-3"></i> poucos dados</span>`;
+            const icone = t.dir > 0 ? 'trending-up' : t.dir < 0 ? 'trending-down' : 'minus';
+            const texto = t.dir > 0 ? 'Subindo' : t.dir < 0 ? 'Caindo' : 'Estável';
+            return `<span class="inline-flex items-center gap-1 text-[10px] font-black text-slate-700"><i data-lucide="${icone}" class="w-3.5 h-3.5"></i> ${texto}${t.dir ? ` ${fmtNum(Math.abs(t.pct), 0)}%` : ''}</span>`;
+        }
+
+        function textoComparacao(atual, anterior) {
+            if (atual == null || anterior == null || !anterior) return '';
+            const pct = (atual - anterior) / Math.abs(anterior) * 100;
+            return `vs anterior ${pct >= 0 ? '+' : '−'}${fmtNum(Math.abs(pct), 0)}%`;
+        }
+
+        function fmtEixoGeral(v) {
+            if (Math.abs(v) >= 1e3) return fmtEixo(v);
+            return fmtNum(v, Number.isInteger(v) ? 0 : Number.isInteger(v * 10) ? 1 : 2);
+        }
+
+        function ticksBonitos(min, max, qtd, inteiro) {
+            const passoBruto = (max - min) / qtd;
+            const p = Math.pow(10, Math.floor(Math.log10(passoBruto)));
+            const n = passoBruto / p;
+            let passo = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+            if (inteiro) passo = Math.max(1, Math.ceil(passo));
+            const ini = Math.floor(min / passo), fim = Math.ceil(max / passo);
+            if (!isFinite(ini) || !isFinite(fim) || fim - ini > 20) return [min, max];
+            const ticks = [];
+            for (let k = ini; k <= fim; k++) ticks.push(+(k * passo).toFixed(10));
+            return ticks;
+        }
+
+        function rotuloDia(iso) { const [, m, d] = iso.split('-'); return `${d}/${m}`; }
+
+        // Gráfico por dia. series = [{ nome, cor, valores: [número|null por dia] }]
+        // opts: { tipo: 'linha'|'colunas', fmt, unidade, zero (eixo começa no 0), vazio }
+        function svgDias(dias, series, opts) {
+            opts = opts || {};
+            const todos = series.flatMap(s => s.valores).filter(v => v != null);
+            if (!todos.length) return `<p class="text-xs text-slate-400 py-6 text-center">${opts.vazio || 'Sem dados no período.'}</p>`;
+            const fs = 10, W = 720, H = opts.altura || 220;
+            const fmt = opts.fmt || fmtLh;
+            const un = !opts.unidade ? '' : opts.unidade === '%' ? '%' : ' ' + opts.unidade;
+            let lo = opts.zero === false ? Math.min(...todos) : 0, hi = Math.max(...todos);
+            if (opts.zero === false) {
+                // Valores praticamente iguais (diferença de arredondamento) contam como iguais
+                const folga = (hi - lo) > Math.abs(hi) * 1e-6 ? (hi - lo) * 0.15 : (Math.abs(hi) * 0.1 || 1);
+                lo = Math.max(0, lo - folga); hi += folga;
+            }
+            if (!(hi > lo)) hi = lo + 1;
+            const ticks = ticksBonitos(lo, hi, 4, opts.inteiro);
+            lo = ticks[0]; hi = ticks[ticks.length - 1];
+            const m = { l: fs * 5.5, r: 14, t: fs * 1.8, b: fs * 3 };
+            const pw = W - m.l - m.r, ph = H - m.t - m.b, base = m.t + ph;
+            const y = v => m.t + ph - (v - lo) / (hi - lo) * ph;
+            const banda = pw / dias.length;
+            const cx = i => m.l + banda * i + banda / 2;
+            const cada = Math.max(1, Math.ceil(dias.length / Math.floor(pw / 48)));
+            const ink = '#0b0b0b', muted = '#898781';
+
+            const grade = ticks.map(v => `
+                <line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="${v === lo ? '#c3c2b7' : '#e1e0d9'}" stroke-width="1"/>
+                <text x="${m.l - 6}" y="${y(v) + fs * 0.35}" text-anchor="end" font-size="${fs}" fill="${muted}">${fmtEixoGeral(v)}</text>`).join('');
+            const eixoX = dias.map((d, i) => (dias.length - 1 - i) % cada === 0
+                ? `<text x="${cx(i)}" y="${base + fs * 1.7}" text-anchor="middle" font-size="${fs}" fill="#52514e">${rotuloDia(d)}</text>` : '').join('');
+
+            // Rótulo de valor com contorno branco (legível sobre linhas e grade)
+            const fmtR = v => Math.abs(v) >= 1e4 ? fmtCompacto(v) : fmt(v);
+            const textoRotulo = (x, yy, txt, anchor) => `<text x="${x}" y="${yy}" text-anchor="${anchor || 'middle'}" font-size="${fs}" font-weight="800" fill="${ink}"
+                stroke="#ffffff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">${txt}</text>`;
+            const ancora = i => cx(i) > W - m.r - 16 ? 'end' : cx(i) < m.l + 16 ? 'start' : 'middle';
+
+            let marcas = '', rotulos = '';
+            if (opts.tipo === 'colunas') {
+                const s = series[0];
+                const larg = Math.max(2, Math.min(22, banda * 0.7));
+                const escolhidos = rotulosGraf ? escolherRotulos(s.valores, banda, s.valores.map(v => v == null ? '' : fmtR(v)), fs) : null;
+                marcas = s.valores.map((v, i) => {
+                    if (v == null || v <= lo) return '';
+                    const x = cx(i) - larg / 2, topo = y(v), h = base - topo, r = Math.min(4, h, larg / 2);
+                    if (escolhidos ? escolhidos.has(i) : dias.length <= 14) rotulos += textoRotulo(cx(i), topo - fs * 0.6, fmtR(v));
+                    return `<path d="M${x},${base} V${topo + r} Q${x},${topo} ${x + r},${topo} H${x + larg - r} Q${x + larg},${topo} ${x + larg},${topo + r} V${base} Z" fill="${s.cor}"/>`;
+                }).join('');
+            } else if (rotulosGraf) {
+                // Com rótulos: valores em todos os pontos que cabem (sempre o maior, o menor e o último);
+                // com duas séries, a de cima fica acima dos pontos e a outra abaixo.
+                const medias = series.map(s => mediaDe(s.valores) ?? 0);
+                marcas = series.map((s, n) => {
+                    let d = '', aberto = false;
+                    s.valores.forEach((v, i) => {
+                        if (v == null) { aberto = false; return; }
+                        d += `${aberto ? 'L' : 'M'}${cx(i)},${y(v)} `;
+                        aberto = true;
+                    });
+                    const escolhidos = escolherRotulos(s.valores, banda, s.valores.map(v => v == null ? '' : fmtR(v)), fs);
+                    const embaixo = series.length > 1 && medias[n] < Math.max(...medias);
+                    const pontos = s.valores.map((v, i) => {
+                        if (v == null) return '';
+                        const isolado = s.valores[i - 1] == null && s.valores[i + 1] == null;
+                        if (escolhidos.has(i)) {
+                            // Abaixo do ponto só se não encostar nas datas do eixo; acima só se couber no topo
+                            const acima = (!embaixo || y(v) + fs * 1.6 > base - fs * 0.4) && y(v) - fs * 0.9 > m.t - fs * 0.5;
+                            rotulos += textoRotulo(cx(i), acima ? y(v) - fs * 0.9 : y(v) + fs * 1.6, fmtR(v), ancora(i));
+                        }
+                        return (dias.length <= 31 || isolado || escolhidos.has(i)) ? `<circle cx="${cx(i)}" cy="${y(v)}" r="4" fill="${s.cor}" stroke="#ffffff" stroke-width="2"/>` : '';
+                    }).join('');
+                    return `<path d="${d}" fill="none" stroke="${s.cor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${pontos}`;
+                }).join('');
+            } else {
+                marcas = series.map(s => {
+                    let d = '', aberto = false;
+                    s.valores.forEach((v, i) => {
+                        if (v == null) { aberto = false; return; }
+                        d += `${aberto ? 'L' : 'M'}${cx(i)},${y(v)} `;
+                        aberto = true;
+                    });
+                    const pontos = s.valores.map((v, i) => {
+                        if (v == null) return '';
+                        const isolado = s.valores[i - 1] == null && s.valores[i + 1] == null;
+                        return (dias.length <= 31 || isolado) ? `<circle cx="${cx(i)}" cy="${y(v)}" r="4" fill="${s.cor}" stroke="#ffffff" stroke-width="2"/>` : '';
+                    }).join('');
+                    // Rótulo só no último valor (gráfico de uma série)
+                    let rotulo = '';
+                    if (series.length === 1) {
+                        const ult = s.valores.map((v, i) => [v, i]).filter(p => p[0] != null).pop();
+                        if (ult) rotulo = `<text x="${Math.min(cx(ult[1]), W - m.r - 2)}" y="${y(ult[0]) - fs * 0.9}" text-anchor="${cx(ult[1]) > W - 60 ? 'end' : 'middle'}" font-size="${fs}" font-weight="700" fill="${ink}">${fmt(ult[0])}${un}</text>`;
+                    }
+                    return `<path d="${d}" fill="none" stroke="${s.cor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${pontos}${rotulo}`;
+                }).join('');
+            }
+
+            // Camada de toque/hover: um alvo por dia, com linha-guia e os valores do dia
+            const alvos = dias.map((d, i) => {
+                const linhas = series.map(s => `${series.length > 1 ? s.nome + ': ' : ''}${s.valores[i] == null ? 'sem dado' : fmt(s.valores[i]) + un}${s.extra && s.extra[i] ? ' ' + s.extra[i] : ''}`);
+                return `<g class="gdia"><title>${escapeHtml(formatDate(d) + '\n' + linhas.join('\n'))}</title>
+                    <line class="gguia" x1="${cx(i)}" x2="${cx(i)}" y1="${m.t}" y2="${base}" stroke="#c3c2b7" stroke-width="1"/>
+                    <rect x="${m.l + banda * i}" y="${m.t}" width="${banda}" height="${ph}" fill="transparent"/></g>`;
+            }).join('');
+
+            return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escapeHtml(opts.titulo || '')}" style="display:block;font-family:system-ui,-apple-system,'Segoe UI',sans-serif">${grade}${eixoX}${marcas}${rotulos}${alvos}</svg>`;
+        }
+
+        // 975.432 -> "975 mil"; 26.500 -> "26,5 mil"; 1.234.567 -> "1,2 mi"
+        function fmtCompacto(v) {
+            const a = Math.abs(v);
+            if (a >= 1e6) return `${fmtNum(v / 1e6, 1)} mi`;
+            const mil = v / 1e3;
+            return `${fmtNum(mil, a >= 1e5 || Number.isInteger(Math.round(mil * 10) / 10) ? 0 : 1)} mil`;
+        }
+
+        // Quais pontos recebem rótulo sem encavalar: o último, o maior e o menor primeiro;
+        // depois os demais, do fim para o começo, sempre que houver espaço.
+        function escolherRotulos(valores, banda, textos, fs) {
+            const idx = valores.map((v, i) => v == null ? -1 : i).filter(i => i >= 0);
+            const escolhidos = new Set();
+            if (!idx.length) return escolhidos;
+            const largura = Math.max(...textos.map(t => t.length)) * fs * 0.62 + 6;
+            const passo = Math.max(1, Math.ceil(largura / banda));
+            const livre = i => [...escolhidos].every(j => Math.abs(j - i) >= passo);
+            const porValor = [...idx].sort((a, b) => valores[a] - valores[b]);
+            [idx[idx.length - 1], porValor[porValor.length - 1], porValor[0]].forEach(i => { if (livre(i)) escolhidos.add(i); });
+            for (let k = idx.length - 1; k >= 0; k--) if (livre(idx[k])) escolhidos.add(idx[k]);
+            return escolhidos;
+        }
+
+        // Minigráfico de um poço (sem eixo; a escala é a do próprio poço).
+        // Liga os dias aferidos mesmo com dias sem aferição no meio, para mostrar a tendência.
+        function svgMini(dias, valores, cor) {
+            const vals = valores.filter(v => v != null);
+            if (!vals.length) return `<div class="h-10 flex items-center justify-center text-[10px] font-bold text-slate-300">sem aferição</div>`;
+            const W = 160, H = 44, pad = 5;
+            let lo = Math.min(...vals), hi = Math.max(...vals);
+            if (hi === lo) { lo -= 1; hi += 1; }
+            const x = i => pad + (W - 2 * pad) * (valores.length === 1 ? 0.5 : i / (valores.length - 1));
+            const y = v => H - pad - (v - lo) / (hi - lo) * (H - 2 * pad);
+            const d = valores.map((v, i) => v == null ? null : `${x(i)},${y(v)}`).filter(Boolean).map((p, i) => (i ? 'L' : 'M') + p).join(' ');
+            const pontos = vals.length === 1 ? valores.map((v, i) => v != null ? `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${cor}"/>` : '').join('') : '';
+            const ult = valores.map((v, i) => [v, i]).filter(p => p[0] != null).pop();
+            const dica = valores.map((v, i) => v == null ? null : `${rotuloDia(dias[i])}: ${fmtLh(v)} L/h`).filter(Boolean).join('\n');
+            return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" style="display:block"><title>${escapeHtml(dica)}</title>
+                <path d="${d}" fill="none" stroke="${cor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${pontos}
+                <circle cx="${x(ult[1])}" cy="${y(ult[0])}" r="3.5" fill="${cor}" stroke="#ffffff" stroke-width="1.5"/></svg>`;
+        }
+
+        // Litros por minuto de cada bloco (mesma conta do relatório: vazão de uma válvula × tempo)
+        async function litrosPorMinutoBlocos(blocos) {
+            const taxas = {};
+            if (!blocos.length) return taxas;
+            const r = await API.enviar({ registros: blocos.map(b => ({ block: b, minutes: 60 })), responsavel: '' });
+            blocos.forEach(b => {
+                const info = r.sucesso ? r.blocos[b] : null;
+                taxas[b] = info ? parseFloat(info.litrosMil.replace(',', '.')) * 1000 / 60 : null;
+            });
+            return taxas;
+        }
+
+        // Séries diárias do período: irrigação (saída), poços (entrada) e nível do tanque
+        async function dadosGraficosPeriodo(de, ate) {
+            const [registros, leituras, horasRegs, pocos, reservs, leiturasRes] = await Promise.all([
+                API.listarRegistrosPeriodo(de, ate), API.listarLeiturasPocoPeriodo(de, ate), API.listarHorasPocoPeriodo(de, ate),
+                API.listarPocos(), API.listarReservatorios(), API.listarLeiturasReservPeriodo(de, ate)
+            ]);
+            const dias = diasNoPeriodo(de, ate);
+            const idx = {};
+            dias.forEach((d, i) => idx[d] = i);
+            const vazio = () => dias.map(() => null);
+
+            // ----- Irrigação: minutos por bloco em cada dia -----
+            const minDiaBloco = dias.map(() => ({}));
+            registros.forEach(r => {
+                const i = idx[r.data];
+                const b = String(r.bloco || '').toUpperCase().replace('BLOCO', '').trim();
+                if (i == null || !b) return;
+                minDiaBloco[i][b] = (minDiaBloco[i][b] || 0) + (Number(r.minutos) || 0);
+            });
+            const taxas = await litrosPorMinutoBlocos([...new Set(minDiaBloco.flatMap(o => Object.keys(o)))]);
+
+            // ----- Poços: vazão média do dia × horas ligado (mesma regra do Balanço) -----
+            const listaPocos = pocos.filter(p => p.ativo !== false).map(p => {
+                const vazoes = dias.map(() => []);
+                const horasLeitura = vazio();
+                const desligado = dias.map(() => false);
+                leituras.filter(l => l.poco_id === p.id)
+                    .sort((a, b) => String(a.data_hora).localeCompare(String(b.data_hora)))
+                    .forEach(l => {
+                        const i = idx[dataLocalIso(new Date(l.data_hora))];
+                        if (i == null) return;
+                        if (l.status === 'desligado') { desligado[i] = true; return; }
+                        vazoes[i].push(vazaoLeitura(l));
+                        if (l.horas_ligado != null) horasLeitura[i] = Number(l.horas_ligado);
+                    });
+                const media = vazoes.map(v => v.length ? v.reduce((s, x) => s + x, 0) / v.length : null);
+                const volume = media.map((m, i) => {
+                    if (m == null) return null;
+                    const reg = horasRegs.find(h => h.poco_id === p.id && h.data === dias[i]);
+                    return m * (reg ? Number(reg.horas) : (horasLeitura[i] ?? horasPadraoDoPoco(p)));
+                });
+                return { poco: p, media, volume, afericoes: vazoes.reduce((s, v) => s + v.length, 0),
+                         diasDesligado: desligado.filter((x, i) => x && media[i] == null).length };
+            });
+
+            // ----- Nível do tanque: média das leituras do dia (em % se a altura máxima estiver cadastrada) -----
+            const ativosRes = reservs.filter(r => r.ativo !== false);
+            const emPct = ativosRes.length > 0 && ativosRes.every(r => Number(r.altura_maxima_m) > 0);
+            const niveis = ativosRes.map(r => {
+                const porDia = dias.map(() => []);
+                leiturasRes.filter(l => l.reservatorio_id === r.id).forEach(l => {
+                    const i = idx[dataLocalIso(new Date(l.data_hora))];
+                    if (i == null) return;
+                    porDia[i].push(emPct ? Number(l.nivel_m) / Number(r.altura_maxima_m) * 100 : Number(l.nivel_m));
+                });
+                const ultima = leiturasRes.filter(l => l.reservatorio_id === r.id)
+                    .sort((a, b) => String(b.data_hora).localeCompare(String(a.data_hora)))[0];
+                return {
+                    reserv: r, ultima,
+                    valores: porDia.map(v => v.length ? v.reduce((s, x) => s + x, 0) / v.length : null),
+                    extra: porDia.map(v => v.length > 1 ? `(mín ${fmtNum(Math.min(...v), emPct ? 0 : 2)} · máx ${fmtNum(Math.max(...v), emPct ? 0 : 2)}, ${v.length} leituras)` : '')
+                };
+            }).filter(n => n.valores.some(v => v != null));
+
+            return { de, ate, dias, minDiaBloco, taxas, listaPocos, niveis, emPct };
+        }
+
+        // Totais por dia considerando os filtros de poços e blocos (lista vazia = todos)
+        function agregarGraficos(g) {
+            const fp = filtroGraf.pocos, fb = filtroGraf.blocos;
+            const vazio = () => g.dias.map(() => null);
+            const horas = vazio(), qtdBlocos = vazio(), saida = vazio();
+            const porBloco = {};
+            g.minDiaBloco.forEach((o, i) => {
+                const nomes = Object.keys(o).filter(b => o[b] > 0 && (!fb.size || fb.has(b)));
+                if (!nomes.length) return;
+                let minutos = 0, litros = 0;
+                nomes.forEach(b => {
+                    const l = g.taxas[b] != null ? g.taxas[b] * o[b] : 0;
+                    minutos += o[b];
+                    litros += l;
+                    const pb = porBloco[b] = porBloco[b] || { bloco: b, minutos: 0, litros: 0, dias: 0, semDados: g.taxas[b] == null };
+                    pb.minutos += o[b]; pb.litros += l; pb.dias++;
+                });
+                horas[i] = minutos / 60;
+                qtdBlocos[i] = nomes.length;
+                saida[i] = litros;
+            });
+            const listaPocos = g.listaPocos.filter(l => !fp.size || fp.has(l.poco.id));
+            const entrada = vazio(), vazaoTotal = vazio();
+            listaPocos.forEach(l => l.media.forEach((m, i) => {
+                if (m == null) return;
+                vazaoTotal[i] = (vazaoTotal[i] || 0) + m;
+                entrada[i] = (entrada[i] || 0) + l.volume[i];
+            }));
+            return { ...g, horas, qtdBlocos, saida, porBloco, entrada, vazaoTotal, listaPocos };
+        }
+
+        // ----- Filtros (poços e blocos), lembrados no aparelho -----
+        const filtroGraf = (() => {
+            try {
+                const f = JSON.parse(localStorage.getItem('irrigacao_graf_filtros')) || {};
+                return { pocos: new Set(f.pocos || []), blocos: new Set(f.blocos || []) };
+            } catch (e) { return { pocos: new Set(), blocos: new Set() }; }
+        })();
+        let rotulosGraf = (() => { try { return localStorage.getItem('irrigacao_graf_rotulos') === '1'; } catch (e) { return false; } })();
+        let filtroAberto = null;
+        let buscaFiltro = '';
+
+        window.alternarRotulosGraf = function() {
+            rotulosGraf = !rotulosGraf;
+            try { localStorage.setItem('irrigacao_graf_rotulos', rotulosGraf ? '1' : '0'); } catch (e) {}
+            if (ultimoGraf) renderGraficos(ultimoGraf.g, ultimoGraf.ant);
+            else renderFiltrosGraficos();
+        }
+        let ultimoGraf = null;
+        let ultimoRenderGraf = null;
+        let tendenciaPorPoco = {};
+
+        function nomeBlocoFiltro(b) { return b === 'E' ? 'Bloco E (Tâmaras)' : `Bloco ${b}`; }
+
+        function opcoesFiltro(tipo) {
+            if (!ultimoGraf) return [];
+            if (tipo === 'pocos') return ultimoGraf.g.listaPocos.map(l => ({ id: l.poco.id, curto: l.poco.numero, nome: `Poço ${l.poco.numero}${l.poco.nome ? ' — ' + l.poco.nome : ''}` }));
+            const blocos = new Set([...ultimoGraf.g.minDiaBloco, ...ultimoGraf.ant.minDiaBloco].flatMap(o => Object.keys(o)));
+            filtroGraf.blocos.forEach(b => blocos.add(b));
+            return [...blocos].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+                .map(b => ({ id: b, curto: b, nome: nomeBlocoFiltro(b) }));
+        }
+
+        function renderFiltrosGraficos() {
+            const box = document.getElementById('grafFiltros');
+            const filtro = (tipo, icone, rotulo) => {
+                const sel = filtroGraf[tipo];
+                const opcoes = opcoesFiltro(tipo);
+                const nomes = [...sel].map(id => (opcoes.find(o => o.id === id) || { curto: id }).curto);
+                const texto = !sel.size ? 'Todos' : sel.size <= 3 ? nomes.join(', ') : `${sel.size} selecionados`;
+                const aberto = filtroAberto === tipo;
+                const atalho = (preset, txt, icone) => `<button type="button" onclick="window.presetFiltroGraf('${tipo}', '${preset}')"
+                    class="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">${icone ? `<i data-lucide="${icone}" class="w-3 h-3"></i>` : ''}${txt}</button>`;
+                const chips = opcoes.map(o => {
+                    const on = sel.has(o.id);
+                    const t = tipo === 'pocos' ? tendenciaPorPoco[o.id] : null;
+                    const seta = t == null ? '' : `<i data-lucide="${t > 0 ? 'arrow-up-right' : t < 0 ? 'arrow-down-right' : 'arrow-right'}" class="w-3 h-3 ${on ? 'opacity-90' : 'opacity-50'}"></i>`;
+                    return `<button type="button" data-busca="${escapeHtml(o.nome.toLowerCase())}" title="${escapeHtml(o.nome)}"
+                        onclick="window.alternarOpcaoGraf('${tipo}', '${escapeHtml(o.id)}')"
+                        class="${buscaFiltro && !o.nome.toLowerCase().includes(buscaFiltro) ? 'hidden ' : ''}flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl border-2 text-xs font-black transition-all active:scale-95
+                        ${on ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'}">
+                        ${on ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}${escapeHtml(o.curto)}${seta}</button>`;
+                }).join('');
+                return `<div class="relative">
+                    <button type="button" onclick="window.abrirFiltroGraf('${tipo}')" aria-expanded="${aberto}"
+                        class="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-full border-2 text-xs font-bold transition-all
+                        ${sel.size ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}">
+                        <i data-lucide="${icone}" class="w-3.5 h-3.5"></i>
+                        <span>${rotulo}: <span class="font-black">${escapeHtml(texto)}</span></span>
+                        ${sel.size ? `<span class="min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-600 text-white text-[10px] font-black leading-[18px] text-center">${sel.size}</span>` : ''}
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 opacity-60 transition-transform ${aberto ? 'rotate-180' : ''}"></i>
+                    </button>
+                    ${aberto ? `
+                    <div class="fixed inset-0 z-[60] bg-slate-900/30 sm:bg-transparent" onclick="window.fecharFiltroGraf()"></div>
+                    <div class="fixed inset-x-0 bottom-0 z-[61] max-h-[80vh] overflow-y-auto bg-white rounded-t-3xl shadow-2xl border border-slate-200 p-4 pb-6 safe-area-bottom
+                                sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-0 sm:top-full sm:mt-2 sm:w-[24rem] sm:max-h-[28rem] sm:rounded-2xl sm:pb-4">
+                        <div class="w-10 h-1 rounded-full bg-slate-200 mx-auto mb-3 sm:hidden"></div>
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <p class="text-sm font-black text-slate-800 flex items-center gap-1.5"><i data-lucide="${icone}" class="w-4 h-4 text-indigo-600"></i> Filtrar ${rotulo.toLowerCase()}</p>
+                            <button type="button" onclick="window.fecharFiltroGraf()" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100" title="Fechar"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        </div>
+                        <div class="relative mb-3">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                            <input type="search" id="grafFiltroBusca" value="${escapeHtml(buscaFiltro)}" oninput="window.buscarFiltroGraf(this.value)" placeholder="Buscar ${tipo === 'pocos' ? 'poço' : 'bloco'}..."
+                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2 pl-9 pr-3 text-sm font-medium text-slate-800">
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 mb-3">
+                            ${atalho('todos', 'Todos', 'list-checks')}
+                            ${atalho('inverter', 'Inverter', 'arrow-left-right')}
+                            ${tipo === 'pocos' ? atalho('subindo', 'Subindo', 'trending-up') + atalho('caindo', 'Caindo', 'trending-down') + atalho('estavel', 'Estáveis', 'minus') : ''}
+                        </div>
+                        <div id="grafFiltroChips" class="grid grid-cols-4 sm:grid-cols-5 gap-1.5">${chips || '<p class="col-span-full text-xs text-slate-400 py-3 text-center">Nada no período.</p>'}</div>
+                        <div class="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-100">
+                            <span class="text-[11px] font-bold text-slate-400">${sel.size ? `${sel.size} de ${opcoes.length} selecionado${sel.size === 1 ? '' : 's'}` : `Todos os ${opcoes.length}`}</span>
+                            <button type="button" onclick="window.fecharFiltroGraf()" class="text-xs font-black px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">Pronto</button>
+                        </div>
+                    </div>` : ''}
+                </div>`;
+            };
+            const algum = filtroGraf.pocos.size || filtroGraf.blocos.size;
+            box.innerHTML = `
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Filtros</span>
+                ${filtro('pocos', 'droplet', 'Poços')}
+                ${filtro('blocos', 'layers', 'Blocos')}
+                ${algum ? `<button type="button" onclick="window.limparFiltrosGraf()" class="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-rose-600 px-2 py-1.5"><i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Limpar filtros</button>` : ''}
+                <button type="button" role="switch" aria-checked="${rotulosGraf}" onclick="window.alternarRotulosGraf()" title="Mostrar os valores nos gráficos"
+                    class="ml-auto flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full border-2 text-xs font-bold transition-all
+                    ${rotulosGraf ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}">
+                    <i data-lucide="tag" class="w-3.5 h-3.5"></i> Rótulos
+                    <span class="relative inline-block w-9 h-5 rounded-full transition-colors ${rotulosGraf ? 'bg-indigo-600' : 'bg-slate-300'}">
+                        <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${rotulosGraf ? 'translate-x-4' : ''}"></span>
+                    </span>
+                </button>`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function aplicarFiltrosGraf() {
+            try { localStorage.setItem('irrigacao_graf_filtros', JSON.stringify({ pocos: [...filtroGraf.pocos], blocos: [...filtroGraf.blocos] })); } catch (e) {}
+            if (ultimoGraf) renderGraficos(ultimoGraf.g, ultimoGraf.ant);
+            else renderFiltrosGraficos();
+        }
+
+        window.abrirFiltroGraf = function(tipo) {
+            filtroAberto = filtroAberto === tipo ? null : tipo;
+            buscaFiltro = '';
+            renderFiltrosGraficos();
+        }
+
+        window.fecharFiltroGraf = function() {
+            if (!filtroAberto) return;
+            filtroAberto = null;
+            buscaFiltro = '';
+            renderFiltrosGraficos();
+        }
+
+        window.alternarOpcaoGraf = function(tipo, id) {
+            const sel = filtroGraf[tipo];
+            if (sel.has(id)) sel.delete(id); else sel.add(id);
+            // Marcar todos = sem filtro
+            if (sel.size === opcoesFiltro(tipo).length) sel.clear();
+            aplicarFiltrosGraf();
+        }
+
+        window.presetFiltroGraf = function(tipo, preset) {
+            const sel = filtroGraf[tipo];
+            const ids = opcoesFiltro(tipo).map(o => o.id);
+            let novos = [];
+            if (preset === 'inverter') novos = sel.size ? ids.filter(id => !sel.has(id)) : [];
+            else if (preset !== 'todos') {
+                const dir = { subindo: 1, caindo: -1, estavel: 0 }[preset];
+                novos = ids.filter(id => tendenciaPorPoco[id] === dir);
+                if (!novos.length) { window.showAlert("Nenhum poço", "Nenhum poço com essa tendência no período."); return; }
+            }
+            sel.clear();
+            if (novos.length < ids.length) novos.forEach(id => sel.add(id));
+            aplicarFiltrosGraf();
+        }
+
+        // Busca: só esconde/mostra as opções (não redesenha, para não perder o foco)
+        window.buscarFiltroGraf = function(valor) {
+            buscaFiltro = String(valor || '').trim().toLowerCase();
+            document.querySelectorAll('#grafFiltroChips [data-busca]').forEach(b =>
+                b.classList.toggle('hidden', !!buscaFiltro && !b.dataset.busca.includes(buscaFiltro)));
+        }
+
+        window.limparFiltrosGraf = function() {
+            filtroGraf.pocos.clear();
+            filtroGraf.blocos.clear();
+            aplicarFiltrosGraf();
+        }
+
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && filtroAberto) window.fecharFiltroGraf(); });
+
+        window.carregarGraficos = async function() {
+            const deInput = document.getElementById('grafDe');
+            const ateInput = document.getElementById('grafAte');
+            if (!deInput.value || !ateInput.value) {
+                ateInput.value = dataLocalIso();
+                deInput.value = dataLocalIso(new Date(Date.now() - 29 * 86400000));
+            }
+            const de = deInput.value, ate = ateInput.value;
+            const pedido = ++graficosPedido;
+
+            // Atalho ativo em destaque
+            const nDias = diasNoPeriodo(de, ate).length;
+            const ateHoje = ate === dataLocalIso();
+            document.querySelectorAll('[data-graf-dias]').forEach(b => {
+                const ativo = ateHoje && Number(b.dataset.grafDias) === nDias;
+                b.classList.toggle('bg-indigo-600', ativo); b.classList.toggle('text-white', ativo);
+                b.classList.toggle('bg-slate-100', !ativo); b.classList.toggle('text-slate-600', !ativo);
+            });
+
+            const carregando = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-6"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
+            ['grafAgua', 'grafNivel', 'grafHoras', 'grafBlocos', 'grafVazao', 'grafEficiencia', 'grafPocos', 'grafTabelaBlocos', 'grafTabelaDias'].forEach(id => document.getElementById(id).innerHTML = carregando);
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            // Período anterior com o mesmo número de dias, para comparação
+            const antAte = dataLocalIso(new Date(new Date(de + 'T12:00:00').getTime() - 86400000));
+            const antDe = dataLocalIso(new Date(new Date(de + 'T12:00:00').getTime() - nDias * 86400000));
+            let g, ant;
+            try {
+                [g, ant] = await Promise.all([dadosGraficosPeriodo(de, ate), dadosGraficosPeriodo(antDe, antAte)]);
+            } catch (err) {
+                console.error(err);
+                if (pedido === graficosPedido) document.getElementById('grafAgua').innerHTML = `<p class="text-xs text-rose-500 py-6 text-center">Não foi possível carregar os dados.</p>`;
+                return;
+            }
+            if (pedido !== graficosPedido) return; // o período mudou enquanto carregava
+            renderGraficos(g, ant);
+        }
+
+        function renderGraficos(gBruto, antBruto) {
+            ultimoGraf = { g: gBruto, ant: antBruto };
+            tendenciaPorPoco = {};
+            gBruto.listaPocos.forEach(l => { const t = tendencia(l.media); if (t) tendenciaPorPoco[l.poco.id] = t.dir; });
+            renderFiltrosGraficos();
+            const g = agregarGraficos(gBruto), ant = agregarGraficos(antBruto);
+            const nPocosSel = filtroGraf.pocos.size ? ` · ${g.listaPocos.length} de ${gBruto.listaPocos.length} poços` : '';
+            const nBlocosSel = filtroGraf.blocos.size ? ` · ${filtroGraf.blocos.size} bloco${filtroGraf.blocos.size === 1 ? '' : 's'} filtrado${filtroGraf.blocos.size === 1 ? '' : 's'}` : '';
+            const dias = g.dias;
+            const mediaSaida = mediaDe(g.saida), mediaEntrada = mediaDe(g.entrada);
+            const mediaHoras = mediaDe(g.horas), mediaBlocos = mediaDe(g.qtdBlocos), mediaVazao = mediaDe(g.vazaoTotal);
+            const diasIrrig = g.horas.filter(v => v != null).length;
+            const diasAfer = g.entrada.filter(v => v != null).length;
+            const nivelPrincipal = g.niveis[0];
+            const fmtNivel = v => fmtNum(v, g.emPct ? 0 : 2);
+            const unNivel = g.emPct ? '%' : 'm';
+            const tPocos = g.listaPocos.map(l => ({ ...l, t: tendencia(l.media), mediaPeriodo: mediaDe(l.media) }));
+            const subindo = tPocos.filter(l => l.t && l.t.dir > 0).length;
+            const caindo = tPocos.filter(l => l.t && l.t.dir < 0).length;
+            const estaveis = tPocos.filter(l => l.t && l.t.dir === 0).length;
+
+            // ----- Resumo -----
+            // O resumo também vai para o PDF (texto puro)
+            const resumoPdf = [];
+            ultimoRenderGraf = { g, tPocos, resumo: resumoPdf, nivelPrincipal, fmtNivel, unNivel };
+            const cartao = (cor, rotulo, valor, detalhe, t, comp) => (resumoPdf.push({ cor, rotulo, valor, detalhe, t, comp }), `
+                <div class="bg-white border border-slate-200 rounded-xl px-3 py-3 shadow-sm">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background:${cor}"></span>
+                        <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 truncate">${rotulo}</span>
+                    </div>
+                    <div class="text-lg font-black text-slate-900 leading-tight mt-1">${valor}</div>
+                    <div class="text-[10px] font-medium text-slate-500 mt-0.5">${detalhe}</div>
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5">${t === false ? '' : seloTendencia(t)}${comp ? `<span class="text-[10px] font-bold text-slate-400">${comp}</span>` : ''}</div>
+                </div>`);
+            const saldo = mediaEntrada != null || mediaSaida != null ? (mediaEntrada || 0) - (mediaSaida || 0) : null;
+            document.getElementById('grafResumo').innerHTML =
+                cartao(COR_SAIDA, 'Uso de água', mediaSaida != null ? `${fmtLh(mediaSaida)} L/dia` : 'Sem dados',
+                    `total ${fmtLh(somaDe(g.saida))} L · ${diasIrrig} dia${diasIrrig === 1 ? '' : 's'} com irrigação${nBlocosSel}`,
+                    tendencia(g.saida), textoComparacao(mediaSaida, mediaDe(ant.saida))) +
+                cartao(COR_ENTRADA, 'Entrada (poços)', mediaEntrada != null ? `${fmtLh(mediaEntrada)} L/dia` : 'Sem dados',
+                    `total ${fmtLh(somaDe(g.entrada))} L · ${diasAfer} dia${diasAfer === 1 ? '' : 's'} com aferição${nPocosSel}`,
+                    tendencia(g.entrada), textoComparacao(mediaEntrada, mediaDe(ant.entrada))) +
+                cartao('#c3c2b7', 'Saldo médio', saldo != null ? `${saldo >= 0 ? '+' : '−'}${fmtLh(Math.abs(saldo))} L/dia` : 'Sem dados',
+                    (saldo == null ? 'sem entrada nem saída' : saldo >= 0 ? 'entra mais do que sai' : 'sai mais do que entra') +
+                        (filtroGraf.pocos.size || filtroGraf.blocos.size ? ' (com filtro)' : ''), false, '') +
+                cartao(COR_NIVEL, 'Nível do tanque', nivelPrincipal && nivelPrincipal.ultima
+                        ? (g.emPct ? `${fmtNum(Number(nivelPrincipal.ultima.nivel_m) / Number(nivelPrincipal.reserv.altura_maxima_m) * 100, 0)}%` : `${fmtNum(nivelPrincipal.ultima.nivel_m, 2)} m`)
+                        : 'Sem dados',
+                    nivelPrincipal ? `última ${fmtDataHora(nivelPrincipal.ultima.data_hora)} · média ${fmtNivel(mediaDe(nivelPrincipal.valores))}${unNivel === '%' ? '%' : ' m'}` : 'nenhuma leitura no período',
+                    nivelPrincipal ? tendencia(nivelPrincipal.valores) : null,
+                    nivelPrincipal && ant.niveis[0] ? textoComparacao(mediaDe(nivelPrincipal.valores), mediaDe(ant.niveis[0].valores)) : '') +
+                cartao(COR_HORAS, 'Horas de irrigação', mediaHoras != null ? `${formatDuration(Math.round(mediaHoras * 60))}/dia` : 'Sem dados',
+                    `total ${formatDuration(Math.round(somaDe(g.horas) * 60))}${nBlocosSel}`,
+                    tendencia(g.horas), textoComparacao(mediaHoras, mediaDe(ant.horas))) +
+                cartao(COR_BLOCOS, 'Blocos irrigados', mediaBlocos != null ? `${fmtNum(mediaBlocos, 1)} /dia` : 'Sem dados',
+                    `${Object.keys(g.porBloco).length} bloco${Object.keys(g.porBloco).length === 1 ? '' : 's'} diferentes no período`,
+                    tendencia(g.qtdBlocos), textoComparacao(mediaBlocos, mediaDe(ant.qtdBlocos))) +
+                cartao(COR_ENTRADA, 'Vazão dos poços', mediaVazao != null ? `${fmtLh(mediaVazao)} L/h` : 'Sem dados',
+                    `soma das médias, média por dia${nPocosSel}`, tendencia(g.vazaoTotal), textoComparacao(mediaVazao, mediaDe(ant.vazaoTotal))) +
+                cartao('#c3c2b7', 'Poços no período', `${tPocos.filter(l => l.afericoes).length} aferidos`,
+                    `${subindo} subindo · ${caindo} caindo · ${estaveis} estáve${estaveis === 1 ? 'l' : 'is'}`, false,
+                    tPocos.some(l => l.diasDesligado) ? `${tPocos.filter(l => l.diasDesligado).length} com dias desligado` : '');
+
+            // ----- Gráficos diários -----
+            const ambos = [{ nome: 'Entrada', cor: COR_ENTRADA, valores: g.entrada }, { nome: 'Uso (saída)', cor: COR_SAIDA, valores: g.saida }];
+            document.getElementById('grafLegendaAgua').innerHTML = legendaCulturasHtml(ambos, 11);
+            document.getElementById('grafAgua').innerHTML = svgDias(dias, ambos, { unidade: 'L', titulo: 'Entrada e uso de água por dia', vazio: 'Sem aferições nem irrigações no período.' });
+
+            document.getElementById('grafNivelTitulo').innerText = `Nível do tanque por dia (${g.emPct ? '% cheio' : 'm'})`;
+            const coresNivel = [COR_NIVEL, '#e87ba4', '#008300', '#e34948'];
+            const seriesNivel = g.niveis.map((n, i) => ({ nome: n.reserv.nome, cor: coresNivel[i % coresNivel.length], valores: n.valores, extra: n.extra }));
+            document.getElementById('grafLegendaNivel').innerHTML = seriesNivel.length > 1 ? legendaCulturasHtml(seriesNivel, 11) : '';
+            document.getElementById('grafNivel').innerHTML = svgDias(dias, seriesNivel, { fmt: fmtNivel, unidade: unNivel, zero: g.emPct, titulo: 'Nível do tanque', vazio: 'Nenhuma leitura de nível no período.' });
+
+            document.getElementById('grafHoras').innerHTML = svgDias(dias, [{ nome: 'Horas', cor: COR_HORAS, valores: g.horas }],
+                { tipo: 'colunas', fmt: v => fmtNum(v, v < 10 ? 1 : 0), unidade: 'h', titulo: 'Horas de irrigação por dia', vazio: 'Nenhum registro de irrigação no período.' });
+            document.getElementById('grafBlocos').innerHTML = svgDias(dias, [{ nome: 'Blocos', cor: COR_BLOCOS, valores: g.qtdBlocos }],
+                { tipo: 'colunas', inteiro: true, fmt: v => fmtNum(v, 0), unidade: 'blocos', titulo: 'Blocos irrigados por dia', vazio: 'Nenhum registro de irrigação no período.' });
+            document.getElementById('grafVazao').innerHTML = svgDias(dias, [{ nome: 'Vazão total', cor: COR_ENTRADA, valores: g.vazaoTotal }],
+                { unidade: 'L/h', zero: false, titulo: 'Vazão total dos poços', vazio: 'Nenhuma aferição de poço no período.' });
+            const litrosPorHora = dias.map((d, i) => g.horas[i] > 0 && g.saida[i] > 0 ? g.saida[i] / g.horas[i] : null);
+            document.getElementById('grafEficiencia').innerHTML = svgDias(dias, [{ nome: 'L por hora', cor: COR_SAIDA, valores: litrosPorHora }],
+                { unidade: 'L/h', zero: false, titulo: 'Uso de água por hora de irrigação', vazio: 'Nenhum registro de irrigação no período.' });
+
+            // ----- Cada poço: minigráfico + tendência -----
+            document.getElementById('grafPocos').innerHTML = tPocos.length === 0
+                ? `<p class="col-span-full text-xs text-slate-400 py-4 text-center">${filtroGraf.pocos.size ? 'Nenhum dos poços filtrados está ativo.' : 'Nenhum poço cadastrado.'}</p>`
+                : tPocos.map(l => `
+                    <div class="border border-slate-200 rounded-xl p-2.5 ${l.afericoes ? '' : 'opacity-60'}">
+                        <div class="flex items-baseline justify-between gap-1">
+                            <span class="text-xs font-black text-slate-700">Poço ${escapeHtml(l.poco.numero)}</span>
+                            <span class="text-[11px] font-black text-slate-900">${l.mediaPeriodo != null ? fmtLh(l.mediaPeriodo) + ' <span class="text-[9px] text-slate-400">L/h</span>' : ''}</span>
+                        </div>
+                        <div class="my-1">${svgMini(dias, l.media, COR_ENTRADA)}</div>
+                        <div class="flex items-center justify-between gap-1">
+                            ${l.afericoes ? seloTendencia(l.t) : '<span></span>'}
+                            <span class="text-[9px] font-bold text-slate-400">${l.afericoes} aferiç${l.afericoes === 1 ? 'ão' : 'ões'}${l.diasDesligado ? ` · ${l.diasDesligado}d desl.` : ''}</span>
+                        </div>
+                    </div>`).join('');
+
+            // ----- Tabela por bloco -----
+            const blocos = Object.values(g.porBloco).sort((a, b) => b.minutos - a.minutos || a.bloco.localeCompare(b.bloco, undefined, { numeric: true }));
+            const maxMin = Math.max(1, ...blocos.map(b => b.minutos));
+            document.getElementById('grafTabelaBlocos').innerHTML = blocos.length === 0
+                ? `<p class="text-xs text-slate-400 py-4 text-center">Nenhum registro de irrigação no período.</p>`
+                : `<table class="graf-tabela"><thead><tr><th>Bloco</th><th>Horas</th><th></th><th>Dias irrigados</th><th>Média por dia irrigado</th><th>Volume (L)</th></tr></thead><tbody>
+                    ${blocos.map(b => `<tr>
+                        <td class="font-black">${b.bloco === 'E' ? 'Bloco E (Tâmaras)' : 'Bloco ' + escapeHtml(b.bloco)}</td>
+                        <td>${formatDuration(b.minutos)}</td>
+                        <td style="width:30%;min-width:80px"><div style="height:8px;border-radius:0 4px 4px 0;background:${COR_HORAS};width:${(b.minutos / maxMin * 100).toFixed(1)}%"></div></td>
+                        <td>${b.dias}</td>
+                        <td>${formatDuration(Math.round(b.minutos / b.dias))}</td>
+                        <td>${b.semDados ? '<span class="text-slate-300">sem dados do bloco</span>' : fmtLh(b.litros)}</td>
+                    </tr>`).join('')}
+                    </tbody></table>`;
+
+            // ----- Tabela dia a dia -----
+            const cel = (v, f) => v == null ? '<span class="text-slate-300">—</span>' : f(v);
+            document.getElementById('grafTabelaDias').innerHTML = `<table class="graf-tabela"><thead><tr>
+                    <th>Data</th><th>Entrada (L)</th><th>Uso (L)</th><th>Saldo (L)</th><th>Nível (${unNivel})</th><th>Horas irrig.</th><th>Blocos</th><th>Vazão poços (L/h)</th>
+                </tr></thead><tbody>
+                ${dias.map((d, i) => {
+                    const temSaldo = g.entrada[i] != null || g.saida[i] != null;
+                    const s = (g.entrada[i] || 0) - (g.saida[i] || 0);
+                    return `<tr>
+                        <td class="font-black">${formatDate(d)}</td>
+                        <td>${cel(g.entrada[i], fmtLh)}</td>
+                        <td>${cel(g.saida[i], fmtLh)}</td>
+                        <td>${temSaldo ? `${s >= 0 ? '+' : '−'}${fmtLh(Math.abs(s))}` : '<span class="text-slate-300">—</span>'}</td>
+                        <td>${cel(nivelPrincipal ? nivelPrincipal.valores[i] : null, fmtNivel)}</td>
+                        <td>${cel(g.horas[i], v => formatDuration(Math.round(v * 60)))}</td>
+                        <td>${cel(g.qtdBlocos[i], v => v)}</td>
+                        <td>${cel(g.vazaoTotal[i], fmtLh)}</td>
+                    </tr>`;
+                }).reverse().join('')}
+                </tbody></table>`;
+
+            // No celular os gráficos rolam para o lado: começa mostrando os dias mais recentes
+            document.querySelectorAll('#grafCards .overflow-x-auto').forEach(e => e.scrollLeft = e.scrollWidth);
+
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // ----- PDF da aba Gráficos (mesmos gráficos da tela, com os filtros e rótulos atuais) -----
+
+        // Gráfico SVG da tela -> imagem PNG (sem a camada de toque, fundo branco)
+        async function svgParaPng(svgEl, escala) {
+            const clone = svgEl.cloneNode(true);
+            clone.querySelectorAll('.gdia').forEach(n => n.remove());
+            const [, , vw, vh] = (clone.getAttribute('viewBox') || '0 0 720 220').split(/\s+/).map(Number);
+            clone.setAttribute('width', vw);
+            clone.setAttribute('height', vh);
+            const texto = new XMLSerializer().serializeToString(clone);
+            const img = new Image();
+            await new Promise((ok, erro) => {
+                img.onload = ok;
+                img.onerror = () => erro(new Error('Não foi possível desenhar um dos gráficos.'));
+                img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(texto);
+            });
+            const k = escala || 3;
+            const canvas = document.createElement('canvas');
+            canvas.width = vw * k; canvas.height = vh * k;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            return { png: canvas.toDataURL('image/png'), proporcao: vh / vw };
+        }
+
+        function corRgb(hex) { const n = parseInt(hex.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+
+        function textoTendencia(t) {
+            if (t === false) return '';
+            if (!t) return 'poucos dados';
+            return t.dir > 0 ? `Subindo ${fmtNum(Math.abs(t.pct), 0)}%` : t.dir < 0 ? `Caindo ${fmtNum(Math.abs(t.pct), 0)}%` : 'Estável';
+        }
+
+        window.baixarPdfGraficos = async function() {
+            const r = ultimoRenderGraf;
+            if (!r || !ultimoGraf) { window.showAlert("Gráficos", "Aguarde os gráficos carregarem."); return; }
+            const btn = document.getElementById('grafPdfBtn');
+            const textoOriginal = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Gerando...`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            try {
+                await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+                await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+                const logo = await logoDataUrl();
+                const g = r.g;
+                // A fonte padrão do PDF não tem o sinal "−"
+                const pdfTxt = s => String(s ?? '').replace(/−/g, '-');
+
+                // Gráficos da tela viram imagem (na ordem em que aparecem)
+                const graficos = [
+                    { id: 'grafAgua', titulo: 'Entrada × uso de água por dia (L)', legenda: [['Entrada', COR_ENTRADA], ['Uso (saída)', COR_SAIDA]] },
+                    { id: 'grafNivel', titulo: document.getElementById('grafNivelTitulo').innerText,
+                      legenda: g.niveis.length > 1 ? g.niveis.map((n, i) => [n.reserv.nome, [COR_NIVEL, '#e87ba4', '#008300', '#e34948'][i % 4]]) : null },
+                    { id: 'grafHoras', titulo: 'Horas de irrigação por dia' },
+                    { id: 'grafBlocos', titulo: 'Blocos irrigados por dia' },
+                    { id: 'grafVazao', titulo: 'Vazão total dos poços por dia (L/h)', nota: 'Soma das vazões médias dos poços aferidos em cada dia.' },
+                    { id: 'grafEficiencia', titulo: 'Uso de água por hora de irrigação (L/h)', nota: 'Litros usados no dia ÷ horas irrigadas.' }
+                ];
+                for (const gr of graficos) {
+                    const el = document.getElementById(gr.id);
+                    const svg = el.querySelector('svg');
+                    if (svg) Object.assign(gr, await svgParaPng(svg, 3));
+                    else gr.vazio = el.innerText.trim() || 'Sem dados no período.';
+                }
+                const minis = [];
+                // Um por cartão de poço, na mesma ordem da tabela (sem aferição = sem minigráfico)
+                for (const card of document.querySelectorAll('#grafPocos > div')) {
+                    const svg = card.querySelector('svg');
+                    minis.push(svg ? (await svgParaPng(svg, 4)).png : null);
+                }
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+                const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 14;
+                const COR = [67, 56, 202];
+                let y = 0;
+                const garantir = altura => { if (y + altura > H - 14) { doc.addPage(); y = 16; } };
+                const secao = (titulo, alturaMin) => {
+                    y = (doc.lastAutoTable && doc.lastAutoTable.finalY > y ? doc.lastAutoTable.finalY : y) + 8;
+                    garantir(alturaMin || 20);
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...COR);
+                    doc.text(pdfTxt(titulo).toUpperCase(), M, y);
+                    doc.setDrawColor(...COR); doc.setLineWidth(0.4); doc.line(M, y + 1.5, W - M, y + 1.5);
+                    y += 4;
+                };
+                const tabela = (opcoes) => { doc.autoTable(Object.assign({
+                    startY: y, margin: { left: M, right: M, bottom: 14 }, theme: 'grid',
+                    styles: { font: 'helvetica', fontSize: 8, cellPadding: 1.8, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
+                    headStyles: { fillColor: COR, textColor: 255, fontStyle: 'bold' },
+                    alternateRowStyles: { fillColor: [248, 250, 252] }
+                }, opcoes)); y = doc.lastAutoTable.finalY; };
+
+                // ----- Cabeçalho -----
+                if (logo) { try { doc.addImage(logo, 'PNG', M, 10, 18, 18); } catch (e) {} }
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(30, 41, 59);
+                doc.text('Gráficos de Água e Irrigação', M + 22, 16);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
+                doc.text(`Período: ${rotuloPeriodo(g.de, g.ate)}`, M + 22, 21.5);
+                const nomesFiltro = tipo => {
+                    if (!filtroGraf[tipo].size) return 'todos';
+                    const op = opcoesFiltro(tipo);
+                    return [...filtroGraf[tipo]].map(id => (op.find(o => o.id === id) || { curto: id }).curto)
+                        .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).join(', ');
+                };
+                const filtros = doc.splitTextToSize(`Filtros: poços ${nomesFiltro('pocos')} · blocos ${nomesFiltro('blocos')}`, W - M * 2 - 22);
+                doc.text(filtros, M + 22, 26);
+                y = 26 + filtros.length * 4;
+                doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')} ${fmtHora(new Date().toISOString())} por ${API.nomeUsuario()}`, M + 22, y);
+                y += 2;
+
+                // ----- Resumo -----
+                secao('Resumo do período');
+                tabela({
+                    head: [['Indicador', 'Valor', 'Detalhe', 'Tendência', 'vs período anterior']],
+                    body: r.resumo.map(c => [c.rotulo, pdfTxt(c.valor), pdfTxt(c.detalhe), textoTendencia(c.t), pdfTxt(String(c.comp || '').replace('vs anterior ', '')) || '-']),
+                    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 34 }, 1: { fontStyle: 'bold', cellWidth: 34 }, 3: { cellWidth: 24 }, 4: { cellWidth: 22, halign: 'right' } },
+                    didDrawCell: d => {
+                        // quadradinho com a cor do indicador (mesma da tela)
+                        if (d.section === 'body' && d.column.index === 0) {
+                            doc.setFillColor(...corRgb(r.resumo[d.row.index].cor));
+                            doc.rect(d.cell.x + d.cell.width - 3.5, d.cell.y + 1.6, 2, 2, 'F');
+                        }
+                    }
+                });
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(148, 163, 184);
+                doc.text(pdfTxt('Médias por dia com registro. Tendência = reta que melhor acompanha os dias; menos de 5% de variação = estável.'), M, y + 4);
+                y += 4;
+
+                // ----- Gráficos -----
+                const largura = W - M * 2;
+                graficos.forEach((gr, n) => {
+                    const altura = gr.png ? largura * gr.proporcao : 10;
+                    if (n === 0) { secao('Gráficos por dia', altura + 14); }
+                    else { y += 5; garantir(altura + 10); }
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(51, 65, 85);
+                    doc.text(pdfTxt(gr.titulo).toUpperCase(), M, y + 3);
+                    if (gr.legenda) {
+                        let x = W - M;
+                        doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
+                        [...gr.legenda].reverse().forEach(([nome, cor]) => {
+                            const tw = doc.getTextWidth(nome);
+                            x -= tw;
+                            doc.setTextColor(82, 81, 78);
+                            doc.text(nome, x, y + 3);
+                            doc.setFillColor(...corRgb(cor));
+                            doc.roundedRect(x - 3.6, y + 0.6, 2.6, 2.6, 0.5, 0.5, 'F');
+                            x -= 7;
+                        });
+                    }
+                    y += 4;
+                    if (gr.nota) {
+                        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(148, 163, 184);
+                        doc.text(pdfTxt(gr.nota), M, y + 2.5);
+                        y += 3;
+                    }
+                    if (gr.png) { doc.addImage(gr.png, 'PNG', M, y + 1, largura, altura); y += altura + 1; }
+                    else {
+                        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(148, 163, 184);
+                        doc.text(pdfTxt(gr.vazio), W / 2, y + 7, { align: 'center' });
+                        y += 10;
+                    }
+                });
+
+                // ----- Poços -----
+                secao('Vazão média de cada poço', 30);
+                tabela(r.tPocos.length ? {
+                    head: [['Poço', 'Evolução (L/h por dia)', 'Vazão média (L/h)', 'Tendência', 'Aferições', 'Dias desligado', 'Volume no período (L)']],
+                    body: r.tPocos.map(l => [
+                        `Poço ${l.poco.numero}${l.poco.nome ? ' - ' + l.poco.nome : ''}`, '',
+                        l.mediaPeriodo != null ? fmtLh(l.mediaPeriodo) : '-',
+                        l.afericoes ? textoTendencia(l.t) : '-',
+                        String(l.afericoes), String(l.diasDesligado || 0),
+                        l.afericoes ? fmtLh(somaDe(l.volume)) : '-'
+                    ]),
+                    bodyStyles: { minCellHeight: 10, valign: 'middle' },
+                    columnStyles: { 0: { fontStyle: 'bold' }, 1: { cellWidth: 34 }, 2: { halign: 'right', fontStyle: 'bold' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } },
+                    didDrawCell: d => {
+                        if (d.section === 'body' && d.column.index === 1 && minis[d.row.index] && r.tPocos[d.row.index].afericoes) {
+                            const w = d.cell.width - 3, h = Math.min(d.cell.height - 2, w * 44 / 160);
+                            doc.addImage(minis[d.row.index], 'PNG', d.cell.x + 1.5, d.cell.y + (d.cell.height - h) / 2, w, h);
+                        }
+                    }
+                } : { body: [['Nenhum poço no filtro.']], theme: 'plain' });
+
+                // ----- Blocos -----
+                const blocos = Object.values(g.porBloco).sort((a, b) => b.minutos - a.minutos || a.bloco.localeCompare(b.bloco, undefined, { numeric: true }));
+                secao('Irrigação por bloco no período', 30);
+                tabela(blocos.length ? {
+                    head: [['Bloco', 'Horas', 'Dias irrigados', 'Média por dia irrigado', 'Volume (L)']],
+                    body: blocos.map(b => [nomeBlocoFiltro(b.bloco), formatDuration(b.minutos), String(b.dias),
+                        formatDuration(Math.round(b.minutos / b.dias)), b.semDados ? 'sem dados do bloco' : fmtLh(b.litros)]),
+                    foot: [['Total', formatDuration(blocos.reduce((s, b) => s + b.minutos, 0)), '', '', fmtLh(blocos.reduce((s, b) => s + b.litros, 0))]],
+                    footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
+                    columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' } }
+                } : { body: [['Nenhum registro de irrigação no período.']], theme: 'plain' });
+
+                // ----- Dia a dia -----
+                secao('Dia a dia', 30);
+                const nv = r.nivelPrincipal;
+                tabela({
+                    head: [['Data', 'Entrada (L)', 'Uso (L)', 'Saldo (L)', `Nível (${r.unNivel})`, 'Horas irrig.', 'Blocos', 'Vazão poços (L/h)']],
+                    body: g.dias.map((d, i) => {
+                        const temSaldo = g.entrada[i] != null || g.saida[i] != null;
+                        const s = (g.entrada[i] || 0) - (g.saida[i] || 0);
+                        const c = (v, f) => v == null ? '-' : f(v);
+                        return [formatDate(d), c(g.entrada[i], fmtLh), c(g.saida[i], fmtLh),
+                            temSaldo ? `${s >= 0 ? '+' : '-'}${fmtLh(Math.abs(s))}` : '-',
+                            c(nv ? nv.valores[i] : null, r.fmtNivel), c(g.horas[i], v => formatDuration(Math.round(v * 60))),
+                            c(g.qtdBlocos[i], v => String(v)), c(g.vazaoTotal[i], fmtLh)];
+                    }).reverse(),
+                    styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 1.4, textColor: [30, 41, 59], lineColor: [226, 232, 240], halign: 'right' },
+                    columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } }
+                });
+
+                // ----- Rodapé -----
+                const paginas = doc.getNumberOfPages();
+                for (let i = 1; i <= paginas; i++) {
+                    doc.setPage(i);
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
+                    doc.text(`SPG Oásis · Gráficos ${formatDate(g.de)} a ${formatDate(g.ate)}`, M, H - 7);
+                    doc.text(`Página ${i} de ${paginas}`, W - M, H - 7, { align: 'right' });
+                }
+
+                const nomeData = d => formatDate(d).replace(/\//g, '-');
+                doc.save(`Gráficos - ${g.de === g.ate ? nomeData(g.de) : nomeData(g.de) + ' a ' + nomeData(g.ate)}.pdf`);
+            } catch (err) {
+                console.error(err);
+                window.showAlert("Erro ao gerar o PDF", err.message || "Não foi possível gerar o PDF dos gráficos.");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = textoOriginal;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
         // --- DADOS DOS BLOCOS (GESTOR) ---
 
         let dadosBlocosCache = [];
@@ -6163,7 +7209,7 @@
         // --- USUÁRIOS ONLINE E SESSÕES (GESTOR) ---
 
         const ONLINE_MS = 2 * 60 * 1000; // sem sinal há mais de 2 min = offline
-        const NOMES_ABAS = { registro: 'Registro', programacao: 'Programação', agua: 'Água' };
+        const NOMES_ABAS = { registro: 'Registro', programacao: 'Programação', agua: 'Água', graficos: 'Gráficos' };
         let sessoesCache = [];
         let sessaoAberta = null;   // sessão com as atividades expandidas
         let timerOnline = null;
