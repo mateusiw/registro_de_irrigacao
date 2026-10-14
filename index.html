@@ -1266,8 +1266,15 @@
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Senha</label>
-                    <input type="password" id="loginSenha" required autocomplete="current-password"
-                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-bold text-slate-800 transition-all">
+                    <div class="relative">
+                        <input type="password" id="loginSenha" required autocomplete="current-password"
+                            class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 pl-4 pr-12 text-sm font-bold text-slate-800 transition-all">
+                        <!-- Olho: mostra/esconde a senha para conferir o que foi digitado -->
+                        <button type="button" id="loginSenhaOlho" onclick="window.alternarVerSenha()" title="Mostrar senha" aria-label="Mostrar senha" aria-pressed="false"
+                            class="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                            <i data-lucide="eye" class="w-5 h-5"></i>
+                        </button>
+                    </div>
                 </div>
                 <p id="loginErro" class="hidden text-xs font-bold text-red-500 text-center"></p>
                 <button type="submit" id="loginBtn"
@@ -7581,6 +7588,21 @@
             tela.classList.add('hidden');
             tela.classList.remove('flex');
             document.getElementById('loginSenha').value = '';
+            window.alternarVerSenha(false);
+        }
+
+        // Olho da senha no login: mostra/esconde o que foi digitado (sem perder o cursor)
+        window.alternarVerSenha = function(mostrar) {
+            const campo = document.getElementById('loginSenha');
+            const btn = document.getElementById('loginSenhaOlho');
+            const ver = typeof mostrar === 'boolean' ? mostrar : campo.type === 'password';
+            campo.type = ver ? 'text' : 'password';
+            btn.title = ver ? 'Esconder senha' : 'Mostrar senha';
+            btn.setAttribute('aria-label', btn.title);
+            btn.setAttribute('aria-pressed', String(ver));
+            btn.innerHTML = `<i data-lucide="${ver ? 'eye-off' : 'eye'}" class="w-5 h-5"></i>`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            if (typeof mostrar !== 'boolean') campo.focus();
         }
 
         window.fazerLogin = async function(e) {
