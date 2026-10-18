@@ -8,8 +8,25 @@
 //   formato de resposta ({ sucesso, resumo, blocos, totalLitrosMil, ... }).
 (function() {
     const cfg = window.SUPABASE_CONFIG || {};
+
+    // Com sinal fraco uma requisição pode ficar "pendurada" por minutos; sem limite
+    // de tempo a sincronização ficava travada e não enviava mais nada.
+    const LIMITE_REQUISICAO_MS = 30 * 1000;
+    function fetchComLimite(url, opcoes) {
+        opcoes = opcoes || {};
+        const controle = new AbortController();
+        const timer = setTimeout(() => controle.abort(), LIMITE_REQUISICAO_MS);
+        if (opcoes.signal) {
+            if (opcoes.signal.aborted) controle.abort();
+            else opcoes.signal.addEventListener('abort', () => controle.abort());
+        }
+        return fetch(url, Object.assign({}, opcoes, { signal: controle.signal }))
+            .finally(() => clearTimeout(timer));
+    }
+
     const sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
-        auth: { persistSession: true, autoRefreshToken: true, storageKey: 'irrigacao-auth' }
+        auth: { persistSession: true, autoRefreshToken: true, storageKey: 'irrigacao-auth' },
+        global: { fetch: fetchComLimite }
     });
 
     const K = {
@@ -26,9 +43,47 @@
     function ler(chave, padrao) {
         try { const v = localStorage.getItem(chave); return v ? JSON.parse(v) : padrao; } catch (e) { return padrao; }
     }
-    function gravar(chave, valor) {
-        try { localStorage.setItem(chave, JSON.stringify(valor)); } catch (e) { console.error("Erro ao salvar no aparelho:", e); }
+    // Cópias que o app usa para funcionar offline: só são apagadas em último caso
+    const CACHES_ESSENCIAIS = ['perfis', 'dados_bloco', 'configuracoes', 'pocos', 'reservatorios', 'programacoes', 'culturas_bloco'];
+
+    function chavesDeCache() {
+        const chaves = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith('irrigacao_cache_')) chaves.push(k);
+        }
+        return chaves;
     }
+
+    // Apaga cópias de consultas (podem ser baixadas de novo). "antesDe" limita às mais antigas.
+    function limparCaches(incluirEssenciais, antesDe) {
+        chavesDeCache().forEach(k => {
+            if (!incluirEssenciais && CACHES_ESSENCIAIS.includes(k.slice('irrigacao_cache_'.length))) return;
+            if (antesDe) {
+                const c = ler(k, null);
+                if (c && c.em >= antesDe) return;
+            }
+            localStorage.removeItem(k);
+        });
+    }
+
+    // Devolve false se não conseguiu guardar. Com o aparelho sem espaço, libera as
+    // cópias de consultas e tenta de novo, para nunca perder um dado da fila.
+    function gravar(chave, valor) {
+        const texto = JSON.stringify(valor);
+        try { localStorage.setItem(chave, texto); return true; } catch (e) {}
+        if (chave.startsWith('irrigacao_cache_')) return false;
+        for (const incluirEssenciais of [false, true]) {
+            try { limparCaches(incluirEssenciais); } catch (e) {}
+            try { localStorage.setItem(chave, texto); return true; } catch (e) {}
+        }
+        console.error("Erro ao salvar no aparelho (sem espaço):", chave);
+        return false;
+    }
+
+    // As consultas por dia/período criam uma cópia nova a cada dia e nunca eram apagadas,
+    // até encher o armazenamento do aparelho (e a fila deixava de ser gravada).
+    try { limparCaches(false, Date.now() - 7 * 24 * 60 * 60 * 1000); } catch (e) {}
 
     function novoId() {
         if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -166,15 +221,20 @@
                 && op.dados.id === dados.id && op.opId !== opEmAndamento);
             if (existente) {
                 existente.dados = Object.assign({}, existente.dados, dados);
-                gravar(K.fila, fila);
-                emitir();
-                agendarSync();
+                gravarFila(fila);
                 return;
             }
         }
 
         fila.push({ opId: novoId(), usuarioId: u.id, tabela, tipo, dados, criadoEm: new Date().toISOString(), tentativas: 0 });
-        gravar(K.fila, fila);
+        gravarFila(fila);
+    }
+
+    function gravarFila(fila) {
+        if (!gravar(K.fila, fila)) {
+            const msg = "Não foi possível guardar o dado neste aparelho (armazenamento cheio). Libere espaço e registre de novo.";
+            if (window.showAlert) window.showAlert("Erro ao salvar", msg); else alert(msg);
+        }
         emitir();
         agendarSync();
     }
@@ -228,18 +288,43 @@
         if (resp.error) throw erroSupabase(resp);
     }
 
+    // Erros passageiros do servidor/rede: tenta de novo depois, sem contar como recusa
+    function erroTemporario(status) {
+        return !status || status === 408 || status === 425 || status === 429 || status >= 500;
+    }
+
+    function comLimite(promessa, ms) {
+        let timer;
+        return Promise.race([
+            promessa,
+            new Promise((_, rejeitar) => { timer = setTimeout(() => rejeitar(Object.assign(new Error("Tempo esgotado"), { status: 0 })), ms); })
+        ]).finally(() => clearTimeout(timer));
+    }
+
+    let repetirSync = false;
+
     async function sincronizar() {
         const u = usuarioAtual();
-        if (!u || sincronizando || !navigator.onLine) { emitir(); return; }
+        if (sincronizando) { repetirSync = true; return; } // roda de novo ao terminar (dados novos na fila)
+        if (!u || !navigator.onLine) { emitir(); return; }
 
         sincronizando = true;
+        repetirSync = false;
         emitir();
         try {
-            const { data } = await sb.auth.getSession();
-            if (!data.session || data.session.user.id !== u.id) {
+            // Depois de horas offline o token venceu e é renovado aqui; logo que o sinal
+            // volta a renovação pode falhar por rede, o que não significa sessão expirada.
+            const { data, error } = await comLimite(sb.auth.getSession(), LIMITE_REQUISICAO_MS + 15000);
+            if (!data.session) {
+                if (error && (error.name === 'AuthRetryableFetchError' || !error.status)) return;
                 sessaoExpirada = true;
                 return;
             }
+            if (data.session.user.id !== u.id) {
+                sessaoExpirada = true;
+                return;
+            }
+            sessaoExpirada = false;
 
             const fila = ler(K.fila, []).filter(op => op.usuarioId === u.id);
             for (const op of fila) {
@@ -251,8 +336,8 @@
                     await executar(atual);
                     removerOp(op.opId);
                 } catch (e) {
-                    if (!e.status) break;                                       // sem conexão: tenta depois
-                    if (e.status === 401) { await sb.auth.refreshSession(); break; } // token vencido
+                    if (erroTemporario(e.status)) break;                        // sem conexão / instabilidade: tenta depois
+                    if (e.status === 401) { await comLimite(sb.auth.refreshSession(), LIMITE_REQUISICAO_MS + 15000).catch(() => {}); break; } // token vencido
                     registrarFalha(op, e);
                 } finally {
                     opEmAndamento = null;
@@ -264,6 +349,7 @@
         } finally {
             sincronizando = false;
             emitir();
+            if (repetirSync) { repetirSync = false; agendarSync(); }
         }
     }
 
@@ -1121,13 +1207,23 @@
     function falhasSync() { return ler(K.falhas, []); }
     function limparFalhasSync() { gravar(K.falhas, []); emitir(); }
 
+    // Devolve as gravações recusadas para o início da fila (são mais antigas que as pendentes)
+    function reenviarFalhas() {
+        const falhas = ler(K.falhas, []).map(f => Object.assign({}, f, { tentativas: 0 }));
+        if (falhas.length === 0) return;
+        if (!gravar(K.fila, falhas.concat(ler(K.fila, [])))) return;
+        gravar(K.falhas, []);
+        emitir();
+        agendarSync();
+    }
+
     window.IrrigacaoAPI = {
         // login
         login, logout, usuarioAtual, isGestor, isAdmin, nomeUsuario, atualizarPerfil, listarPerfis,
         // gestão de usuários
         criarUsuario, atualizarUsuario, redefinirSenha,
         // sincronização
-        sincronizar, onStatus, status, falhasSync, limparFalhasSync,
+        sincronizar, onStatus, status, falhasSync, limparFalhasSync, reenviarFalhas,
         // irrigação e programação
         enviar, historico, programacaoAtual, salvarProgramacaoItem, excluirProgramacaoItem,
         salvarRegistro, excluirRegistro, atualizarRegistroEquipe, excluirRegistroEquipe, salvarMotor, registrarEnvio,
