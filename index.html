@@ -7682,10 +7682,11 @@
             const s = API.status();
             if (s.falhas > 0) {
                 const detalhes = API.falhasSync().slice(0, 3).map(f => `• ${ROTULOS_TABELA[f.tabela] || f.tabela}: ${f.erro}`).join('\n');
-                pendingConfirmCallback = () => API.limparFalhasSync();
+                // Reenviar em vez de descartar: descartar apagava o dado de vez
+                pendingConfirmCallback = () => API.reenviarFalhas();
                 window.showConfirmModal("Dados recusados pelo servidor",
-                    `${s.falhas} gravação(ões) foram recusadas após 3 tentativas:\n${detalhes}\n\nDescartar da lista de erros?`,
-                    "DESCARTAR", "alert-triangle");
+                    `${s.falhas} gravação(ões) foram recusadas após 3 tentativas:\n${detalhes}\n\nTentar enviar de novo?`,
+                    "TENTAR DE NOVO", "alert-triangle");
                 return;
             }
             if (!s.online) {
