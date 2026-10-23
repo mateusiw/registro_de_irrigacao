@@ -1060,10 +1060,14 @@
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Tipo de aspersor</label>
-                            <select id="dbTipo" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-700 outline-none">
+                            <select id="dbTipo" onchange="window.alternarTipoOutro()" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-700 outline-none">
                                 <option value="MicroAspersor">MicroAspersor</option>
                                 <option value="Aspersor">Aspersor</option>
+                                <option value="Fita Gotejo">Fita Gotejo</option>
+                                <option value="Outro">Outro</option>
                             </select>
+                            <input type="text" id="dbTipoOutro" maxlength="30" placeholder="Nome do aspersor"
+                                class="hidden mt-1.5 w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
                         </div>
                         <div>
                             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Vazão (L/H)</label>
@@ -6569,6 +6573,25 @@
             }
         }
 
+        // Nome do aspersor = texto antes da vazão. MicroAspersor/Aspersor são padronizados
+        // (a planilha tinha grafias como "MicroAspesor"); qualquer outro nome fica como foi digitado.
+        function nomeTipoAspersor(tipo) {
+            const nome = String(tipo || '').replace(/[\d.,]+\s*L\/H.*$/i, '').trim();
+            if (/micro/i.test(nome)) return 'MicroAspersor';
+            if (!nome || /^aspersor$/i.test(nome)) return 'Aspersor';
+            if (/^fita\s*gotejo$/i.test(nome)) return 'Fita Gotejo';
+            return nome;
+        }
+
+        // "Outro" no tipo de aspersor: mostra o campo para digitar o nome
+        window.alternarTipoOutro = function() {
+            const outro = document.getElementById('dbTipo').value === 'Outro';
+            const campo = document.getElementById('dbTipoOutro');
+            campo.classList.toggle('hidden', !outro);
+            campo.required = outro;
+            if (outro && !campo.value) campo.focus();
+        }
+
         // Interpreta uma linha no formato livre herdado da planilha
         // (ex.: "2 Válvula Ativa", "MicroAspesor 90 L/H", "1.092")
         function lerDadoBloco(l) {
@@ -6579,7 +6602,7 @@
                 id: l.id,
                 bloco: String(l.bloco || '').toUpperCase().replace('BLOCO', '').trim(),
                 valvulas: valv ? (parseInt(valv[1]) || 1) : 1,
-                tipo: /micro/i.test(tipo) ? 'MicroAspersor' : 'Aspersor',
+                tipo: nomeTipoAspersor(tipo),
                 vazao: vaz ? parseFloat(vaz[1].replace(',', '.')) : 0,
                 qtd: parseFloat(String(l.qtd_aspersores || '').replace(/\./g, '').replace(/,/g, '.')) || 0,
                 data: l.data_atualizacao
@@ -6927,7 +6950,10 @@
             document.getElementById('dadoBlocoErro').classList.add('hidden');
             document.getElementById('dbBloco').value = d ? d.bloco : '';
             document.getElementById('dbValvulas').value = d ? d.valvulas : '';
-            document.getElementById('dbTipo').value = d ? d.tipo : 'MicroAspersor';
+            const tipoPadrao = !d || ['MicroAspersor', 'Aspersor', 'Fita Gotejo'].includes(d.tipo);
+            document.getElementById('dbTipo').value = tipoPadrao ? (d ? d.tipo : 'MicroAspersor') : 'Outro';
+            document.getElementById('dbTipoOutro').value = tipoPadrao ? '' : d.tipo;
+            window.alternarTipoOutro();
             document.getElementById('dbVazao').value = d ? d.vazao : '';
             document.getElementById('dbQtd').value = d ? d.qtd : '';
             // Ao editar, sugere a data de hoje como nova data de atualização
@@ -6952,6 +6978,9 @@
             const valvulas = parseInt(document.getElementById('dbValvulas').value) || 0;
             const vazao = lerNumero('dbVazao');
             const qtd = parseInt(document.getElementById('dbQtd').value) || 0;
+            const tipoSel = document.getElementById('dbTipo').value;
+            // Sem números no nome, para não confundir a leitura da vazão
+            const tipo = tipoSel === 'Outro' ? document.getElementById('dbTipoOutro').value.replace(/[\d.,]/g, '').replace(/\s+/g, ' ').trim() : tipoSel;
             erro.classList.add('hidden');
 
             if (!bloco || valvulas < 1 || !vazao || qtd < 1) {
@@ -6959,11 +6988,16 @@
                 erro.classList.remove('hidden');
                 return;
             }
+            if (!tipo) {
+                erro.innerText = "Digite o nome do aspersor (sem números).";
+                erro.classList.remove('hidden');
+                return;
+            }
 
             const linha = {
                 bloco: `Bloco ${bloco}`,
                 valvulas: `${valvulas} Válvula${valvulas > 1 ? 's' : ''} Ativa${valvulas > 1 ? 's' : ''}`,
-                tipo_aspersor: `${document.getElementById('dbTipo').value} ${String(vazao).replace('.', ',')} L/H`,
+                tipo_aspersor: `${tipo} ${String(vazao).replace('.', ',')} L/H`,
                 qtd_aspersores: String(qtd),
                 data_atualizacao: document.getElementById('dbData').value
             };
