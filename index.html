@@ -217,6 +217,10 @@
                     class="hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
                     <i data-lucide="scroll-text" class="w-4 h-4"></i>
                 </button>
+                <button type="button" id="instalarAppBtn" onclick="window.abrirInstalacao()" title="Instalar aplicativo"
+                    class="hidden items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-green-600 text-white hover:bg-green-700">
+                    <i data-lucide="download" class="w-3 h-3"></i> Instalar
+                </button>
                 <button type="button" onclick="window.atualizarApp()" title="Atualizar aplicativo"
                     class="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50">
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i>
@@ -1262,6 +1266,34 @@
             <button type="button" onclick="window.closeAlertModal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-2xl transition-colors shadow-md text-sm">
                 ENTENDI
             </button>
+        </div>
+    </div>
+
+    <!-- MODAL: INSTALAR O APLICATIVO (quando aberto pelo navegador) -->
+    <div id="instalarModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-5 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl p-6 text-center">
+            <img id="instalarIcone" src="" alt="" class="w-16 h-16 rounded-2xl mx-auto mb-4 shadow">
+            <h3 class="text-xl font-black text-slate-800 mb-2">Instale o aplicativo</h3>
+            <p class="text-[13px] text-slate-500 mb-4 font-medium leading-relaxed px-2">
+                Com o app instalado ele abre direto da tela inicial, funciona melhor sem internet e não se perde ao limpar o navegador.
+            </p>
+            <!-- iPhone: o Safari não tem botão de instalar, só o passo a passo -->
+            <div id="instalarPassosIos" class="hidden text-left bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-5 text-[13px] text-slate-600 space-y-2">
+                <p class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-green-600 text-white text-[11px] font-black flex items-center justify-center shrink-0">1</span>
+                    Toque em <i data-lucide="share" class="w-4 h-4 text-sky-600 shrink-0"></i> <b>Compartilhar</b> na barra do Safari</p>
+                <p class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-green-600 text-white text-[11px] font-black flex items-center justify-center shrink-0">2</span>
+                    Escolha <i data-lucide="square-plus" class="w-4 h-4 text-slate-600 shrink-0"></i> <b>Adicionar à Tela de Início</b></p>
+                <p class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-green-600 text-white text-[11px] font-black flex items-center justify-center shrink-0">3</span>
+                    Toque em <b>Adicionar</b></p>
+            </div>
+            <div class="flex gap-3 w-full">
+                <button type="button" onclick="window.adiarInstalacao()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
+                    AGORA NÃO
+                </button>
+                <button type="button" id="instalarConfirmarBtn" onclick="window.instalarApp()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-2xl transition-colors shadow-md text-sm flex items-center justify-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i> INSTALAR
+                </button>
+            </div>
         </div>
     </div>
 
@@ -7825,6 +7857,83 @@
                 "ATUALIZAR", "refresh-cw");
         };
 
+        // --- INSTALAR O APLICATIVO ---
+        // Android/Chrome avisa que dá para instalar (beforeinstallprompt); no iPhone o Safari
+        // não tem esse aviso, então mostramos o passo a passo. O aviso volta toda vez que o
+        // app é aberto, até ser instalado ("Agora não" só fecha por enquanto).
+        let pedidoInstalacao = null;
+        let instalacaoSugerida = false;
+
+        function appInstalado() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        function ehIphone() {
+            return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        function podeInstalar() {
+            return !appInstalado() && (!!pedidoInstalacao || ehIphone());
+        }
+
+        function atualizarBotaoInstalar() {
+            const btn = document.getElementById('instalarAppBtn');
+            btn.classList.toggle('hidden', !podeInstalar());
+            btn.classList.toggle('flex', podeInstalar());
+        }
+
+        window.abrirInstalacao = function() {
+            if (!podeInstalar()) return;
+            const ios = !pedidoInstalacao;
+            document.getElementById('instalarIcone').src = getAppIconUri();
+            document.getElementById('instalarPassosIos').classList.toggle('hidden', !ios);
+            document.getElementById('instalarConfirmarBtn').classList.toggle('hidden', ios);
+            const modal = document.getElementById('instalarModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function fecharInstalacao() {
+            const modal = document.getElementById('instalarModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        window.adiarInstalacao = function() {
+            fecharInstalacao();
+        }
+
+        window.instalarApp = async function() {
+            if (!pedidoInstalacao) return;
+            fecharInstalacao();
+            pedidoInstalacao.prompt();
+            await pedidoInstalacao.userChoice;
+            pedidoInstalacao = null; // o mesmo pedido só pode ser usado uma vez
+            atualizarBotaoInstalar();
+        }
+
+        // Mostra o aviso sozinho uma vez a cada abertura do app, com alguém logado
+        function sugerirInstalacao() {
+            atualizarBotaoInstalar();
+            if (instalacaoSugerida || !podeInstalar() || !API.usuarioAtual()) return;
+            if (!document.getElementById('loginScreen').classList.contains('hidden')) return;
+            instalacaoSugerida = true;
+            window.abrirInstalacao();
+        }
+
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault();
+            pedidoInstalacao = e;
+            setTimeout(sugerirInstalacao, 1500);
+        });
+
+        window.addEventListener('appinstalled', () => {
+            pedidoInstalacao = null;
+            fecharInstalacao();
+            atualizarBotaoInstalar();
+        });
+
         function aplicarUsuarioNaTela() {
             const u = API.usuarioAtual();
             if (!u) return;
@@ -7891,6 +8000,7 @@
             await carregarPerfis();
             window.calcularConsumoProgramacao();
             API.sincronizar();
+            setTimeout(sugerirInstalacao, 1500);
             // Papel/nome podem ter sido alterados pelo gestor desde o último acesso
             API.atualizarPerfil().then(perfil => {
                 if (perfil) { aplicarUsuarioNaTela(); return; }
@@ -7945,7 +8055,9 @@
                     name: 'Registro Irrigação',
                     short_name: 'Irrigação - SPG',
                     description: 'Registro Diário de Irrigação - SPG Oásis',
-                    start_url: '.',
+                    // Endereços completos: o manifesto é um data: URL, então "." não teria a que se referir
+                    start_url: new URL('./', location.href).href,
+                    scope: new URL('./', location.href).href,
                     display: 'standalone',
                     background_color: '#ffffff',
                     theme_color: '#15803d',
@@ -7977,7 +8089,7 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
 
             // Trava a rolagem da página enquanto qualquer janela (pop-up) estiver aberta
-            const JANELAS = ['pocoModal', 'onlineModal', 'usersModal', 'auditModal', 'confirmModal', 'alertModal',
+            const JANELAS = ['pocoModal', 'onlineModal', 'usersModal', 'auditModal', 'confirmModal', 'alertModal', 'instalarModal',
                              'flowModal', 'flowModalProg', 'loginScreen', 'syncOverlay'];
             const atualizarTravaRolagem = () => {
                 const aberta = JANELAS.some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
