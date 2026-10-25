@@ -217,6 +217,10 @@
                     class="hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
                     <i data-lucide="scroll-text" class="w-4 h-4"></i>
                 </button>
+                <button type="button" onclick="window.atualizarApp()" title="Atualizar aplicativo"
+                    class="p-1.5 rounded-lg text-slate-400 hover:text-sky-600 hover:bg-sky-50">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
                 <button type="button" onclick="window.fazerLogout()" title="Sair"
                     class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">
                     <i data-lucide="log-out" class="w-4 h-4"></i>
@@ -1242,7 +1246,7 @@
     <!-- OVERLAY DE SINCRONIZAÇÃO (pré-carrega o histórico ao entrar no modo edição) -->
     <div id="syncOverlay" class="hidden fixed inset-0 bg-white/70 backdrop-blur-sm z-[60] flex-col items-center justify-center gap-3">
         <i data-lucide="loader-circle" class="w-9 h-9 text-sky-600 animate-spin"></i>
-        <p class="text-sm font-bold text-slate-600">Sincronizando dados...</p>
+        <p id="syncOverlayTexto" class="text-sm font-bold text-slate-600">Sincronizando dados...</p>
     </div>
 
     <!-- MODAL DE ALERTA GERAL -->
@@ -2000,9 +2004,16 @@
             const diff = expirationTime - now;
 
             if (diff <= 0) {
-                records = [];
+                // Só limpa os dias anteriores: os registros de hoje continuam na lista
+                const antes = records.length;
+                records = records.filter(r => r.date === dataLocalIso());
+                if (records.length) {
+                    expirationTime = now + (24 * 60 * 60 * 1000);
+                    localStorage.setItem('irrigation_expiration', expirationTime);
+                }
                 saveData();
-                window.showAlert("Tempo Esgotado", "O período de 24h encerrou. O histórico foi limpo automaticamente.");
+                updateTimerDisplay();
+                if (records.length < antes) window.showAlert("Tempo Esgotado", "O período de 24h encerrou. Os registros de dias anteriores foram limpos da lista (continuam salvos no banco).");
                 return;
             }
 
@@ -2518,11 +2529,31 @@
         // quando a conexão em tempo real cai, ex.: celular com a tela desligada)
         async function carregarRegistrosEquipe() {
             const dia = dataLocalIso();
-            const lista = await API.listarRegistrosEquipe(dia);
+            const [lista, meus] = await Promise.all([API.listarRegistrosEquipe(dia), API.listarMeusRegistros(dia)]);
             if (dia !== dataLocalIso() || !API.usuarioAtual()) return; // virou o dia ou saiu enquanto carregava
             diaEquipe = dia;
             registrosEquipe = lista.map(registroEquipeParaLista);
+            recuperarRegistrosProprios(dia, meus);
             renderList();
+        }
+
+        // A lista do próprio usuário fica só no aparelho e pode se perder (outro celular,
+        // dados do navegador apagados, troca de usuário): traz de volta os registros de
+        // hoje dele que já estão no banco
+        function recuperarRegistrosProprios(dia, meus) {
+            const faltando = meus.filter(r => r.data === dia && !records.some(x => x.id === r.idLocal));
+            if (!faltando.length) return;
+            if (records.length === 0) {
+                expirationTime = Date.now() + (24 * 60 * 60 * 1000);
+                localStorage.setItem('irrigation_expiration', expirationTime);
+            }
+            faltando.forEach(r => records.push({
+                id: r.idLocal, date: r.data, block: String(r.bloco || '').toUpperCase(), minutes: Number(r.minutos) || 0,
+                turno: r.turno || '', observation: r.observacao || '', registradoEm: r.registrado_em
+            }));
+            records.sort((a, b) => a.block.localeCompare(b.block, undefined, {numeric: true}));
+            saveData();
+            updateTimerDisplay();
         }
 
         // Registro do próprio usuário alterado fora deste aparelho (ex.: restaurado ou
@@ -7757,6 +7788,41 @@
                 window.showAlert("Não foi possível enviar",
                     `Ainda há ${s.pendentes} dado(s) guardado(s) neste aparelho. Confira a conexão com a internet e tente de novo. Nada foi perdido.`);
             }
+        };
+
+        // Botão "Atualizar aplicativo": apaga os arquivos guardados pelo app (cache e service
+        // worker) e recarrega da internet. Registros e dados não enviados ficam no
+        // localStorage e não são apagados.
+        window.atualizarApp = async function() {
+            let versao = '';
+            try { versao = ((await caches.keys()).find(k => k.startsWith('irrigacao-')) || '').replace('irrigacao-', ''); } catch (e) {}
+            pendingConfirmCallback = async () => {
+                const overlayTexto = document.getElementById('syncOverlayTexto');
+                overlayTexto.innerText = 'Atualizando o aplicativo...';
+                window.showSyncOverlay();
+                const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+                try {
+                    // Sem internet, apagar o cache deixaria o app sem abrir
+                    if (reg) await reg.update();
+                    else await fetch(location.href, { cache: 'no-store' });
+                } catch (e) {
+                    window.hideSyncOverlay();
+                    overlayTexto.innerText = 'Sincronizando dados...';
+                    window.showAlert("Sem conexão", "Para atualizar o aplicativo é preciso estar com internet. Tente de novo quando tiver sinal.");
+                    return;
+                }
+                await API.sincronizar(true).catch(() => {});
+                try {
+                    if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k)));
+                    if (reg) await reg.unregister();
+                } catch (e) {
+                    console.warn("Erro ao limpar o cache:", e);
+                }
+                location.reload();
+            };
+            window.showConfirmModal("Atualizar aplicativo?",
+                `Baixa a versão mais nova do aplicativo e limpa o cache. Seus registros e os dados ainda não enviados continuam salvos neste aparelho. Precisa de internet.${versao ? `\n\nVersão instalada: ${versao}` : ''}`,
+                "ATUALIZAR", "refresh-cw");
         };
 
         function aplicarUsuarioNaTela() {
