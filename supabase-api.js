@@ -302,15 +302,24 @@
     }
 
     let repetirSync = false;
+    let promessaSync = null;
 
-    async function sincronizar() {
+    // forcar = true (botão "Enviar dados"): tenta mesmo se o aparelho disser que está
+    // offline, pois alguns celulares demoram a perceber que o Wi-Fi voltou.
+    // Devolve o status ao terminar, para a tela mostrar o resultado.
+    function sincronizar(forcar) {
         const u = usuarioAtual();
-        if (sincronizando) { repetirSync = true; return; } // roda de novo ao terminar (dados novos na fila)
-        if (!u || !navigator.onLine) { emitir(); return; }
+        if (sincronizando) { repetirSync = true; return promessaSync; } // roda de novo ao terminar (dados novos na fila)
+        if (!u || (!navigator.onLine && forcar !== true)) { emitir(); return Promise.resolve(status()); }
 
         sincronizando = true;
         repetirSync = false;
         emitir();
+        promessaSync = enviarFila(u).then(status);
+        return promessaSync;
+    }
+
+    async function enviarFila(u) {
         try {
             // Depois de horas offline o token venceu e é renovado aqui; logo que o sinal
             // volta a renovação pode falhar por rede, o que não significa sessão expirada.
