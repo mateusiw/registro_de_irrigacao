@@ -78,7 +78,7 @@
 
             /* Abas à esquerda, usuário e status à direita, numa linha só */
             #navTabs { max-width: var(--largura-desktop); display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
-            #tabBar { width: 640px; flex: none; }
+            #tabBar { width: 760px; flex: none; }
             #statusBar { margin-top: 0; justify-content: flex-end; gap: 1.25rem; }
 
             #tabRegistro, #tabProgramacao, #tabAgua, #tabGraficos { max-width: var(--largura-desktop); padding-top: 1.5rem; }
@@ -122,8 +122,17 @@
             #balancoColunas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; align-items: start; }
             #balancoColunas > * { margin-top: 0 !important; }
 
+            /* Cadastros: uma sub-aba por vez. Poços e reservatórios: formulário à esquerda e
+               cartões ocupando o resto da largura; usuários numa coluna mais estreita */
+            #tabCadastros { max-width: var(--largura-desktop); padding-top: 1.5rem; }
+            #cadSubNav { width: 640px; }
+            .cad-estreita { max-width: 760px; }
+            .cad-card { display: grid; grid-template-columns: 360px minmax(0, 1fr); align-items: start; }
+            .cad-card > :first-child { grid-column: 1 / -1; }
+            .cad-card > .cad-form { align-self: stretch; border-bottom: 0; border-right: 1px solid #f1f5f9; }
+            .cad-lista { grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)) !important; gap: 0.75rem; }
+
             /* Dados dos blocos: formulário à esquerda, lista à direita dentro do mesmo cartão */
-            #aguaSecBlocos:not(.hidden) { display: block; }
             #dadosBlocosCard:not(.hidden) { display: grid; grid-template-columns: 420px minmax(0, 1fr); align-items: start; }
             #dadosBlocosCard > :first-child { grid-column: 1 / -1; }
             #dadoBlocoForm { border-bottom: 0; border-right: 1px solid #f1f5f9; }
@@ -189,6 +198,11 @@
                 class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
                 <i data-lucide="chart-line" class="w-3.5 h-3.5"></i> Gráficos
             </button>
+            <!-- Somente gestor; no celular mostra só o ícone para caber na barra -->
+            <button type="button" id="tabBtnCadastros" data-so-gestor onclick="window.switchTab('cadastros')" title="Cadastros"
+                class="hidden flex-none sm:flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="settings" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Cadastros</span>
+            </button>
         </div>
 
         <!-- USUÁRIO LOGADO + STATUS DE SINCRONIZAÇÃO -->
@@ -203,10 +217,6 @@
                     class="flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full border border-slate-200 bg-white text-slate-500">
                     <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-300"></span>
                     <span id="syncStatusText">—</span>
-                </button>
-                <button type="button" id="usersBtn" onclick="window.openUsersModal()" title="Usuários"
-                    class="hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
-                    <i data-lucide="users" class="w-4 h-4"></i>
                 </button>
                 <button type="button" id="onlineBtn" onclick="window.abrirOnline()" title="Usuários online"
                     class="hidden relative p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
@@ -689,10 +699,6 @@
                 class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
                 <i data-lucide="container" class="w-3.5 h-3.5"></i> Reservatório
             </button>
-            <button type="button" data-agua-sec="blocos" data-so-gestor onclick="window.switchAgua('blocos')"
-                class="hidden flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
-                <i data-lucide="layers" class="w-3.5 h-3.5"></i> Blocos
-            </button>
         </div>
 
         <!-- ===== SEÇÃO: BALANÇO (entrada pelos poços × saída pelos blocos) ===== -->
@@ -915,31 +921,6 @@
                 <div id="pocosResumo" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
                 <div id="pocosList" class="space-y-3"></div>
             </section>
-
-            <!-- CADASTRO DE POÇOS (SOMENTE GESTOR) -->
-            <div data-so-gestor class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
-                    <i data-lucide="settings" class="w-5 h-5 text-white opacity-90"></i>
-                    <h2 class="text-base font-bold text-white">Cadastro de Poços</h2>
-                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Gestor</span>
-                </div>
-                <form onsubmit="window.addPoco(event)" class="px-5 py-4 border-b border-slate-100">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Novo Poço</p>
-                    <div class="grid grid-cols-3 gap-2">
-                        <input type="text" id="novoPocoNumero" required placeholder="Nº" maxlength="10"
-                            class="col-span-1 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
-                        <input type="text" id="novoPocoNome" placeholder="Nome / local (opcional)"
-                            class="col-span-2 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                    </div>
-                    <button type="submit" class="mt-2 w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                        <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Poço
-                    </button>
-                </form>
-                <div class="px-5 py-4">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Poços cadastrados</p>
-                    <div id="cadastrosPocosLista" class="divide-y divide-slate-100 text-xs"></div>
-                </div>
-            </div>
         </div>
 
         <!-- ===== SEÇÃO: RESERVATÓRIO ===== -->
@@ -1013,15 +994,78 @@
                 </div>
                 <div id="reservList" class="space-y-3"></div>
             </section>
+        </div>
 
-            <!-- CADASTRO DE RESERVATÓRIOS (SOMENTE GESTOR) -->
-            <div data-so-gestor class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    </div>
+
+    <!-- ABA 5: CADASTROS (SOMENTE GESTOR) — poços, reservatórios, blocos e usuários, um de cada vez -->
+    <div id="tabCadastros" class="hidden container mx-auto p-4 space-y-4 max-w-md">
+
+        <div class="px-1">
+            <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Cadastros</h2>
+            <p class="text-[10px] text-slate-400 font-medium">Gerencie poços, reservatórios, dados dos blocos e usuários</p>
+        </div>
+
+        <!-- SUB-ABAS DOS CADASTROS -->
+        <div id="cadSubNav" class="flex flex-wrap bg-white rounded-xl shadow-sm border border-slate-200 p-1 gap-1">
+            <button type="button" data-cad-sec="pocos" onclick="window.switchCadastro('pocos')"
+                class="flex-1 min-w-[40%] sm:min-w-0 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="droplet" class="w-3.5 h-3.5"></i> Poços
+            </button>
+            <button type="button" data-cad-sec="reserv" onclick="window.switchCadastro('reserv')"
+                class="flex-1 min-w-[40%] sm:min-w-0 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="container" class="w-3.5 h-3.5"></i> Reservatórios
+            </button>
+            <button type="button" data-cad-sec="blocos" onclick="window.switchCadastro('blocos')"
+                class="flex-1 min-w-[40%] sm:min-w-0 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="layers" class="w-3.5 h-3.5"></i> Blocos
+            </button>
+            <button type="button" data-cad-sec="usuarios" data-so-admin onclick="window.switchCadastro('usuarios')"
+                class="hidden flex-1 min-w-[40%] sm:min-w-0 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="users" class="w-3.5 h-3.5"></i> Usuários
+            </button>
+        </div>
+
+        <!-- ===== CADASTRO DE POÇOS ===== -->
+        <div id="cadSecPocos" class="cad-sec">
+            <div class="cad-card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
-                    <i data-lucide="settings" class="w-5 h-5 text-white opacity-90"></i>
+                    <i data-lucide="droplet" class="w-5 h-5 text-white opacity-90"></i>
+                    <h2 class="text-base font-bold text-white">Cadastro de Poços</h2>
+                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Gestor</span>
+                </div>
+                <form onsubmit="window.addPoco(event)" class="cad-form px-5 py-4 border-b border-slate-100">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Novo Poço</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="novoPocoNumero" required placeholder="Nº" maxlength="10"
+                            class="col-span-1 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
+                        <input type="text" id="novoPocoNome" placeholder="Nome / local (opcional)"
+                            class="col-span-2 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                    </div>
+                    <button type="submit" class="mt-2 w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Poço
+                    </button>
+                </form>
+                <div class="px-5 py-4">
+                    <div class="flex items-center justify-between gap-2 mb-2.5">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Poços cadastrados</p>
+                        <span id="cadastrosPocosContagem" class="text-[10px] font-bold text-slate-400"></span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mb-2">Toque no poço para abrir a ficha.</p>
+                    <div id="cadastrosPocosLista" class="cad-lista grid sm:grid-cols-2 gap-2 text-xs"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== CADASTRO DE RESERVATÓRIOS ===== -->
+        <div id="cadSecReserv" class="cad-sec hidden">
+            <div class="cad-card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
+                    <i data-lucide="container" class="w-5 h-5 text-white opacity-90"></i>
                     <h2 class="text-base font-bold text-white">Cadastro de Reservatórios</h2>
                     <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Gestor</span>
                 </div>
-                <form onsubmit="window.addReservatorio(event)" class="px-5 py-4 border-b border-slate-100">
+                <form onsubmit="window.addReservatorio(event)" class="cad-form px-5 py-4 border-b border-slate-100">
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Novo Reservatório</p>
                     <input type="text" id="novoReservNome" required placeholder="Nome (ex: Reservatório Principal)"
                         class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all mb-2">
@@ -1037,14 +1081,17 @@
                     </button>
                 </form>
                 <div class="px-5 py-4">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Reservatórios cadastrados</p>
-                    <div id="cadastrosReservLista" class="divide-y divide-slate-100 text-xs"></div>
+                    <div class="flex items-center justify-between gap-2 mb-2.5">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Reservatórios cadastrados</p>
+                        <span id="cadastrosReservContagem" class="text-[10px] font-bold text-slate-400"></span>
+                    </div>
+                    <div id="cadastrosReservLista" class="cad-lista grid sm:grid-cols-2 gap-2 text-xs"></div>
                 </div>
             </div>
         </div>
 
-        <!-- ===== SEÇÃO: DADOS DOS BLOCOS (SOMENTE GESTOR) — base do cálculo de litros ===== -->
-        <div id="aguaSecBlocos" class="agua-sec hidden space-y-6">
+        <!-- ===== DADOS DOS BLOCOS — base do cálculo de litros ===== -->
+        <div id="cadSecBlocos" class="cad-sec hidden">
             <div id="dadosBlocosCard" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="bg-gradient-to-r from-green-700 to-green-800 px-5 py-4 flex items-center gap-2">
                     <i data-lucide="layers" class="w-5 h-5 text-white opacity-90"></i>
@@ -1060,7 +1107,7 @@
                 </div>
 
                 <form id="dadoBlocoForm" onsubmit="window.salvarDadoBloco(event)" class="px-5 py-4 border-b border-slate-100 space-y-2">
-                    <p id="dadoBlocoFormTitulo" class="text-xs font-bold text-slate-400 uppercase tracking-wider">Nova Linha</p>
+                    <p id="dadoBlocoFormTitulo" class="text-xs font-bold text-slate-400 uppercase tracking-wider">Novo Sistema de Aspersão</p>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Bloco</label>
@@ -1106,14 +1153,62 @@
                             class="hidden flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
                         <button type="submit" id="dadoBlocoBtn"
                             class="flex-1 bg-green-700 hover:bg-green-800 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                            <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Linha
+                            <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Sistema
                         </button>
                     </div>
-                    <p class="text-[10px] text-slate-400 leading-relaxed">Um bloco pode ter várias linhas (um tipo de aspersor em cada). Alterações precisam de internet.</p>
+                    <p class="text-[10px] text-slate-400 leading-relaxed">Um bloco pode ter vários sistemas de aspersão. Para alterar um bloco já cadastrado, toque no lápis dele na lista. Alterações precisam de internet.</p>
                 </form>
 
                 <div id="dadosBlocosLista" class="px-5 py-4 space-y-3"></div>
                 <datalist id="listaCulturas"></datalist>
+            </div>
+        </div>
+
+        <!-- ===== USUÁRIOS (SOMENTE ADMINISTRADOR) ===== -->
+        <div id="cadSecUsuarios" class="cad-sec hidden">
+            <div class="cad-card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
+                    <i data-lucide="users" class="w-5 h-5 text-white opacity-90"></i>
+                    <h2 class="text-base font-bold text-white">Usuários</h2>
+                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Admin</span>
+                </div>
+            <!-- NOVO USUÁRIO -->
+            <form onsubmit="window.criarUsuario(event)" class="cad-form px-5 py-4 border-b border-slate-100 space-y-2">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Novo Usuário</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="novoUsuarioLogin" required placeholder="Usuário (ex: joao)" autocapitalize="none" spellcheck="false" maxlength="30"
+                        oninput="this.value = this.value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9._-]/g, '')"
+                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
+                    <input type="password" id="novoUsuarioSenha" required minlength="6" placeholder="Senha (mín. 6)" autocomplete="new-password"
+                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                </div>
+                <input type="text" id="novoUsuarioNome" required placeholder="Nome completo (aparece no relatório)"
+                    oninput="this.value = this.value.toUpperCase()"
+                    class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="novoUsuarioNomeCurto" placeholder="Nome curto (ex: João Silva)"
+                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                    <select id="novoUsuarioPapel" class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-700 outline-none">
+                        <option value="irrigador">Irrigador</option>
+                        <option value="gestor">Gestor</option>
+                    </select>
+                </div>
+                <p id="novoUsuarioErro" class="hidden text-xs font-bold text-red-500"></p>
+                <button type="submit" id="novoUsuarioBtn"
+                    class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i> Criar Usuário
+                </button>
+                <p class="text-[10px] text-slate-400 leading-relaxed">A pessoa entra no app com o usuário e a senha definidos aqui. Precisa de internet.</p>
+            </form>
+
+            <!-- LISTA -->
+            <div class="px-5 py-4">
+                <div class="flex items-center justify-between gap-2 mb-2.5">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Usuários cadastrados</p>
+                    <span id="usuariosContagem" class="text-[10px] font-bold text-slate-400"></span>
+                </div>
+                <div id="usersList" class="cad-lista grid sm:grid-cols-2 gap-2"></div>
+            </div>
             </div>
         </div>
     </div>
@@ -1157,7 +1252,10 @@
             <div id="grafFiltros" class="w-full flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100"></div>
         </div>
 
-        <!-- RESUMO -->
+        <!-- RESUMO PARA A DIRETORIA (situação geral em um olhar) -->
+        <div id="grafDiretor"></div>
+
+        <!-- RESUMO (detalhes) -->
         <div id="grafResumo" class="grid grid-cols-2 lg:grid-cols-4 gap-2"></div>
 
         <!-- GRÁFICOS DIÁRIOS -->
@@ -1286,6 +1384,10 @@
                 <p class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-green-600 text-white text-[11px] font-black flex items-center justify-center shrink-0">3</span>
                     Toque em <b>Adicionar</b></p>
             </div>
+            <label class="flex items-center justify-center gap-2 mb-4 text-[13px] font-bold text-slate-500 cursor-pointer select-none">
+                <input type="checkbox" id="instalarIgnorar" class="w-4 h-4 accent-green-600">
+                Não mostrar por 1 hora
+            </label>
             <div class="flex gap-3 w-full">
                 <button type="button" onclick="window.adiarInstalacao()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
                     AGORA NÃO
@@ -1330,52 +1432,6 @@
                 </button>
             </form>
             <p class="text-[10px] text-slate-400 text-center mt-4 leading-relaxed">O primeiro acesso precisa de internet. Depois disso o app funciona offline e envia os dados quando houver sinal.</p>
-        </div>
-    </div>
-
-    <!-- MODAL DE USUÁRIOS (SOMENTE GESTOR) -->
-    <div id="usersModal" class="fixed inset-0 bg-slate-900/60 z-[45] hidden items-center justify-center p-5 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center justify-between shrink-0">
-                <h3 class="text-base font-bold text-white flex items-center gap-2"><i data-lucide="users" class="w-5 h-5"></i> Usuários</h3>
-                <button type="button" onclick="window.closeUsersModal()" class="text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <div class="overflow-y-auto">
-                <!-- NOVO USUÁRIO -->
-                <form onsubmit="window.criarUsuario(event)" class="px-5 py-4 border-b border-slate-100 space-y-2">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Novo Usuário</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="novoUsuarioLogin" required placeholder="Usuário (ex: joao)" autocapitalize="none" spellcheck="false" maxlength="30"
-                            oninput="this.value = this.value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9._-]/g, '')"
-                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
-                        <input type="password" id="novoUsuarioSenha" required minlength="6" placeholder="Senha (mín. 6)" autocomplete="new-password"
-                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                    </div>
-                    <input type="text" id="novoUsuarioNome" required placeholder="Nome completo (aparece no relatório)"
-                        oninput="this.value = this.value.toUpperCase()"
-                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="novoUsuarioNomeCurto" placeholder="Nome curto (ex: João Silva)"
-                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                        <select id="novoUsuarioPapel" class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-700 outline-none">
-                            <option value="irrigador">Irrigador</option>
-                            <option value="gestor">Gestor</option>
-                        </select>
-                    </div>
-                    <p id="novoUsuarioErro" class="hidden text-xs font-bold text-red-500"></p>
-                    <button type="submit" id="novoUsuarioBtn"
-                        class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                        <i data-lucide="user-plus" class="w-4 h-4"></i> Criar Usuário
-                    </button>
-                    <p class="text-[10px] text-slate-400 leading-relaxed">A pessoa entra no app com o usuário e a senha definidos aqui. Precisa de internet.</p>
-                </form>
-
-                <!-- LISTA -->
-                <div class="px-5 py-4">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cadastrados</p>
-                    <div id="usersList" class="divide-y divide-slate-100"></div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -2761,15 +2817,17 @@
             registro:    { painel: 'tabRegistro',    botao: 'tabBtnRegistro',    cor: 'bg-green-600' },
             programacao: { painel: 'tabProgramacao', botao: 'tabBtnProgramacao', cor: 'bg-sky-600' },
             agua:        { painel: 'tabAgua',        botao: 'tabBtnAgua',        cor: 'bg-teal-600' },
-            graficos:    { painel: 'tabGraficos',    botao: 'tabBtnGraficos',    cor: 'bg-indigo-600' }
+            graficos:    { painel: 'tabGraficos',    botao: 'tabBtnGraficos',    cor: 'bg-indigo-600' },
+            cadastros:   { painel: 'tabCadastros',   botao: 'tabBtnCadastros',   cor: 'bg-slate-700' }
         };
 
         window.switchTab = function(tab) {
+            if (tab === 'cadastros' && !API.isGestor()) tab = 'registro';
             Object.entries(TABS).forEach(([nome, t]) => {
                 const ativo = nome === tab;
                 document.getElementById(t.painel).classList.toggle('hidden', !ativo);
                 const btn = document.getElementById(t.botao);
-                btn.classList.remove('bg-green-600', 'bg-sky-600', 'bg-teal-600', 'bg-indigo-600', 'text-white', 'shadow-sm', 'text-slate-400');
+                btn.classList.remove('bg-green-600', 'bg-sky-600', 'bg-teal-600', 'bg-indigo-600', 'bg-slate-700', 'text-white', 'shadow-sm', 'text-slate-400');
                 if (ativo) btn.classList.add(t.cor, 'text-white', 'shadow-sm');
                 else btn.classList.add('text-slate-400');
             });
@@ -2782,6 +2840,7 @@
             if (tab === 'programacao' && !progUnlocked) window.syncProgramacaoFromSheet();
             if (tab === 'agua') window.carregarAgua();
             if (tab === 'graficos') window.carregarGraficos();
+            if (tab === 'cadastros') window.carregarCadastros();
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -4202,33 +4261,75 @@
         const AGUA_SECOES = {
             balanco: { painel: 'aguaSecBalanco', cor: 'bg-blue-600' },
             pocos:  { painel: 'aguaSecPocos',  cor: 'bg-teal-600' },
-            reserv: { painel: 'aguaSecReserv', cor: 'bg-indigo-600' },
-            blocos: { painel: 'aguaSecBlocos', cor: 'bg-green-700', soGestor: true }
+            reserv: { painel: 'aguaSecReserv', cor: 'bg-indigo-600' }
         };
         let aguaSecaoAtual = (() => { try { return localStorage.getItem('irrigacao_agua_secao') || 'pocos'; } catch (e) { return 'pocos'; } })();
 
         window.switchAgua = function(secao) {
-            if (!AGUA_SECOES[secao] || (AGUA_SECOES[secao].soGestor && !API.isGestor())) secao = 'pocos';
+            // Nomes antigos que podem estar salvos no aparelho ('blocos', 'cadastros') foram para a aba Cadastros
+            if (!AGUA_SECOES[secao]) secao = 'pocos';
             aguaSecaoAtual = secao;
             try { localStorage.setItem('irrigacao_agua_secao', secao); } catch (e) {}
 
             Object.entries(AGUA_SECOES).forEach(([nome, s]) => {
                 document.getElementById(s.painel).classList.toggle('hidden', nome !== secao);
                 const btn = document.querySelector(`[data-agua-sec="${nome}"]`);
-                btn.classList.remove('bg-blue-600', 'bg-teal-600', 'bg-indigo-600', 'bg-green-700', 'text-white', 'shadow-sm', 'text-slate-400');
+                btn.classList.remove('bg-blue-600', 'bg-teal-600', 'bg-indigo-600', 'text-white', 'shadow-sm', 'text-slate-400');
                 if (nome === secao) btn.classList.add(s.cor, 'text-white', 'shadow-sm');
                 else btn.classList.add('text-slate-400');
             });
-            if (secao === 'blocos') carregarDadosBlocos(false);
             if (secao === 'balanco') window.carregarBalanco();
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        // Mostra/esconde tudo o que é exclusivo do gestor (marcado com data-so-gestor)
+        // Mostra/esconde o que é exclusivo do gestor (data-so-gestor) e do administrador (data-so-admin)
         function aplicarVisibilidadeGestor() {
-            const gestor = API.isGestor();
+            const gestor = API.isGestor(), admin = API.isAdmin();
             document.querySelectorAll('[data-so-gestor]').forEach(el => el.classList.toggle('hidden', !gestor));
-            if (!gestor && aguaSecaoAtual === 'blocos') window.switchAgua('pocos');
+            document.querySelectorAll('[data-so-admin]').forEach(el => el.classList.toggle('hidden', !admin));
+            const naAbaCadastros = !document.getElementById('tabCadastros').classList.contains('hidden');
+            if (!gestor && naAbaCadastros) window.switchTab('registro');
+            else if (!admin && cadSecaoAtual === 'usuarios') window.switchCadastro('pocos');
+        }
+
+        // ----- Aba Cadastros: uma sub-aba por vez (a última escolhida fica salva no aparelho) -----
+        const CAD_SECOES = {
+            pocos:    { painel: 'cadSecPocos' },
+            reserv:   { painel: 'cadSecReserv' },
+            blocos:   { painel: 'cadSecBlocos' },
+            usuarios: { painel: 'cadSecUsuarios', soAdmin: true }
+        };
+        let cadSecaoAtual = (() => { try { return localStorage.getItem('irrigacao_cad_secao') || 'pocos'; } catch (e) { return 'pocos'; } })();
+
+        window.switchCadastro = function(secao) {
+            if (!CAD_SECOES[secao] || (CAD_SECOES[secao].soAdmin && !API.isAdmin())) secao = 'pocos';
+            cadSecaoAtual = secao;
+            try { localStorage.setItem('irrigacao_cad_secao', secao); } catch (e) {}
+
+            Object.entries(CAD_SECOES).forEach(([nome, s]) => {
+                document.getElementById(s.painel).classList.toggle('hidden', nome !== secao);
+                const btn = document.querySelector(`[data-cad-sec="${nome}"]`);
+                btn.classList.toggle('bg-slate-700', nome === secao);
+                btn.classList.toggle('text-white', nome === secao);
+                btn.classList.toggle('shadow-sm', nome === secao);
+                btn.classList.toggle('text-slate-400', nome !== secao);
+            });
+            if (secao === 'blocos') carregarDadosBlocos(false);
+            if (secao === 'usuarios') {
+                usuarioEditando = null;
+                document.getElementById('novoUsuarioErro').classList.add('hidden');
+                recarregarUsuarios();
+            }
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Poços e reservatórios cadastrados (as listas são desenhadas por renderAgua)
+        window.carregarCadastros = async function() {
+            window.switchCadastro(cadSecaoAtual);
+            [pocosCache, reservCache, leiturasPocoCache, leiturasReservCache, manutencoesCache] = await Promise.all([
+                API.listarPocos(), API.listarReservatorios(), API.listarLeiturasPocos(), API.listarLeiturasReservatorios(), API.listarManutencoes()
+            ]);
+            renderAgua();
         }
 
         window.carregarAgua = async function() {
@@ -4402,10 +4503,23 @@
                 cartaoResumo('Registros', ultimas.length, '', 'bg-white text-slate-800 border border-slate-200');
 
             // Poços
+            // Só os poços com leitura no dia; os demais ficam numa linha compacta (toque abre a ficha)
             const pocosList = document.getElementById('pocosList');
+            const pocosComLeitura = pocosAtivos.filter(p => leiturasPocoDia.some(l => l.poco_id === p.id));
+            const pocosSemLeitura = pocosAtivos.filter(p => !pocosComLeitura.includes(p));
+            const semLeituraHtml = pocosSemLeitura.length === 0 ? '' : `
+                <div class="bg-white rounded-2xl border border-dashed border-slate-200 px-4 py-3 col-span-full">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Sem leitura em ${formatDate(diaSel)} · ${pocosSemLeitura.length} poço${pocosSemLeitura.length === 1 ? '' : 's'}</p>
+                    <div class="flex flex-wrap gap-1.5">${pocosSemLeitura.map(p => `
+                        <button type="button" onclick="window.abrirFichaPoco('${escapeHtml(p.id)}')" title="Ficha do ${escapeHtml(rotuloPoco(p))}"
+                            class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 hover:bg-teal-50 hover:text-teal-700">${escapeHtml(p.numero)}</button>`).join('')}
+                    </div>
+                </div>`;
             pocosList.innerHTML = pocosAtivos.length === 0
-                ? `<div class="text-center py-8 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">Nenhum poço cadastrado.${API.isGestor() ? ' Use o Cadastro de Poços nesta aba.' : ' Peça ao gestor para cadastrar.'}</div>`
-                : pocosAtivos.map(p => {
+                ? `<div class="text-center py-8 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">Nenhum poço cadastrado.${API.isGestor() ? ' Cadastre na aba Cadastros.' : ' Peça ao gestor para cadastrar.'}</div>`
+                : (pocosComLeitura.length === 0
+                    ? `<div class="text-center py-6 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200 col-span-full">Nenhuma leitura de poço em ${formatDate(diaSel)}.</div>`
+                    : '') + pocosComLeitura.map(p => {
                     const leituras = leiturasPocoDia.filter(l => l.poco_id === p.id);
                     const ultima = leituras[0];
                     const historicoHtml = leituras.map(l => `
@@ -4485,7 +4599,7 @@
                         <div class="px-4 pb-2 pt-1 divide-y divide-slate-50">${historicoHtml}</div>`
                         : `<p class="px-4 py-4 text-xs text-slate-400">Sem leitura em ${formatDate(diaSel)}.</p>`}
                     </div>`;
-                }).join('');
+                }).join('') + semLeituraHtml;
 
             // Reservatórios: só as leituras do dia escolhido no seletor de data
             const diaReserv = document.getElementById('reservDataFiltro').value || dataLocalIso();
@@ -4494,7 +4608,7 @@
             const fimDiaReserv = new Date(new Date(diaReserv + 'T00:00:00').getTime() + 86400000).toISOString();
             const reservList = document.getElementById('reservList');
             reservList.innerHTML = reservAtivos.length === 0
-                ? `<div class="text-center py-8 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">Nenhum reservatório cadastrado.${API.isGestor() ? ' Use o Cadastro de Reservatórios nesta aba.' : ' Peça ao gestor para cadastrar.'}</div>`
+                ? `<div class="text-center py-8 text-xs text-slate-400 bg-white rounded-2xl border-2 border-dashed border-slate-200">Nenhum reservatório cadastrado.${API.isGestor() ? ' Cadastre na aba Cadastros.' : ' Peça ao gestor para cadastrar.'}</div>`
                 : reservAtivos.map(r => {
                     const leituras = leiturasReservDia.filter(l => l.reservatorio_id === r.id);
                     const ultima = leituras[0];
@@ -4571,7 +4685,7 @@
                            <input type="number" id="editCad_capacidade" value="${item.capacidade_m3 ?? ''}" step="0.01" min="0" inputmode="decimal" placeholder="Capacidade (m³)" class="${campo}">
                        </div>`;
                 return `
-                <div class="py-2.5 px-2 -mx-2 bg-amber-50 rounded-lg space-y-1.5">
+                <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5 col-span-full">
                     ${campos}
                     <div class="flex gap-1.5">
                         <button type="button" onclick="window.editarCadastro(null)" class="flex-1 bg-slate-200 text-slate-600 font-bold py-1.5 rounded-lg text-[11px]">Cancelar</button>
@@ -4579,32 +4693,70 @@
                     </div>
                 </div>`;
             };
-            const linhaCadastro = (tipo, item, rotulo) => {
+            // Cartão de cada cadastro: tocar no cartão abre a ficha (poço) ou a edição (reservatório)
+            const cartaoCadastro = (tipo, item) => {
                 if (cadastroEditando && cadastroEditando.tipo === tipo && cadastroEditando.id === item.id) return formEdicaoCadastro(tipo, item);
                 const id = escapeHtml(item.id);
-                const detalhe = tipo === 'reservatorio' && (item.altura_maxima_m || item.capacidade_m3)
-                    ? `<span class="block text-[10px] font-medium text-slate-400">${item.altura_maxima_m ? 'máx. ' + fmtNum(item.altura_maxima_m, 2) + ' m' : ''}${item.altura_maxima_m && item.capacidade_m3 ? ' · ' : ''}${item.capacidade_m3 ? fmtNum(item.capacidade_m3, 0) + ' m³' : ''}</span>` : '';
+                const ehPoco = tipo === 'poco';
+                const ativo = item.ativo !== false;
+                const ultima = ehPoco
+                    ? leiturasPocoCache.find(l => l.poco_id === item.id)
+                    : leiturasReservCache.find(l => l.reservatorio_id === item.id);
+                const horas = ehPoco ? horasPadraoDoPoco(item) : 0;
+                const detalhes = (ehPoco
+                    ? [item.nome, item.motor, `Bombeia ${fmtNum(horas, horas % 1 ? 1 : 0)} h/dia`]
+                    : [item.altura_maxima_m ? 'máx. ' + fmtNum(item.altura_maxima_m, 2) + ' m' : '', item.capacidade_m3 ? fmtNum(item.capacidade_m3, 0) + ' m³' : '']
+                ).filter(Boolean).map(escapeHtml).join(' · ') || 'Sem detalhes cadastrados';
+                const corStatus = !ativo || !ultima ? 'bg-slate-300' : ehPoco && ultima.status === 'desligado' ? 'bg-rose-500' : 'bg-emerald-500';
+                const situacao = !ativo ? 'Desativado'
+                    : !ultima ? 'Sem leituras'
+                    : `Última leitura ${fmtDataHora(ultima.data_hora)}${ehPoco && ultima.status === 'desligado' ? ' · desligado' : ''}`;
+                const outorga = ehPoco ? situacaoOutorga(item.outorga_validade) : null;
+                const abrir = ehPoco ? `window.abrirFichaPoco('${id}')` : `window.editarCadastro('${tipo}', '${id}')`;
+                const cor = ehPoco ? { fundo: 'bg-teal-50 text-teal-700', borda: 'hover:border-teal-300', seta: 'group-hover:text-teal-500' }
+                                   : { fundo: 'bg-indigo-50 text-indigo-700', borda: 'hover:border-indigo-300', seta: 'group-hover:text-indigo-500' };
                 return `
-                <div class="flex items-center justify-between gap-2 py-2">
-                    <span class="min-w-0 font-bold ${item.ativo === false ? 'text-slate-300 line-through' : 'text-slate-600'} truncate">${escapeHtml(rotulo)}${detalhe}</span>
-                    <div class="flex items-center gap-0.5 shrink-0">
-                        <button type="button" onclick="${tipo === 'poco' ? `window.abrirFichaPoco('${id}')` : `window.editarCadastro('${tipo}', '${id}')`}" title="${tipo === 'poco' ? 'Ficha do poço' : 'Editar'}"
+                <div role="button" tabindex="0" onclick="${abrir}" onkeydown="if (event.key === 'Enter') ${abrir}"
+                    title="${ehPoco ? 'Abrir a ficha do poço' : 'Editar reservatório'}"
+                    class="group flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white ${cor.borda} hover:shadow-sm transition-all cursor-pointer ${ativo ? '' : 'opacity-60'}">
+                    <div class="relative w-11 h-11 rounded-xl ${cor.fundo} flex items-center justify-center text-sm font-black shrink-0">
+                        ${ehPoco ? escapeHtml(item.numero) : '<i data-lucide="container" class="w-5 h-5"></i>'}
+                        <span class="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${corStatus}"></span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-black text-slate-800 truncate ${ativo ? '' : 'line-through'}">${ehPoco ? 'Poço ' + escapeHtml(item.numero) : escapeHtml(item.nome)}</p>
+                        <p class="text-[11px] text-slate-500 truncate">${detalhes}</p>
+                        <p class="text-[10px] font-bold text-slate-400 truncate">${situacao}</p>
+                        ${outorga && outorga.nivel !== 'ok' ? `<p class="text-[10px] font-bold ${outorga.cor} truncate flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3 shrink-0"></i>${outorga.texto}</p>` : ''}
+                    </div>
+                    <div class="flex items-center gap-0.5 shrink-0" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+                        ${ehPoco ? `<button type="button" onclick="window.abrirFichaPoco('${id}')"
+                            class="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 mr-1 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100">
+                            <i data-lucide="file-text" class="w-3 h-3"></i> Ficha</button>` : ''}
+                        <button type="button" onclick="window.editarCadastro('${tipo}', '${id}')" title="${ehPoco ? 'Editar número e nome' : 'Editar'}"
                             class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
                         <button type="button" onclick="window.excluirCadastro('${tipo}', '${id}')" title="Excluir"
                             class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                        <button type="button" onclick="window.alternarAtivo('${tipo}', '${id}')"
-                            class="ml-1 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${item.ativo === false ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}">
-                            ${item.ativo === false ? 'Reativar' : 'Desativar'}
+                        <button type="button" role="switch" aria-checked="${ativo}" onclick="window.alternarAtivo('${tipo}', '${id}')" title="${ativo ? 'Ativo (toque para desativar)' : 'Desativado (toque para reativar)'}"
+                            class="relative inline-block w-9 h-5 ml-1 rounded-full transition-colors ${ativo ? 'bg-emerald-500' : 'bg-slate-300'}">
+                            <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${ativo ? 'translate-x-4' : ''}"></span>
                         </button>
                     </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 ${cor.seta} shrink-0"></i>
                 </div>`;
             };
+            const contagem = lista => {
+                const ativos = lista.filter(x => x.ativo !== false).length;
+                return `${ativos} ativo${ativos === 1 ? '' : 's'}${lista.length > ativos ? ` · ${lista.length - ativos} desativado${lista.length - ativos === 1 ? '' : 's'}` : ''}`;
+            };
+            document.getElementById('cadastrosPocosContagem').innerText = pocosCache.length ? contagem(pocosCache) : '';
+            document.getElementById('cadastrosReservContagem').innerText = reservCache.length ? contagem(reservCache) : '';
             document.getElementById('cadastrosPocosLista').innerHTML = pocosCache.length === 0
-                ? `<p class="text-slate-400 py-2">Nenhum poço cadastrado ainda.</p>`
-                : pocosCache.map(p => linhaCadastro('poco', p, rotuloPoco(p))).join('');
+                ? `<p class="text-slate-400 py-2 col-span-full">Nenhum poço cadastrado ainda.</p>`
+                : pocosCache.map(p => cartaoCadastro('poco', p)).join('');
             document.getElementById('cadastrosReservLista').innerHTML = reservCache.length === 0
-                ? `<p class="text-slate-400 py-2">Nenhum reservatório cadastrado ainda.</p>`
-                : reservCache.map(r => linhaCadastro('reservatorio', r, r.nome)).join('');
+                ? `<p class="text-slate-400 py-2 col-span-full">Nenhum reservatório cadastrado ainda.</p>`
+                : reservCache.map(r => cartaoCadastro('reservatorio', r)).join('');
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -5010,7 +5162,8 @@
                 // Título de seção, com quebra de página se não couber
                 let y = 0;
                 const secao = (titulo) => {
-                    y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 9;
+                    // Notas escritas abaixo da tabela anterior empurram a seção para baixo
+                    y = Math.max(y, doc.lastAutoTable ? doc.lastAutoTable.finalY : 0) + 9;
                     if (y > H - 35) { doc.addPage(); y = 20; }
                     doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...TEAL);
                     doc.text(titulo.toUpperCase(), M, y);
@@ -5742,15 +5895,22 @@
         // Tendência pela reta de mínimos quadrados: variação estimada do início ao fim do
         // período, em % da média. Menos de 3 dias com dado = sem tendência.
         function tendencia(valores) {
+            const r = retaDe(valores);
+            if (!r) return null;
+            const variacao = r.porDia * (r.pts[r.pts.length - 1][0] - r.pts[0][0]);
+            const pct = r.media ? variacao / Math.abs(r.media) * 100 : 0;
+            return { pct, dir: Math.abs(pct) < 5 ? 0 : Math.sign(pct) };
+        }
+
+        // Reta de mínimos quadrados: quanto o valor muda por dia (menos de 3 dias com dado = null)
+        function retaDe(valores) {
             const pts = valores.map((v, i) => [i, v]).filter(p => p[1] != null);
             if (pts.length < 3) return null;
             const mx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
             const my = pts.reduce((s, p) => s + p[1], 0) / pts.length;
             let num = 0, den = 0;
             pts.forEach(([x, y]) => { num += (x - mx) * (y - my); den += (x - mx) * (x - mx); });
-            const variacao = (den ? num / den : 0) * (pts[pts.length - 1][0] - pts[0][0]);
-            const pct = my ? variacao / Math.abs(my) * 100 : 0;
-            return { pct, dir: Math.abs(pct) < 5 ? 0 : Math.sign(pct) };
+            return { pts, media: my, porDia: den ? num / den : 0 };
         }
 
         function seloTendencia(t) {
@@ -5974,11 +6134,13 @@
                 const vazoes = dias.map(() => []);
                 const horasLeitura = vazio();
                 const desligado = dias.map(() => false);
+                let ultimoStatus = null;
                 leituras.filter(l => l.poco_id === p.id)
                     .sort((a, b) => String(a.data_hora).localeCompare(String(b.data_hora)))
                     .forEach(l => {
                         const i = idx[dataLocalIso(new Date(l.data_hora))];
                         if (i == null) return;
+                        ultimoStatus = l.status;
                         if (l.status === 'desligado') { desligado[i] = true; return; }
                         vazoes[i].push(vazaoLeitura(l));
                         if (l.horas_ligado != null) horasLeitura[i] = Number(l.horas_ligado);
@@ -5990,7 +6152,8 @@
                     return m * (reg ? Number(reg.horas) : (horasLeitura[i] ?? horasPadraoDoPoco(p)));
                 });
                 return { poco: p, media, volume, afericoes: vazoes.reduce((s, v) => s + v.length, 0),
-                         diasDesligado: desligado.filter((x, i) => x && media[i] == null).length };
+                         diasDesligado: desligado.filter((x, i) => x && media[i] == null).length,
+                         desligadoNoFim: ultimoStatus === 'desligado' };
             });
 
             // ----- Nível do tanque: média das leituras do dia (em % se a altura máxima estiver cadastrada) -----
@@ -6228,7 +6391,7 @@
             });
 
             const carregando = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-6"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
-            ['grafAgua', 'grafNivel', 'grafHoras', 'grafBlocos', 'grafVazao', 'grafEficiencia', 'grafPocos', 'grafTabelaBlocos', 'grafTabelaDias'].forEach(id => document.getElementById(id).innerHTML = carregando);
+            ['grafDiretor', 'grafAgua', 'grafNivel', 'grafHoras', 'grafBlocos', 'grafVazao', 'grafEficiencia', 'grafPocos', 'grafTabelaBlocos', 'grafTabelaDias'].forEach(id => document.getElementById(id).innerHTML = carregando);
             if(typeof lucide !== 'undefined') lucide.createIcons();
 
             // Período anterior com o mesmo número de dias, para comparação
@@ -6239,11 +6402,143 @@
                 [g, ant] = await Promise.all([dadosGraficosPeriodo(de, ate), dadosGraficosPeriodo(antDe, antAte)]);
             } catch (err) {
                 console.error(err);
+                if (pedido === graficosPedido) document.getElementById('grafDiretor').innerHTML = '';
                 if (pedido === graficosPedido) document.getElementById('grafAgua').innerHTML = `<p class="text-xs text-rose-500 py-6 text-center">Não foi possível carregar os dados.</p>`;
                 return;
             }
             if (pedido !== graficosPedido) return; // o período mudou enquanto carregava
             renderGraficos(g, ant);
+        }
+
+        // ----- Resumo para a diretoria: situação geral + o que pede atenção -----
+        // nivel: 0 = normal, 1 = atenção, 2 = crítico. Trechos entre ** saem em negrito na tela.
+        const LIMITE_TANQUE = { atencao: 40, critico: 20 };       // % cheio
+        const LIMITE_REPOSICAO = { atencao: 100, critico: 80 };   // % do uso que os poços repõem
+        const DIAS_SEM_AFERICAO = 3;
+
+        function fmtM3(litros) { const m3 = litros / 1000; return fmtNum(m3, Math.abs(m3) < 10 ? 1 : 0); }
+        function listaCurta(nomes, max = 5) {
+            return nomes.length <= max ? nomes.join(', ') : `${nomes.slice(0, max).join(', ')} e mais ${nomes.length - max}`;
+        }
+
+        function resumoDiretor(g, ant, tPocos, nivelPrincipal) {
+            const itens = [];
+            const nDias = g.dias.length;
+
+            // 1. Balanço: quanto do uso os poços repõem
+            const mEnt = mediaDe(g.entrada), mSai = mediaDe(g.saida);
+            if (mEnt != null && mSai) {
+                const rep = mEnt / mSai * 100;
+                itens.push({
+                    nivel: rep < LIMITE_REPOSICAO.critico ? 2 : rep < LIMITE_REPOSICAO.atencao ? 1 : 0,
+                    curto: rep < LIMITE_REPOSICAO.atencao ? 'poços não repõem o uso' : '',
+                    texto: `Os poços repõem **${fmtNum(rep, 0)}%** do que a irrigação gasta (entram ${fmtM3(mEnt)} m³/dia, saem ${fmtM3(mSai)} m³/dia)`
+                });
+            } else if (mSai) {
+                itens.push({ nivel: 1, curto: 'sem aferição de poço',
+                    texto: `Irrigação gastou **${fmtM3(mSai)} m³/dia**, mas não há aferição de poço para saber se a água está sendo reposta` });
+            } else if (mEnt != null) {
+                itens.push({ nivel: 0, texto: `Sem irrigação no período; os poços produziram **${fmtM3(mEnt)} m³/dia**` });
+            } else {
+                itens.push({ nivel: 1, curto: 'sem dados de água', texto: 'Sem aferições de poço nem registros de irrigação no período' });
+            }
+
+            // 2. Tanque: nível atual e, se estiver caindo, quando chega no limite crítico
+            if (nivelPrincipal && nivelPrincipal.ultima) {
+                const t = tendencia(nivelPrincipal.valores);
+                const sentido = !t ? '' : t.dir > 0 ? ', subindo' : t.dir < 0 ? ', caindo' : ', estável';
+                if (g.emPct) {
+                    const atual = Number(nivelPrincipal.ultima.nivel_m) / Number(nivelPrincipal.reserv.altura_maxima_m) * 100;
+                    const reta = retaDe(nivelPrincipal.valores);
+                    const diasAteCritico = reta && t && t.dir < 0 && reta.porDia < 0 && atual > LIMITE_TANQUE.critico
+                        ? Math.round((atual - LIMITE_TANQUE.critico) / -reta.porDia) : null;
+                    const nivel = atual < LIMITE_TANQUE.critico ? 2
+                        : atual < LIMITE_TANQUE.atencao || (diasAteCritico != null && diasAteCritico <= 7) ? 1 : 0;
+                    itens.push({
+                        nivel, curto: nivel === 2 ? 'tanque abaixo de ' + LIMITE_TANQUE.critico + '%' : nivel ? 'tanque baixando' : '',
+                        texto: `Tanque em **${fmtNum(atual, 0)}%**${sentido}` +
+                            (diasAteCritico != null && diasAteCritico <= 60 ? `. No ritmo atual chega a ${LIMITE_TANQUE.critico}% em **~${diasAteCritico} dia${diasAteCritico === 1 ? '' : 's'}**` : '')
+                    });
+                } else {
+                    itens.push({ nivel: t && t.dir < 0 ? 1 : 0, curto: 'tanque baixando',
+                        texto: `Tanque em **${fmtNum(nivelPrincipal.ultima.nivel_m, 2)} m**${sentido}` });
+                }
+            } else {
+                itens.push({ nivel: 1, curto: 'tanque sem leitura', texto: 'Nenhuma leitura do nível do tanque no período' });
+            }
+
+            // 3. Poços: vazão caindo e poços desligados
+            const nome = l => 'P' + l.poco.numero;
+            const caindo = tPocos.filter(l => l.t && l.t.dir < 0 && !l.desligadoNoFim);
+            const desligados = tPocos.filter(l => l.desligadoNoFim);
+            if (caindo.length || desligados.length) {
+                const partes = [];
+                if (caindo.length) partes.push(`**${caindo.length} po${caindo.length === 1 ? 'ço' : 'ços'} com vazão caindo**: ${listaCurta(caindo.map(nome))}`);
+                if (desligados.length) partes.push(`**${desligados.length} desligado${desligados.length === 1 ? '' : 's'}**: ${listaCurta(desligados.map(nome))}`);
+                itens.push({ nivel: 1, curto: caindo.length ? 'vazão de poços caindo' : 'poços desligados', texto: partes.join(' · ') });
+            } else if (tPocos.length) {
+                const subindo = tPocos.filter(l => l.t && l.t.dir > 0).length;
+                itens.push({ nivel: 0,
+                    texto: `Vazão dos poços **sem queda**${subindo ? ` (${subindo} subindo)` : ''}` });
+            }
+
+            // 4. Irrigação: dias, blocos e comparação com o período anterior
+            const diasIrrig = g.horas.filter(v => v != null).length;
+            if (diasIrrig) {
+                const total = somaDe(g.saida), totalAnt = somaDe(ant.saida);
+                const comp = totalAnt ? (total - totalAnt) / totalAnt * 100 : null;
+                itens.push({ nivel: 0,
+                    texto: `Irrigou **${diasIrrig} de ${nDias} dia${nDias === 1 ? '' : 's'}**, ${Object.keys(g.porBloco).length} blocos, ${fmtM3(total)} m³ no total` +
+                        (comp != null ? ` (**${comp >= 0 ? '+' : '−'}${fmtNum(Math.abs(comp), 0)}%** vs período anterior)` : '') });
+            } else {
+                itens.push({ nivel: 0, texto: 'Nenhum registro de irrigação no período' });
+            }
+
+            // 5. Dados: poços ligados sem aferição recente
+            const atrasados = tPocos.filter(l => !l.desligadoNoFim).map(l => {
+                let ult = -1;
+                l.media.forEach((m, i) => { if (m != null) ult = i; });
+                return { l, ult };
+            }).filter(x => x.ult < 0 || nDias - 1 - x.ult >= DIAS_SEM_AFERICAO);
+            if (atrasados.length) {
+                itens.push({ nivel: 1, curto: 'aferições atrasadas',
+                    texto: `**Sem aferição recente**: ${listaCurta(atrasados.map(x => `${nome(x.l)} (${x.ult < 0 ? 'nenhuma no período' : 'última ' + formatDate(g.dias[x.ult]).slice(0, 5)})`), 4)}` });
+            } else if (tPocos.length) {
+                itens.push({ nivel: 0, texto: `Dados em dia: poços aferidos nos últimos ${DIAS_SEM_AFERICAO} dias do período` });
+            }
+
+            const nivel = Math.max(...itens.map(i => i.nivel));
+            const pontos = itens.filter(i => i.nivel === nivel && i.curto).map(i => i.curto);
+            const titulo = nivel === 0 ? 'Tudo dentro do normal'
+                : nivel === 2 ? `Crítico: ${pontos.join(', ')}`
+                : `Atenção: ${itens.filter(i => i.nivel).length} ponto${itens.filter(i => i.nivel).length === 1 ? '' : 's'}`;
+            return { nivel, titulo, itens };
+        }
+
+        const ESTILO_NIVEL = [
+            { caixa: 'bg-emerald-50 border-emerald-200', titulo: 'text-emerald-800', ponto: 'bg-emerald-500', icone: 'circle-check', rgb: [16, 185, 129] },
+            { caixa: 'bg-amber-50 border-amber-200', titulo: 'text-amber-800', ponto: 'bg-amber-500', icone: 'alert-triangle', rgb: [245, 158, 11] },
+            { caixa: 'bg-rose-50 border-rose-200', titulo: 'text-rose-800', ponto: 'bg-rose-500', icone: 'alert-octagon', rgb: [244, 63, 94] }
+        ];
+
+        function htmlResumoDiretor(r, comFiltro) {
+            const est = ESTILO_NIVEL[r.nivel];
+            const negrito = s => escapeHtml(s).replace(/\*\*(.+?)\*\*/g, '<b class="font-black text-slate-900">$1</b>');
+            // Itens com problema primeiro
+            const itens = [...r.itens].sort((a, b) => b.nivel - a.nivel);
+            return `<div class="rounded-2xl border-2 ${est.caixa} p-4 shadow-sm">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="${est.icone}" class="w-5 h-5 ${est.titulo}"></i>
+                    <h2 class="text-base font-black ${est.titulo}">${escapeHtml(r.titulo)}</h2>
+                    ${comFiltro ? '<span class="ml-auto text-[10px] font-bold text-slate-500">com filtro</span>' : ''}
+                </div>
+                <ul class="mt-3 space-y-2">
+                    ${itens.map(i => `<li class="flex items-start gap-2.5 text-sm text-slate-700 leading-snug">
+                        <span class="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${ESTILO_NIVEL[i.nivel].ponto}"></span>
+                        <span>${negrito(i.texto)}</span>
+                    </li>`).join('')}
+                </ul>
+            </div>`;
         }
 
         function renderGraficos(gBruto, antBruto) {
@@ -6267,10 +6562,14 @@
             const caindo = tPocos.filter(l => l.t && l.t.dir < 0).length;
             const estaveis = tPocos.filter(l => l.t && l.t.dir === 0).length;
 
+            // ----- Resumo para a diretoria -----
+            const diretor = resumoDiretor(g, ant, tPocos, nivelPrincipal);
+            document.getElementById('grafDiretor').innerHTML = htmlResumoDiretor(diretor, filtroGraf.pocos.size || filtroGraf.blocos.size);
+
             // ----- Resumo -----
             // O resumo também vai para o PDF (texto puro)
             const resumoPdf = [];
-            ultimoRenderGraf = { g, tPocos, resumo: resumoPdf, nivelPrincipal, fmtNivel, unNivel };
+            ultimoRenderGraf = { g, tPocos, resumo: resumoPdf, diretor, nivelPrincipal, fmtNivel, unNivel };
             const cartao = (cor, rotulo, valor, detalhe, t, comp) => (resumoPdf.push({ cor, rotulo, valor, detalhe, t, comp }), `
                 <div class="bg-white border border-slate-200 rounded-xl px-3 py-3 shadow-sm">
                     <div class="flex items-center gap-1.5">
@@ -6503,6 +6802,30 @@
                 doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')} ${fmtHora(new Date().toISOString())} por ${API.nomeUsuario()}`, M + 22, y);
                 y += 2;
 
+                // ----- Situação geral (resumo para a diretoria), em uma caixa com a cor do status -----
+                const dir = r.diretor, est = ESTILO_NIVEL[dir.nivel];
+                secao('Situação geral');
+                y += 2;
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+                const linhasDir = [...dir.itens].sort((a, b) => b.nivel - a.nivel)
+                    .map(i => ({ i, txt: doc.splitTextToSize(pdfTxt(i.texto.replace(/\*\*/g, '')), W - M * 2 - 13) }));
+                const alturaDir = 15 + linhasDir.reduce((s, l) => s + l.txt.length * 4.2 + 1.5, 0);
+                garantir(alturaDir);
+                doc.setFillColor(...est.rgb.map(c => Math.round(c + (255 - c) * 0.9)));
+                doc.setDrawColor(...est.rgb); doc.setLineWidth(0.5);
+                doc.roundedRect(M, y, W - M * 2, alturaDir, 2, 2, 'FD');
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...est.rgb.map(c => Math.round(c * 0.55)));
+                doc.text(pdfTxt(dir.titulo), M + 4, y + 7);
+                let yDir = y + 13.5;
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(51, 65, 85);
+                linhasDir.forEach(({ i, txt }) => {
+                    doc.setFillColor(...ESTILO_NIVEL[i.nivel].rgb);
+                    doc.circle(M + 5.5, yDir - 1.1, 1.1, 'F');
+                    doc.text(txt, M + 9, yDir);
+                    yDir += txt.length * 4.2 + 1.5;
+                });
+                y += alturaDir;
+
                 // ----- Resumo -----
                 secao('Resumo do período');
                 tabela({
@@ -6698,6 +7021,152 @@
             }
         }
 
+        // ----- Edição de um bloco inteiro: todos os sistemas de aspersão dele de uma vez -----
+        const TIPOS_ASPERSOR = ['MicroAspersor', 'Aspersor', 'Fita Gotejo'];
+        let blocoEditando = null;
+        let rascunhoBloco = [];   // um item por sistema de aspersão; removido = será excluído ao salvar
+        let rascunhoBlocoData = '';
+
+        // Linha no formato livre herdado da planilha (o mesmo que lerDadoBloco interpreta)
+        function linhaDadoBloco(bloco, s, data) {
+            return {
+                bloco: `Bloco ${bloco}`,
+                valvulas: `${s.valvulas} Válvula${s.valvulas > 1 ? 's' : ''} Ativa${s.valvulas > 1 ? 's' : ''}`,
+                tipo_aspersor: `${s.tipo} ${String(s.vazao).replace('.', ',')} L/H`,
+                qtd_aspersores: String(s.qtd),
+                data_atualizacao: data
+            };
+        }
+
+        window.editarBloco = function(bloco) {
+            blocoEditando = bloco;
+            rascunhoBlocoData = dataLocalIso();
+            rascunhoBloco = bloco == null ? [] : dadosBlocosCache.filter(d => d.bloco === bloco).map(d => ({
+                original: d, removido: false,
+                tipo: TIPOS_ASPERSOR.includes(d.tipo) ? d.tipo : 'Outro',
+                tipoOutro: TIPOS_ASPERSOR.includes(d.tipo) ? '' : d.tipo,
+                vazao: d.vazao, qtd: d.qtd, valvulas: d.valvulas
+            }));
+            renderDadosBlocos();
+        }
+
+        // Os campos só guardam o valor; redesenha apenas quando muda o tipo (para mostrar o campo "Outro")
+        window.alterarSistemaBloco = function(i, campo, valor) {
+            rascunhoBloco[i][campo] = valor;
+            if (campo === 'tipo') renderDadosBlocos();
+        }
+
+        window.adicionarSistemaBloco = function() {
+            rascunhoBloco.push({ original: null, removido: false, tipo: 'MicroAspersor', tipoOutro: '', vazao: '', qtd: '', valvulas: 1 });
+            renderDadosBlocos();
+        }
+
+        window.removerSistemaBloco = function(i) {
+            if (rascunhoBloco[i].original) rascunhoBloco[i].removido = true;
+            else rascunhoBloco.splice(i, 1);
+            renderDadosBlocos();
+        }
+
+        function editorBlocoHtml(bloco, culturaAtual) {
+            const campo = 'w-full bg-white border-2 border-slate-200 rounded-lg py-1.5 px-2 text-xs text-slate-800';
+            const rotulo = t => `<span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">${t}</span>`;
+            const sistemas = rascunhoBloco.map((s, i) => s.removido ? '' : `
+                <div class="grid grid-cols-2 sm:grid-cols-[1.4fr_1fr_1fr_0.8fr_auto] gap-1.5 items-end py-2">
+                    <label class="block col-span-2 sm:col-span-1">${rotulo('Tipo')}
+                        <select onchange="window.alterarSistemaBloco(${i}, 'tipo', this.value)" class="${campo} font-bold">
+                            ${TIPOS_ASPERSOR.concat('Outro').map(t => `<option value="${t}" ${s.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}
+                        </select>
+                        ${s.tipo === 'Outro' ? `<input type="text" value="${escapeHtml(s.tipoOutro)}" maxlength="30" placeholder="Nome do aspersor"
+                            oninput="window.alterarSistemaBloco(${i}, 'tipoOutro', this.value)" class="${campo} mt-1">` : ''}
+                    </label>
+                    <label class="block">${rotulo('Vazão (L/H)')}
+                        <input type="number" value="${s.vazao}" min="0.1" step="0.1" inputmode="decimal" oninput="window.alterarSistemaBloco(${i}, 'vazao', this.value)" class="${campo}"></label>
+                    <label class="block">${rotulo('Aspersores')}
+                        <input type="number" value="${s.qtd}" min="1" step="1" inputmode="numeric" oninput="window.alterarSistemaBloco(${i}, 'qtd', this.value)" class="${campo}"></label>
+                    <label class="block">${rotulo('Válvulas')}
+                        <input type="number" value="${s.valvulas}" min="1" step="1" inputmode="numeric" oninput="window.alterarSistemaBloco(${i}, 'valvulas', this.value)" class="${campo}"></label>
+                    <button type="button" onclick="window.removerSistemaBloco(${i})" title="Remover este sistema"
+                        class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg justify-self-end"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>`).join('');
+            return `
+            <div class="border-2 border-amber-300 rounded-xl overflow-hidden col-span-full bg-white">
+                <div class="bg-amber-50 px-3 py-2 border-b border-amber-200 flex items-center justify-between gap-2">
+                    <span class="text-xs font-black text-amber-800 uppercase tracking-wide">Editando Bloco ${escapeHtml(bloco)}</span>
+                    <span class="text-[10px] font-bold text-amber-700 flex items-center gap-1"><i data-lucide="sprout" class="w-3.5 h-3.5"></i>${escapeHtml(culturaAtual || 'Sem cultura')}</span>
+                </div>
+                <div class="px-3">
+                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest pt-2.5">Sistemas de aspersão</p>
+                    <div class="divide-y divide-slate-100">${sistemas || '<p class="text-xs text-slate-400 py-3">Nenhum sistema. Ao salvar assim, o bloco sai da lista.</p>'}</div>
+                    <button type="button" onclick="window.adicionarSistemaBloco()"
+                        class="mt-1 w-full flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider py-2 rounded-lg border-2 border-dashed border-green-300 text-green-700 hover:bg-green-50">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Adicionar sistema
+                    </button>
+                    <label class="flex items-center justify-between gap-2 mt-3">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Data de atualização</span>
+                        <input type="date" value="${rascunhoBlocoData}" oninput="rascunhoBlocoData = this.value"
+                            class="bg-white border-2 border-slate-200 rounded-lg py-1.5 px-2 text-xs text-slate-800">
+                    </label>
+                    <p id="dbEditErro" class="hidden text-xs font-bold text-red-500 mt-2"></p>
+                    <div class="flex gap-2 py-3">
+                        <button type="button" onclick="window.editarBloco(null)" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
+                        <button type="button" id="dbEditSalvar" onclick="window.salvarBloco()"
+                            class="flex-1 bg-green-700 hover:bg-green-800 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                            <i data-lucide="save" class="w-4 h-4"></i> Salvar Bloco</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        window.salvarBloco = async function() {
+            const bloco = blocoEditando;
+            const erro = document.getElementById('dbEditErro');
+            const mostrarErro = msg => { erro.innerText = msg; erro.classList.remove('hidden'); };
+            if (!rascunhoBlocoData) return mostrarErro("Informe a data de atualização.");
+
+            // Confere cada sistema e monta o que muda no banco
+            const salvar = [], excluir = [];
+            for (const s of rascunhoBloco) {
+                if (s.removido) { excluir.push(s.original.id); continue; }
+                const tipo = s.tipo === 'Outro' ? String(s.tipoOutro).replace(/[\d.,]/g, '').replace(/\s+/g, ' ').trim() : s.tipo;
+                const vazao = parseFloat(String(s.vazao).replace(',', '.'));
+                const qtd = parseInt(s.qtd), valvulas = parseInt(s.valvulas);
+                if (!tipo) return mostrarErro("Digite o nome do aspersor (sem números).");
+                if (!(vazao > 0) || !(qtd >= 1) || !(valvulas >= 1)) return mostrarErro("Preencha vazão, aspersores e válvulas de todos os sistemas.");
+                const o = s.original;
+                if (o && o.tipo === tipo && o.vazao === vazao && o.qtd === qtd && o.valvulas === valvulas) continue;
+                const linha = linhaDadoBloco(bloco, { tipo, vazao, qtd, valvulas }, rascunhoBlocoData);
+                if (o) linha.id = o.id;
+                salvar.push(linha);
+            }
+
+            const aplicar = async () => {
+                const btn = document.getElementById('dbEditSalvar');
+                if (btn) btn.disabled = true;
+                try {
+                    for (const linha of salvar) await API.salvarDadoBloco(linha);
+                    for (const id of excluir) await API.excluirDadoBloco(id);
+                    blocoEditando = null;
+                    await carregarDadosBlocos(true);
+                    window.calcularConsumoProgramacao();
+                } catch (err) {
+                    // Parte pode ter sido gravada: recarrega e mantém o editor aberto com o erro
+                    await carregarDadosBlocos(true);
+                    window.editarBloco(bloco);
+                    const e = document.getElementById('dbEditErro');
+                    if (e) { e.innerText = err.message; e.classList.remove('hidden'); }
+                }
+            };
+
+            if (!salvar.length && !excluir.length) { window.editarBloco(null); return; }
+            if (rascunhoBloco.every(s => s.removido)) {
+                pendingConfirmCallback = aplicar;
+                window.showConfirmModal("Remover o bloco?",
+                    `Todos os sistemas de aspersão do Bloco ${bloco} serão excluídos e ele sai da lista. Os litros desse bloco deixam de ser calculados.`, "REMOVER");
+                return;
+            }
+            await aplicar();
+        }
+
         function renderDadosBlocos() {
             const lista = document.getElementById('dadosBlocosLista');
             if (dadosBlocosCache.length === 0) {
@@ -6721,25 +7190,25 @@
                 // Mesma conta do relatório: vazão do bloco dividida pelas válvulas = litros por hora de irrigação
                 const milLitrosHora = valvTotal > 0 ? vazaoTotal / valvTotal / 1000 : 0;
 
+                const culturaAtual = ((culturasCache.find(c => String(c.id) === bloco) || {}).cultura || '');
+                if (bloco === blocoEditando) return editorBlocoHtml(bloco, culturaAtual);
+
                 const linhasHtml = linhas.map(d => `
-                    <div class="flex items-center justify-between gap-2 py-2 ${dadoBlocoEditando === d.id ? 'bg-amber-50 -mx-2 px-2 rounded-lg' : ''}">
-                        <div class="min-w-0 text-[11px]">
-                            <p class="font-bold text-slate-700">${d.tipo} ${fmtNum(d.vazao, d.vazao % 1 ? 1 : 0)} L/H · ${fmtNum(d.qtd, 0)} aspersores</p>
-                            <p class="text-slate-400">${d.valvulas} válvula${d.valvulas > 1 ? 's' : ''} · atualizado ${d.data ? formatDate(d.data) : '—'}</p>
-                        </div>
-                        <div class="flex gap-0.5 shrink-0">
-                            <button type="button" onclick="window.editarDadoBloco(${d.id})" title="Editar" class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
-                            <button type="button" onclick="window.excluirDadoBloco(${d.id})" title="Excluir" class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                        </div>
+                    <div class="py-2 text-[11px]">
+                        <p class="font-bold text-slate-700">${escapeHtml(d.tipo)} ${fmtNum(d.vazao, d.vazao % 1 ? 1 : 0)} L/H · ${fmtNum(d.qtd, 0)} aspersores</p>
+                        <p class="text-slate-400">${d.valvulas} válvula${d.valvulas > 1 ? 's' : ''} · atualizado ${d.data ? formatDate(d.data) : '—'}</p>
                     </div>`).join('');
 
-                const culturaAtual = ((culturasCache.find(c => String(c.id) === bloco) || {}).cultura || '');
                 return `
                 <div class="border border-slate-200 rounded-xl overflow-hidden">
                     <div class="bg-green-50 px-3 py-2 border-b border-green-100">
                         <div class="flex items-center justify-between gap-2">
                             <span class="text-xs font-black text-green-800 uppercase tracking-wide">Bloco ${escapeHtml(bloco)}</span>
-                            <span class="text-[10px] font-bold text-green-700">${fmtNum(aspTotal, 0)} asp. · ${valvTotal} válv. · ≈ ${fmtNum(milLitrosHora, 3)} mil L/h</span>
+                            <div class="flex items-center gap-1 min-w-0">
+                                <span class="text-[10px] font-bold text-green-700 truncate">${fmtNum(aspTotal, 0)} asp. · ${valvTotal} válv. · ≈ ${fmtNum(milLitrosHora, 3)} mil L/h</span>
+                                <button type="button" onclick="window.editarBloco('${escapeHtml(bloco)}')" title="Editar os sistemas de aspersão do bloco"
+                                    class="p-1.5 text-green-700 hover:text-amber-600 hover:bg-amber-50 rounded-lg shrink-0"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                            </div>
                         </div>
                         <div class="flex items-center gap-1.5 mt-1.5">
                             <i data-lucide="sprout" class="w-3.5 h-3.5 text-green-700 shrink-0"></i>
@@ -6785,6 +7254,28 @@
                 });
                 const comLeitura = porPoco.filter(x => x.doPoco.length);
                 const semLeitura = porPoco.filter(x => !x.doPoco.length);
+
+                // Histórico de cada poço até o fim do dia escolhido: última aferição do dia anterior
+                // e média / mínimo / máximo de todas as aferições do poço
+                const inicioDia = new Date(dia + 'T00:00:00');
+                const fimDia = new Date(inicioDia.getTime() + 86400000);
+                const inicioAnterior = new Date(inicioDia.getTime() - 86400000);
+                const aferida = l => l.status !== 'desligado' && vazaoLeitura(l) > 0;
+                const historicos = await Promise.all(comLeitura.map(x => API.listarLeiturasDoPoco(x.p.id)));
+                comLeitura.forEach((x, i) => {
+                    const ate = historicos[i].filter(l => new Date(l.data_hora) < fimDia && aferida(l));
+                    // A lista vem da mais recente para a mais antiga: find = última do dia anterior
+                    x.anterior = ate.find(l => { const t = new Date(l.data_hora); return t >= inicioAnterior && t < inicioDia; });
+                    x.historico = ate.map(vazaoLeitura);
+                });
+                // Vazão com os segundos da aferição (15 L) logo abaixo
+                const vazaoComSegundos = l => fmtLh(vazaoLeitura(l)) + (Number(l.segundos_15l) > 0 ? `\n${fmtNum(l.segundos_15l, 2)} s` : '');
+                const variacao = x => {
+                    if (!x.anterior || x.ultima.status === 'desligado') return '—';
+                    const antes = vazaoLeitura(x.anterior), agora = vazaoLeitura(x.ultima);
+                    const pct = (agora - antes) / antes * 100;
+                    return `${agora >= antes ? '+' : '-'}${fmtLh(Math.abs(agora - antes))} (${pct >= 0 ? '+' : '-'}${fmtNum(Math.abs(pct), 1)}%)`;
+                };
                 const operando = comLeitura.filter(x => x.ultima.status !== 'desligado');
                 const vazaoTotal = operando.reduce((s, x) => s + vazaoLeitura(x.ultima), 0);
                 const volumeTotal = porPoco.reduce((s, x) => s + (x.e.volume || 0), 0);
@@ -6795,7 +7286,8 @@
                 const TEAL = [15, 118, 110];
                 let y = 0;
                 const secao = (titulo) => {
-                    y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 9;
+                    // Notas escritas abaixo da tabela anterior empurram a seção para baixo
+                    y = Math.max(y, doc.lastAutoTable ? doc.lastAutoTable.finalY : 0) + 9;
                     if (y > H - 35) { doc.addPage(); y = 20; }
                     doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...TEAL);
                     doc.text(titulo.toUpperCase(), M, y);
@@ -6833,28 +7325,43 @@
                 // ----- Um poço por linha -----
                 secao('Vazão por poço');
                 tabela(comLeitura.length ? {
-                    head: [['Poço', 'Situação (última)', 'Última vazão (L/h)', 'Média do dia (L/h)', 'Mín. / máx. (L/h)', 'Aferições', 'Horas ligado', 'Volume estimado (L)']],
+                    head: [['Poço', 'Situação (última)', 'Última vazão (L/h)', 'Dia anterior (L/h)', 'Variação (L/h)', 'Média do poço (L/h)', 'Mín. / máx. do poço (L/h)', 'Horas ligado', 'Volume estimado (L)']],
                     body: comLeitura.map(x => [
                         x.p.numero + (x.p.nome ? ` - ${x.p.nome}` : ''),
                         (STATUS_POCO[x.ultima.status] || STATUS_POCO.ligado).rotulo + (motivoParada(x.ultima) ? ` (${motivoParada(x.ultima)})` : ''),
-                        x.ultima.status === 'desligado' ? '0' : fmtLh(vazaoLeitura(x.ultima)),
-                        x.vazoes.length ? fmtLh(x.vazoes.reduce((s, v) => s + v, 0) / x.vazoes.length) : '—',
-                        x.vazoes.length ? `${fmtLh(Math.min(...x.vazoes))} / ${fmtLh(Math.max(...x.vazoes))}` : '—',
-                        String(x.vazoes.length),
+                        x.ultima.status === 'desligado' ? '0' : vazaoComSegundos(x.ultima),
+                        x.anterior ? vazaoComSegundos(x.anterior) : '—',
+                        variacao(x),
+                        x.historico.length ? fmtLh(x.historico.reduce((s, v) => s + v, 0) / x.historico.length) : '—',
+                        x.historico.length ? `${fmtLh(Math.min(...x.historico))} / ${fmtLh(Math.max(...x.historico))}` : '—',
                         x.e.horas != null && !x.e.semDados ? `${fmtNum(x.e.horas, x.e.horas % 1 ? 1 : 0)} h` : '—',
                         x.e.volume ? fmtLh(x.e.volume) : '—'
                     ]),
-                    foot: [['Total', '', fmtLh(vazaoTotal), '', '', String(comLeitura.reduce((s, x) => s + x.vazoes.length, 0)), '', fmtLh(volumeTotal)]],
+                    foot: [['Total', '', fmtLh(vazaoTotal), '', '', '', '', '', fmtLh(volumeTotal)]],
                     footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
-                    columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right', fontStyle: 'bold' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' } }
+                    columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right', fontStyle: 'bold' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' } },
+                    didParseCell: d => {
+                        // Variação em verde (subiu) ou vermelho (caiu)
+                        if (d.section === 'body' && d.column.index === 4 && d.cell.raw !== '—') {
+                            d.cell.styles.textColor = String(d.cell.raw).startsWith('-') ? [220, 38, 38] : [22, 128, 61];
+                            d.cell.styles.fontStyle = 'bold';
+                        }
+                    }
                 } : { body: [['Nenhuma leitura de poço neste dia.']], theme: 'plain' });
+                if (comLeitura.length) {
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
+                    y = doc.lastAutoTable.finalY + 4;
+                    const nota = doc.splitTextToSize(`Embaixo da vazão: segundos para encher 15 L. Dia anterior = última aferição de ${formatDate(dataLocalIso(inicioAnterior))}. Média e mín. / máx. = todas as aferições do poço até ${formatDate(dia)}.`, W - 2 * M);
+                    doc.text(nota, M, y);
+                    y += (nota.length - 1) * 3.2;
+                }
 
                 if (semLeitura.length) {
                     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 116, 139);
                     const texto = doc.splitTextToSize(`Sem leitura neste dia: ${semLeitura.map(x => 'Poço ' + x.p.numero).join(', ')}.`, W - 2 * M);
-                    y = doc.lastAutoTable.finalY + 5;
+                    y = Math.max(y, doc.lastAutoTable.finalY) + 5;
                     doc.text(texto, M, y);
-                    y += texto.length * 3.5;
+                    y += (texto.length - 1) * 3.5;
                 }
 
                 // ----- Todas as leituras do dia -----
@@ -7033,11 +7540,11 @@
             // Ao editar, sugere a data de hoje como nova data de atualização
             document.getElementById('dbData').value = dataLocalIso();
 
-            document.getElementById('dadoBlocoFormTitulo').innerText = d ? `Editando Bloco ${d.bloco}` : 'Nova Linha';
+            document.getElementById('dadoBlocoFormTitulo').innerText = d ? `Editando Bloco ${d.bloco}` : 'Novo Sistema de Aspersão';
             document.getElementById('dadoBlocoCancelar').classList.toggle('hidden', !d);
             document.getElementById('dadoBlocoBtn').innerHTML = d
                 ? `<i data-lucide="save" class="w-4 h-4"></i> Salvar Alteração`
-                : `<i data-lucide="plus" class="w-4 h-4"></i> Adicionar Linha`;
+                : `<i data-lucide="plus" class="w-4 h-4"></i> Adicionar Sistema`;
             const form = document.getElementById('dadoBlocoForm');
             form.classList.toggle('bg-amber-50', !!d);
             if (d) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -7068,13 +7575,7 @@
                 return;
             }
 
-            const linha = {
-                bloco: `Bloco ${bloco}`,
-                valvulas: `${valvulas} Válvula${valvulas > 1 ? 's' : ''} Ativa${valvulas > 1 ? 's' : ''}`,
-                tipo_aspersor: `${tipo} ${String(vazao).replace('.', ',')} L/H`,
-                qtd_aspersores: String(qtd),
-                data_atualizacao: document.getElementById('dbData').value
-            };
+            const linha = linhaDadoBloco(bloco, { tipo, vazao, qtd, valvulas }, document.getElementById('dbData').value);
             if (dadoBlocoEditando) linha.id = dadoBlocoEditando;
 
             btn.disabled = true;
@@ -7089,24 +7590,6 @@
             } finally {
                 btn.disabled = false;
             }
-        }
-
-        window.excluirDadoBloco = function(id) {
-            const d = dadosBlocosCache.find(x => x.id === id);
-            if (!d) return;
-            pendingConfirmCallback = async () => {
-                try {
-                    await API.excluirDadoBloco(id);
-                    if (dadoBlocoEditando === id) window.editarDadoBloco(null);
-                    await carregarDadosBlocos(true);
-                    window.calcularConsumoProgramacao();
-                } catch (err) {
-                    window.showAlert("Não foi possível excluir", err.message);
-                }
-            };
-            window.showConfirmModal("Excluir linha?",
-                `Bloco ${d.bloco}: ${d.tipo} ${d.vazao} L/H com ${fmtNum(d.qtd, 0)} aspersores. O cálculo de litros desse bloco vai mudar.`,
-                "EXCLUIR");
         }
 
         // --- LOG DE ATIVIDADES (GESTOR) ---
@@ -7324,7 +7807,7 @@
         // --- USUÁRIOS ONLINE E SESSÕES (GESTOR) ---
 
         const ONLINE_MS = 2 * 60 * 1000; // sem sinal há mais de 2 min = offline
-        const NOMES_ABAS = { registro: 'Registro', programacao: 'Programação', agua: 'Água', graficos: 'Gráficos' };
+        const NOMES_ABAS = { registro: 'Registro', programacao: 'Programação', agua: 'Água', graficos: 'Gráficos', cadastros: 'Cadastros' };
         let sessoesCache = [];
         let sessaoAberta = null;   // sessão com as atividades expandidas
         let timerOnline = null;
@@ -7470,33 +7953,19 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        // --- USUÁRIOS (GESTOR) ---
+        // --- USUÁRIOS (ADMINISTRADOR, aba Cadastros) ---
 
         let usuariosLista = [];
         let usuarioEditando = null;
 
-        window.openUsersModal = async function() {
-            if (!API.isAdmin()) return;
-            const modal = document.getElementById('usersModal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            usuarioEditando = null;
-            document.getElementById('novoUsuarioErro').classList.add('hidden');
-            document.getElementById('usersList').innerHTML = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-8"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
-            if(typeof lucide !== 'undefined') lucide.createIcons();
-            await recarregarUsuarios();
-        }
-
-        window.closeUsersModal = function() {
-            const modal = document.getElementById('usersModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
         async function recarregarUsuarios() {
             const lista = document.getElementById('usersList');
+            if (!usuariosLista.length) {
+                lista.innerHTML = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-8 col-span-full"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }
             if (!navigator.onLine) {
-                lista.innerHTML = `<p class="text-xs font-medium text-red-500 text-center py-6">Sem conexão. A gestão de usuários precisa de internet.</p>`;
+                lista.innerHTML = `<p class="text-xs font-medium text-red-500 text-center py-6 col-span-full">Sem conexão. A gestão de usuários precisa de internet.</p>`;
                 return;
             }
             try {
@@ -7505,7 +7974,7 @@
                 preencherSelectsResponsaveis();
                 renderUsuarios();
             } catch (err) {
-                lista.innerHTML = `<p class="text-xs font-medium text-red-500 text-center py-6">Não foi possível carregar: ${escapeHtml(err.message)}</p>`;
+                lista.innerHTML = `<p class="text-xs font-medium text-red-500 text-center py-6 col-span-full">Não foi possível carregar: ${escapeHtml(err.message)}</p>`;
             }
         }
 
@@ -7537,36 +8006,45 @@
                         </div>
                     </div>`;
 
+                // O próprio usuário e o administrador não podem ter o papel trocado nem ser desativados por aqui
+                const protegido = souEu || p.administrador;
+                const iniciais = nomeExibido(p).split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]).join('').toUpperCase();
                 return `
-                <div class="py-3 ${p.ativo ? '' : 'opacity-60'}">
-                    <div class="flex items-start justify-between gap-2">
-                        <div class="min-w-0">
-                            <p class="text-sm font-bold text-slate-700 truncate">${escapeHtml(nomeExibido(p))}${souEu ? ' <span class="text-[10px] font-medium text-slate-400">(você)</span>' : ''}</p>
-                            <p class="text-[11px] text-slate-400 truncate">@${escapeHtml(p.usuario)} · ${escapeHtml(p.nome)}</p>
-                            <div class="flex gap-1 mt-1">
+                <div class="p-3 rounded-xl border ${usuarioEditando === p.id ? 'border-amber-300 col-span-full' : 'border-slate-200'} bg-white hover:shadow-sm transition-all ${p.ativo ? '' : 'opacity-60'}">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-xl ${p.administrador ? 'bg-slate-800 text-white' : gestor ? 'bg-sky-50 text-sky-700' : 'bg-green-50 text-green-700'} flex items-center justify-center text-sm font-black shrink-0">${escapeHtml(iniciais)}</div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-black text-slate-800 truncate ${p.ativo ? '' : 'line-through'}">${escapeHtml(nomeExibido(p))}${souEu ? ' <span class="text-[10px] font-medium text-slate-400">(você)</span>' : ''}</p>
+                            <p class="text-[11px] text-slate-500 truncate">@${escapeHtml(p.usuario)} · ${escapeHtml(p.nome)}</p>
+                            <div class="flex flex-wrap gap-1 mt-1">
                                 <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${gestor ? 'bg-sky-100 text-sky-700' : 'bg-green-100 text-green-700'}">${gestor ? 'Gestor' : 'Irrigador'}</span>
                                 ${p.administrador ? '<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-white">Administrador</span>' : ''}
                                 ${p.ativo ? '' : '<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-100 text-red-600">Desativado</span>'}
                             </div>
                         </div>
-                        <button type="button" onclick="window.editarUsuario('${id}')" title="Editar" class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg shrink-0">
-                            <i data-lucide="pencil" class="w-4 h-4"></i>
-                        </button>
+                        <div class="flex items-center gap-0.5 shrink-0">
+                            ${protegido ? '' : `<button type="button" onclick="window.alternarPapelUsuario('${id}')" title="${gestor ? 'Tornar irrigador' : 'Tornar gestor'}"
+                                class="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 mr-1 rounded-lg ${gestor ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-sky-50 text-sky-700 hover:bg-sky-100'}">
+                                <i data-lucide="${gestor ? 'user-minus' : 'shield-check'}" class="w-3 h-3"></i> ${gestor ? 'Tornar irrigador' : 'Tornar gestor'}</button>`}
+                            <button type="button" onclick="window.editarUsuario('${id}')" title="Editar nome e senha"
+                                class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                            ${protegido ? '' : `<button type="button" role="switch" aria-checked="${!!p.ativo}" onclick="window.alternarAtivoUsuario('${id}')" title="${p.ativo ? 'Ativo (toque para desativar)' : 'Desativado (toque para reativar)'}"
+                                class="relative inline-block w-9 h-5 ml-1 rounded-full transition-colors ${p.ativo ? 'bg-emerald-500' : 'bg-slate-300'}">
+                                <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${p.ativo ? 'translate-x-4' : ''}"></span>
+                            </button>`}
+                        </div>
                     </div>
-                    ${souEu || p.administrador ? '' : `
-                    <div class="flex flex-wrap gap-1.5 mt-2">
-                        <button type="button" onclick="window.alternarPapelUsuario('${id}')"
-                            class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${gestor ? 'bg-green-50 text-green-700' : 'bg-sky-50 text-sky-700'}">
-                            ${gestor ? 'Tornar irrigador' : 'Tornar gestor'}
-                        </button>
-                        <button type="button" onclick="window.alternarAtivoUsuario('${id}')"
-                            class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg ${p.ativo ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}">
-                            ${p.ativo ? 'Desativar' : 'Reativar'}
-                        </button>
-                    </div>`}
+                    ${protegido ? '' : `
+                    <button type="button" onclick="window.alternarPapelUsuario('${id}')"
+                        class="sm:hidden mt-2 w-full flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-wider py-1.5 rounded-lg ${gestor ? 'bg-green-50 text-green-700' : 'bg-sky-50 text-sky-700'}">
+                        <i data-lucide="${gestor ? 'user-minus' : 'shield-check'}" class="w-3 h-3"></i> ${gestor ? 'Tornar irrigador' : 'Tornar gestor'}</button>`}
                     ${formEdicao}
                 </div>`;
-            }).join('') || `<p class="text-xs text-slate-400 py-4">Nenhum usuário.</p>`;
+            }).join('') || `<p class="text-xs text-slate-400 py-4 col-span-full">Nenhum usuário.</p>`;
+
+            const ativos = usuariosLista.filter(p => p.ativo).length;
+            document.getElementById('usuariosContagem').innerText = usuariosLista.length
+                ? `${ativos} ativo${ativos === 1 ? '' : 's'}${usuariosLista.length > ativos ? ` · ${usuariosLista.length - ativos} desativado${usuariosLista.length - ativos === 1 ? '' : 's'}` : ''}` : '';
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -7892,6 +8370,7 @@
             document.getElementById('instalarIcone').src = getAppIconUri();
             document.getElementById('instalarPassosIos').classList.toggle('hidden', !ios);
             document.getElementById('instalarConfirmarBtn').classList.toggle('hidden', ios);
+            document.getElementById('instalarIgnorar').checked = false;
             const modal = document.getElementById('instalarModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
@@ -7904,7 +8383,17 @@
             modal.classList.remove('flex');
         }
 
+        // "Não mostrar por 1 hora": o aviso automático fica quieto até essa hora (o botão Instalar continua)
+        const IGNORAR_INSTALACAO_MS = 60 * 60 * 1000;
+
+        function instalacaoIgnorada() {
+            try { return Date.now() < Number(localStorage.getItem('irrigacao_instalar_ignorar_ate') || 0); } catch (e) { return false; }
+        }
+
         window.adiarInstalacao = function() {
+            if (document.getElementById('instalarIgnorar').checked) {
+                try { localStorage.setItem('irrigacao_instalar_ignorar_ate', String(Date.now() + IGNORAR_INSTALACAO_MS)); } catch (e) {}
+            }
             fecharInstalacao();
         }
 
@@ -7920,7 +8409,7 @@
         // Mostra o aviso sozinho uma vez a cada abertura do app, com alguém logado
         function sugerirInstalacao() {
             atualizarBotaoInstalar();
-            if (instalacaoSugerida || !podeInstalar() || !API.usuarioAtual()) return;
+            if (instalacaoSugerida || !podeInstalar() || !API.usuarioAtual() || instalacaoIgnorada()) return;
             if (!document.getElementById('loginScreen').classList.contains('hidden')) return;
             instalacaoSugerida = true;
             window.abrirInstalacao();
@@ -7950,9 +8439,6 @@
             document.getElementById('auditBtn').classList.toggle('hidden', !gestor);
             document.getElementById('onlineBtn').classList.toggle('hidden', !gestor);
             if (!gestor) window.fecharOnline();
-            // Gestão de usuários: somente o administrador
-            document.getElementById('usersBtn').classList.toggle('hidden', !API.isAdmin());
-            if (!API.isAdmin()) window.closeUsersModal();
             aplicarVisibilidadeGestor();
             document.getElementById('dadosBlocosCard').classList.toggle('hidden', !gestor);
             const naProgramacao = !document.getElementById('tabProgramacao').classList.contains('hidden');
@@ -8093,7 +8579,7 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
 
             // Trava a rolagem da página enquanto qualquer janela (pop-up) estiver aberta
-            const JANELAS = ['pocoModal', 'onlineModal', 'usersModal', 'auditModal', 'confirmModal', 'alertModal', 'instalarModal',
+            const JANELAS = ['pocoModal', 'onlineModal', 'auditModal', 'confirmModal', 'alertModal', 'instalarModal',
                              'flowModal', 'flowModalProg', 'loginScreen', 'syncOverlay'];
             const atualizarTravaRolagem = () => {
                 const aberta = JANELAS.some(id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); });
