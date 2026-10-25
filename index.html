@@ -223,6 +223,13 @@
                 </button>
             </div>
         </div>
+
+        <!-- ENVIO MANUAL: aparece quando há dados guardados no aparelho ainda não enviados -->
+        <button type="button" id="enviarDadosBtn" onclick="window.enviarDadosAgora()"
+            class="hidden w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-sm font-black shadow-sm">
+            <i data-lucide="cloud-upload" class="w-4 h-4"></i>
+            <span id="enviarDadosTexto">Enviar dados para o servidor</span>
+        </button>
     </div>
 
     <div id="tabRegistro" class="container mx-auto p-4 space-y-6 max-w-md">
@@ -7706,6 +7713,15 @@
             dot.className = `w-2 h-2 rounded-full ${cor}`;
             text.innerText = msg;
 
+            const btnEnviar = document.getElementById('enviarDadosBtn');
+            if (btnEnviar) {
+                btnEnviar.classList.toggle('hidden', s.pendentes === 0 && s.falhas === 0);
+                btnEnviar.disabled = s.sincronizando;
+                document.getElementById('enviarDadosTexto').innerText = s.sincronizando
+                    ? 'Enviando...'
+                    : `Enviar dados para o servidor${pend ? ` (${pend})` : ''}`;
+            }
+
             // Sessão vencida com internet: pede login de novo (a fila é mantida)
             if (s.sessaoExpirada && API.usuarioAtual() && document.getElementById('loginScreen').classList.contains('hidden')) {
                 mostrarLogin('Sua sessão expirou. Entre novamente para enviar os dados pendentes.');
@@ -7729,6 +7745,19 @@
             }
             API.sincronizar();
         }
+
+        // Botão "Enviar dados": força o envio mesmo se o celular ainda não percebeu o Wi-Fi
+        window.enviarDadosAgora = async function() {
+            if (API.status().falhas > 0) { window.syncAgora(); return; }
+            const s = await API.sincronizar(true);
+            if (s.sessaoExpirada) return; // renderStatusSync já pede o login
+            if (s.pendentes === 0) {
+                window.showAlert("Dados enviados", "Todos os dados foram enviados ao servidor.");
+            } else {
+                window.showAlert("Não foi possível enviar",
+                    `Ainda há ${s.pendentes} dado(s) guardado(s) neste aparelho. Confira a conexão com a internet e tente de novo. Nada foi perdido.`);
+            }
+        };
 
         function aplicarUsuarioNaTela() {
             const u = API.usuarioAtual();
