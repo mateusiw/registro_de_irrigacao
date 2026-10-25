@@ -2561,7 +2561,11 @@
         // quando a conexão em tempo real cai, ex.: celular com a tela desligada)
         async function carregarRegistrosEquipe() {
             const dia = dataLocalIso();
-            const [lista, meus] = await Promise.all([API.listarRegistrosEquipe(dia), API.listarMeusRegistros(dia)]);
+            // Um erro na busca dos próprios registros não pode esconder os da equipe
+            const [lista, meus] = await Promise.all([
+                API.listarRegistrosEquipe(dia).catch(e => { console.error("Erro ao buscar registros da equipe:", e); return []; }),
+                Promise.resolve().then(() => API.listarMeusRegistros(dia)).catch(e => { console.error("Erro ao buscar os próprios registros:", e); return []; })
+            ]);
             if (dia !== dataLocalIso() || !API.usuarioAtual()) return; // virou o dia ou saiu enquanto carregava
             diaEquipe = dia;
             registrosEquipe = lista.map(registroEquipeParaLista);
@@ -7812,7 +7816,7 @@
         // Botão "Enviar dados": força o envio mesmo se o celular ainda não percebeu o Wi-Fi
         window.enviarDadosAgora = async function() {
             if (API.status().falhas > 0) { window.syncAgora(); return; }
-            const s = await API.sincronizar(true);
+            const s = (await API.sincronizar(true)) || API.status();
             if (s.sessaoExpirada) return; // renderStatusSync já pede o login
             if (s.pendentes === 0) {
                 window.showAlert("Dados enviados", "Todos os dados foram enviados ao servidor.");
