@@ -1,4 +1,4 @@
-const CACHE = 'irrigacao-v33';
+const CACHE = 'irrigacao-v34';
 
 // Arquivos do próprio app
 const ARQUIVOS_APP = [
@@ -63,7 +63,11 @@ self.addEventListener('fetch', e => {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE);
       try {
-        const resp = await fetch(e.request);
+        // no-cache: confere sempre com o servidor, para nunca juntar um index.html novo
+        // com um supabase-api.js velho guardado pelo navegador
+        const resp = e.request.mode === 'navigate'
+          ? await fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' })
+          : await fetch(e.request, { cache: 'no-cache' });
         if (resp.ok) cache.put(e.request, resp.clone());
         return resp;
       } catch (err) {
