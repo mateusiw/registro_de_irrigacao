@@ -1034,6 +1034,20 @@
             .filter(r => r.data === data && (!u || (r.criado_por !== u.id && !String(r.id).startsWith(prefixo))));
     }
 
+    // Registros do dia lançados pelo próprio usuário (de qualquer aparelho), com o id usado
+    // na lista do aparelho (idLocal). Servem para refazer a lista se o aparelho a perdeu.
+    async function listarMeusRegistros(data) {
+        const u = usuarioAtual();
+        if (!u) return [];
+        const prefixo = u.id.slice(0, 8) + '-';
+        const lista = await buscarComCache(`registros_meus_${data}`,
+            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('data', data).like('id', prefixo + '%').limit(500), 0).catch(() => []);
+        // Aplica a fila: exclusões ainda não enviadas não voltam para a lista
+        return mesclarPendentes('registros_irrigacao', lista)
+            .filter(r => r.data === data && String(r.id).startsWith(prefixo) && /^\d+$/.test(String(r.id).slice(prefixo.length)))
+            .map(r => Object.assign({}, r, { idLocal: Number(String(r.id).slice(prefixo.length)) }));
+    }
+
     // Todos os registros de um dia (de todos os irrigadores, inclusive os do próprio
     // usuário), com as alterações ainda na fila já aplicadas. Usado ao consultar dias anteriores.
     async function listarRegistrosDia(data) {
@@ -1246,7 +1260,7 @@
         lerConfiguracao, salvarConfiguracao, listarHorasPocoPeriodo, salvarHorasPoco, listarRegistrosPeriodo, listarLeiturasPocoPeriodo,
         listarCulturas, salvarCultura,
         // tempo real (registros dos outros irrigadores)
-        listarRegistrosEquipe, listarRegistrosDia, assinarRegistros, cancelarAssinaturaRegistros, assinarAgua,
+        listarRegistrosEquipe, listarMeusRegistros, listarRegistrosDia, assinarRegistros, cancelarAssinaturaRegistros, assinarAgua,
         // auditoria e sessões
         listarAuditoria, restaurarAuditoria, iniciarSessao, informarAbaSessao, encerrarSessao, listarSessoes, atividadesDaSessao
     };
