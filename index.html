@@ -65,6 +65,78 @@
         .graf-tabela td { text-align: right; padding: 6px 8px; border-bottom: 1px solid #f1f5f9; color: #334155; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
         .graf-tabela th:first-child, .graf-tabela td:first-child { text-align: left; }
 
+        /* ===== BARRA DE ABAS NO CELULAR (estilo "liquid glass" do iOS) =====
+           Fica flutuando no rodapé; ao rolar a página para baixo ela recolhe
+           num botão redondo que leva de volta ao topo. */
+        #tabBarTopo { display: none; }
+        @media (max-width: 1023px) {
+            body { padding-bottom: calc(110px + env(safe-area-inset-bottom)) !important; }
+            #equipeToast { bottom: calc(96px + env(safe-area-inset-bottom)) !important; }
+
+            #tabBar {
+                position: fixed; z-index: 45;
+                left: max(12px, calc((100% - 460px) / 2));
+                bottom: calc(12px + env(safe-area-inset-bottom));
+                width: min(calc(100% - 24px), 460px); height: 64px;
+                padding: 5px; gap: 2px; overflow: hidden;
+                border-radius: 999px;
+                background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.42));
+                -webkit-backdrop-filter: blur(22px) saturate(190%);
+                backdrop-filter: blur(22px) saturate(190%);
+                border: 1px solid rgba(255,255,255,0.65);
+                box-shadow: 0 10px 30px rgba(15,23,42,0.18), 0 2px 6px rgba(15,23,42,0.08),
+                            inset 0 1px 1px rgba(255,255,255,0.9), inset 0 -1px 1px rgba(255,255,255,0.35);
+                transition: width 0.42s cubic-bezier(0.32, 0.72, 0, 1), height 0.42s cubic-bezier(0.32, 0.72, 0, 1),
+                            transform 0.3s ease, opacity 0.3s ease;
+            }
+            /* Reflexo de vidro no topo da barra */
+            #tabBar::before {
+                content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+                background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 45%);
+                opacity: 0.6;
+            }
+            #tabBar > button:not(#tabBarTopo) {
+                position: relative; flex: 1 1 0; min-width: 0; padding: 4px 2px;
+                flex-direction: column; gap: 3px;
+                border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: -0.01em;
+                white-space: nowrap; color: #475569;
+                background: transparent; box-shadow: none;
+                transition: opacity 0.18s ease, transform 0.25s ease, background-color 0.25s ease, color 0.25s ease;
+            }
+            #tabBar > button:not(#tabBarTopo):active { transform: scale(0.92); }
+            #tabBar > button svg { width: 21px; height: 21px; }
+            #tabBtnCadastros span { display: inline; }
+
+            /* Aba ativa: pílula translúcida com a cor da aba */
+            #tabBar > button.text-white {
+                background: rgba(255,255,255,0.75);
+                box-shadow: 0 2px 8px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
+            }
+            #tabBtnRegistro.text-white    { color: #16a34a; }
+            #tabBtnProgramacao.text-white { color: #0284c7; }
+            #tabBtnAgua.text-white        { color: #0d9488; }
+            #tabBtnGraficos.text-white    { color: #4f46e5; }
+            #tabBtnCadastros.text-white   { color: #334155; }
+
+            /* Botão "voltar ao topo" (só aparece com a barra recolhida) */
+            #tabBarTopo {
+                display: flex; align-items: center; justify-content: center;
+                position: absolute; left: 0; top: 0; width: 52px; height: 52px;
+                border-radius: 999px; color: #0f172a;
+                opacity: 0; pointer-events: none; transform: scale(0.6);
+                transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+            }
+            #tabBarTopo svg { width: 22px; height: 22px; }
+
+            #tabBar.recolhida { width: 52px; height: 52px; }
+            #tabBar.recolhida > button:not(#tabBarTopo) { opacity: 0; transform: scale(0.7); pointer-events: none; }
+            #tabBar.recolhida #tabBarTopo { opacity: 1; pointer-events: auto; transform: scale(1); transition-delay: 0.08s; }
+            #tabBar.recolhida #tabBarTopo:active { transform: scale(0.9); }
+
+            /* Teclado aberto: a barra sai da frente dos campos */
+            #tabBar.teclado { transform: translateY(160%); opacity: 0; pointer-events: none; }
+        }
+
         /* ===== LAYOUT DESKTOP (a partir de 1024px; o celular continua igual) =====
            As abas usam :not(.hidden) para nunca exibir uma aba escondida. */
         @media (min-width: 1024px) {
@@ -204,6 +276,10 @@
             <button type="button" id="tabBtnCadastros" data-so-gestor onclick="window.switchTab('cadastros')" title="Cadastros"
                 class="hidden flex-none sm:flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-400">
                 <i data-lucide="settings" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Cadastros</span>
+            </button>
+            <!-- Celular: com a barra recolhida, sobra só este botão para voltar ao topo -->
+            <button type="button" id="tabBarTopo" onclick="window.voltarAoTopo()" title="Voltar ao topo" aria-label="Voltar ao topo">
+                <i data-lucide="arrow-up"></i>
             </button>
         </div>
 
@@ -3019,6 +3095,45 @@
             if (tab === 'cadastros') window.carregarCadastros();
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // --- BARRA DE ABAS NO CELULAR: recolhe ao rolar para baixo, volta ao rolar para cima ---
+
+        {
+            const barra = document.getElementById('tabBar');
+            const celular = window.matchMedia('(max-width: 1023px)');
+            let ultimoY = window.scrollY;
+            let agendado = false;
+
+            const recolher = (sim) => barra.classList.toggle('recolhida', sim && celular.matches);
+
+            window.addEventListener('scroll', () => {
+                if (agendado) return;
+                agendado = true;
+                requestAnimationFrame(() => {
+                    agendado = false;
+                    // Com uma janela (pop-up) aberta a página não rola; não mexe na barra
+                    if (document.documentElement.classList.contains('modal-aberto')) return;
+                    const y = window.scrollY;
+                    const delta = y - ultimoY;
+                    if (y < 80) recolher(false);
+                    else if (delta > 8) recolher(true);
+                    else if (delta < -8) recolher(false);
+                    if (Math.abs(delta) > 8 || y < 80) ultimoY = y;
+                });
+            }, { passive: true });
+
+            window.voltarAoTopo = function() {
+                recolher(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            // Teclado aberto: esconde a barra para não cobrir os campos
+            const ehCampo = (el) => el && el.matches && el.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select');
+            document.addEventListener('focusin', (e) => { if (ehCampo(e.target)) barra.classList.add('teclado'); });
+            document.addEventListener('focusout', (e) => { if (ehCampo(e.target)) barra.classList.remove('teclado'); });
+
+            celular.addEventListener('change', () => { if (!celular.matches) barra.classList.remove('recolhida', 'teclado'); });
         }
 
         // --- SISTEMA DE PROGRAMAÇÃO SEMANAL ---
