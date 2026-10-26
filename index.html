@@ -104,9 +104,10 @@
                 opacity: 0.6;
             }
             #tabBar > button:not(#tabBarTopo) {
-                position: relative; flex: 1 1 0; min-width: 0; padding: 4px 2px;
+                /* Largura pelo próprio nome (+ folga igual): "Programação" não vaza da pílula */
+                position: relative; flex: 1 1 auto; min-width: 0; padding: 4px 6px;
                 flex-direction: column; gap: 3px;
-                border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: -0.01em;
+                border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: -0.02em;
                 white-space: nowrap; color: #475569;
                 background: transparent; box-shadow: none;
                 transition: opacity 0.18s ease, transform 0.25s ease, background-color 0.25s ease, color 0.25s ease;
@@ -296,13 +297,14 @@
         </div>
 
         <!-- USUÁRIO LOGADO + STATUS DE SINCRONIZAÇÃO -->
-        <div id="statusBar" class="flex items-center justify-between gap-2 mt-2 px-1">
-            <div class="flex items-center gap-1.5 min-w-0">
+        <!-- Tela estreita: se o nome não couber ao lado dos botões, os botões descem para a linha de baixo -->
+        <div id="statusBar" class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 mt-2 px-1">
+            <div class="flex items-center gap-1.5 min-w-0 max-w-full shrink-0">
                 <i data-lucide="user-circle" class="w-4 h-4 text-slate-400 shrink-0"></i>
                 <span id="userNameLabel" class="text-xs font-bold text-slate-600 truncate"></span>
                 <span id="userRoleBadge" class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 shrink-0"></span>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
+            <div class="flex items-center gap-1.5 shrink-0 ml-auto">
                 <button type="button" id="syncStatusBtn" onclick="window.syncAgora()" title="Sincronizar agora"
                     class="flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full border border-slate-200 bg-white text-slate-500">
                     <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-300"></span>
