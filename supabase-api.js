@@ -110,7 +110,8 @@
     }
 
     function limparNomeBloco(nome) {
-        return String(nome || "").toUpperCase().replace("BLOCO", "").trim();
+        // "06" e "6" são o mesmo bloco (os Dados dos Blocos usam "Bloco 6")
+        return String(nome || "").toUpperCase().replace("BLOCO", "").trim().replace(/^0+(?=\d)/, "");
     }
 
     // Erro do Supabase -> Error com status (status 0 = sem conexão)
@@ -752,7 +753,7 @@
             await sincronizar();
             // Ignora excluídos e linhas antigas migradas da planilha sem ID ("legado-")
             const linhas = await buscarComCache('programacoes', () => sb.from('programacoes')
-                .select('id,dia,bloco,minutos,turno,observacao,excluido_em,created_at')
+                .select('id,dia,bloco,minutos,turno,observacao,responsavel,excluido_em,created_at')
                 .is('excluido_em', null)
                 .not('id', 'like', 'legado-%')
                 .order('created_at', { ascending: true }), 0);
@@ -765,7 +766,8 @@
                     block: linha.bloco || "",
                     minutes: Number(linha.minutos) || 0,
                     turno: linha.turno || "",
-                    observation: linha.observacao || ""
+                    observation: linha.observacao || "",
+                    responsavel: linha.responsavel || ""
                 }));
             return { sucesso: true, programacao: programacao };
         } catch (erro) {
@@ -1117,6 +1119,15 @@
         return resp.data;
     }
 
+    // Log de um período (ex.: um dia), mais novo primeiro. Somente gestor, precisa de internet.
+    async function listarAuditoriaPeriodo(inicioIso, fimIso) {
+        if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
+        const resp = await sb.from('auditoria').select('*').gte('criado_em', inicioIso).lt('criado_em', fimIso)
+            .order('criado_em', { ascending: false }).limit(2000);
+        if (resp.error) throw erroSupabase(resp);
+        return resp.data;
+    }
+
     // Backup: volta o item ao valor que tinha antes da ação registrada no log
     // (ou desfaz um registro novo). Somente gestor, precisa de internet.
     async function restaurarAuditoria(idAuditoria) {
@@ -1209,12 +1220,30 @@
     window.addEventListener('online', enviarSinal);
     window.addEventListener('pagehide', lembrarSessao);
 
-    // Sessões com sinal a partir de "desde" (somente gestor, precisa de internet)
-    async function listarSessoes(desdeIso) {
+    // Sessões com sinal a partir de "desde" e, se informado, iniciadas antes de "ate"
+    // (somente gestor, precisa de internet)
+    async function listarSessoes(desdeIso, ateIso) {
         if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
-        const resp = await sb.from('sessoes').select('*').gte('ultimo_sinal', desdeIso).order('ultimo_sinal', { ascending: false }).limit(300);
+        let consulta = sb.from('sessoes').select('*').gte('ultimo_sinal', desdeIso);
+        if (ateIso) consulta = consulta.lt('inicio', ateIso);
+        const resp = await consulta.order('ultimo_sinal', { ascending: false }).limit(500);
         if (resp.error) throw erroSupabase(resp);
         return resp.data;
+    }
+
+    // Quem registrou/alterou algo no período, com a quantidade: [{ id, nome, qtd }] (somente gestor)
+    async function autoresAuditoriaPeriodo(inicioIso, fimIso) {
+        if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
+        const resp = await sb.from('auditoria').select('usuario_id,usuario_nome')
+            .gte('criado_em', inicioIso).lt('criado_em', fimIso).not('usuario_id', 'is', null).limit(5000);
+        if (resp.error) throw erroSupabase(resp);
+        const porUsuario = {};
+        resp.data.forEach(l => {
+            const a = porUsuario[l.usuario_id] = porUsuario[l.usuario_id] || { id: l.usuario_id, nome: l.usuario_nome || '', qtd: 0 };
+            a.qtd++;
+            if (!a.nome && l.usuario_nome) a.nome = l.usuario_nome;
+        });
+        return Object.values(porUsuario);
     }
 
     // Tudo o que o usuário registrou/alterou entre o início e o fim da sessão
@@ -1251,7 +1280,7 @@
         enviar, historico, programacaoAtual, salvarProgramacaoItem, excluirProgramacaoItem,
         salvarRegistro, excluirRegistro, atualizarRegistroEquipe, excluirRegistroEquipe, salvarMotor, registrarEnvio,
         // dados dos blocos
-        listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
+        limparNomeBloco, listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
         // água
         listarPocos, salvarPoco, listarLeiturasPocos, listarLeiturasDoPoco, salvarLeituraPoco, atualizarLeituraPoco, excluirLeituraPoco,
         listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, listarLeiturasReservPeriodo, salvarLeituraReservatorio, atualizarLeituraReservatorio, excluirLeituraReservatorio,
@@ -1262,6 +1291,6 @@
         // tempo real (registros dos outros irrigadores)
         listarRegistrosEquipe, listarMeusRegistros, listarRegistrosDia, assinarRegistros, cancelarAssinaturaRegistros, assinarAgua,
         // auditoria e sessões
-        listarAuditoria, restaurarAuditoria, iniciarSessao, informarAbaSessao, encerrarSessao, listarSessoes, atividadesDaSessao
+        listarAuditoria, listarAuditoriaPeriodo, restaurarAuditoria, iniciarSessao, informarAbaSessao, encerrarSessao, listarSessoes, atividadesDaSessao, autoresAuditoriaPeriodo
     };
 })();
