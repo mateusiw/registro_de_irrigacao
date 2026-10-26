@@ -171,6 +171,14 @@
 
             /* Abas à esquerda, usuário e status à direita, numa linha só */
             #navTabs { max-width: var(--largura-desktop); display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
+            /* Abas e status ficam presos logo abaixo da barra verde ao rolar a página.
+               A sombra larga + clip-path estendem o fundo pela largura toda da tela. */
+            #navTabs {
+                position: sticky; top: var(--altura-navbar, 52px); z-index: 35;
+                flex-wrap: wrap; padding-bottom: 0.75rem;
+                background: #f8fafc; box-shadow: 0 0 0 100vmax #f8fafc; clip-path: inset(0 -100vmax);
+            }
+            #navTabs > #enviarDadosBtn { flex-basis: 100%; margin-top: 0; }
             #tabBar { width: 760px; flex: none; }
             #statusBar { margin-top: 0; justify-content: flex-end; gap: 1.25rem; }
 
@@ -3157,6 +3165,12 @@
             document.addEventListener('focusout', (e) => { if (ehCampo(e.target)) barra.classList.remove('teclado'); });
 
             celular.addEventListener('change', () => { if (!celular.matches) barra.classList.remove('recolhida', 'teclado'); });
+
+            // Computador: as abas grudam logo abaixo da barra verde; guarda a altura dela
+            const navbar = document.getElementById('navbar');
+            const medirNavbar = () => document.documentElement.style.setProperty('--altura-navbar', navbar.offsetHeight + 'px');
+            medirNavbar();
+            if (window.ResizeObserver) new ResizeObserver(medirNavbar).observe(navbar);
         }
 
         // --- SISTEMA DE PROGRAMAÇÃO SEMANAL ---
