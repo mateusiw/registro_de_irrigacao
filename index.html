@@ -29,6 +29,14 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
         input, select, textarea { user-select: text; }
+
+        /* iPhone: o Safari dá aos campos de data uma largura mínima própria que passa da borda
+           do cartão; sem a aparência nativa eles respeitam o w-full */
+        input[type=date].w-full, input[type=datetime-local].w-full, input[type=date].ficha-campo {
+            -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; min-height: 2.75rem;
+        }
+        input[type=date].ficha-campo { min-height: 2.1rem; }
+        input[type=date]::-webkit-date-and-time-value, input[type=datetime-local]::-webkit-date-and-time-value { text-align: left; }
         .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
         /* Turno — cor distinta por período */
