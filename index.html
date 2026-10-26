@@ -107,16 +107,20 @@
             #tabBar > button svg { width: 21px; height: 21px; }
             #tabBtnCadastros span { display: inline; }
 
-            /* Aba ativa: pílula translúcida com a cor da aba */
-            #tabBar > button.text-white {
-                background: rgba(255,255,255,0.75);
-                box-shadow: 0 2px 8px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.95);
+            /* Aba ativa: pílula translúcida tingida com a cor da aba (switchTab marca a ativa com .text-white) */
+            #tabBar > #tabBtnRegistro    { --cor: 22, 163, 74; }
+            #tabBar > #tabBtnProgramacao { --cor: 2, 132, 199; }
+            #tabBar > #tabBtnAgua        { --cor: 13, 148, 136; }
+            #tabBar > #tabBtnGraficos    { --cor: 79, 70, 229; }
+            #tabBar > #tabBtnCadastros   { --cor: 51, 65, 85; }
+            #tabBar > button.text-white:not(#tabBarTopo) {
+                color: rgb(var(--cor));
+                font-weight: 800;
+                background: rgba(var(--cor), 0.14);
+                box-shadow: inset 0 0 0 1px rgba(var(--cor), 0.22), inset 0 1px 0 rgba(255,255,255,0.7),
+                            0 3px 10px rgba(var(--cor), 0.18);
             }
-            #tabBtnRegistro.text-white    { color: #16a34a; }
-            #tabBtnProgramacao.text-white { color: #0284c7; }
-            #tabBtnAgua.text-white        { color: #0d9488; }
-            #tabBtnGraficos.text-white    { color: #4f46e5; }
-            #tabBtnCadastros.text-white   { color: #334155; }
+            #tabBar > button.text-white:not(#tabBarTopo) svg { stroke-width: 2.4; }
 
             /* Botão "voltar ao topo" (só aparece com a barra recolhida) */
             #tabBarTopo {
