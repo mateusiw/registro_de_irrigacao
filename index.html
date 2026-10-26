@@ -73,6 +73,14 @@
         .graf-tabela td { text-align: right; padding: 6px 8px; border-bottom: 1px solid #f1f5f9; color: #334155; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
         .graf-tabela th:first-child, .graf-tabela td:first-child { text-align: left; }
 
+        /* Linhas da lista de registros: tempo, turno e nome diminuem junto com a largura da tela
+           (em telas largas ficam no tamanho normal) para caberem numa linha só */
+        .reg-linha { gap: clamp(3px, 1.2vw, 8px); }
+        .reg-linha .reg-tempo { font-size: clamp(11px, 3.2vw, 14px); gap: clamp(2px, 0.8vw, 4px); }
+        .reg-linha .reg-tempo svg { width: clamp(11px, 3vw, 14px); height: clamp(11px, 3vw, 14px); }
+        .reg-linha .reg-chip { font-size: clamp(9px, 2.45vw, 11px); padding: 2px clamp(5px, 1.6vw, 8px); gap: clamp(2px, 0.8vw, 4px); }
+        .reg-linha .reg-chip svg { width: clamp(9px, 2.5vw, 12px); height: clamp(9px, 2.5vw, 12px); }
+
         /* ===== BARRA DE ABAS NO CELULAR (estilo "liquid glass" do iOS) =====
            Fica flutuando no rodapé; ao rolar a página para baixo ela recolhe
            num botão redondo que leva de volta ao topo. */
@@ -2784,7 +2792,7 @@
                                      : rec.turno === 'Noite' ? 'bg-violet-50 text-violet-700 border-violet-200'
                                      : 'bg-slate-50 text-slate-500 border-slate-200';
                     const turnoBadge = rec.turno
-                        ? `<span class="text-[11px] font-bold ${turnoBg} border flex items-center gap-1 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap"><i data-lucide="${turnoIcon}" class="w-3 h-3"></i>${rec.turno}</span>`
+                        ? `<span class="text-[11px] font-bold ${turnoBg} border flex items-center gap-1 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap reg-chip"><i data-lucide="${turnoIcon}" class="w-3 h-3"></i>${rec.turno}</span>`
                         : '';
                     if (rec._equipe) {
                         const editandoEquipe = rec.id === editingEquipeId;
@@ -2803,14 +2811,14 @@
                         return `
                     <div class="flex justify-between items-start px-4 py-3.5 border-b border-slate-100 last:border-0 ${editandoEquipe ? 'bg-amber-50 border-l-4 border-l-amber-400' : 'bg-sky-50/60'} transition-colors">
                         <div class="flex flex-col gap-1.5 w-full min-w-0 ${acoesGestor ? 'mr-3' : ''}">
-                            <!-- Tudo numa linha: se faltar espaço, o nome é que encurta (com "…") -->
-                            <div class="flex items-center gap-1.5 min-w-0">
-                                <span class="text-sm font-bold text-sky-700 flex items-center gap-1 shrink-0 whitespace-nowrap">
+                            <!-- Tudo numa linha; o texto diminui com a tela e, se ainda faltar espaço, o nome encurta (com "…") -->
+                            <div class="reg-linha flex items-center gap-1.5 min-w-0">
+                                <span class="reg-tempo text-sm font-bold text-sky-700 flex items-center gap-1 shrink-0 whitespace-nowrap">
                                     <i data-lucide="clock" class="w-3.5 h-3.5"></i>
                                     ${formatDuration(rec.minutes)}
                                 </span>
                                 ${turnoBadge}
-                                <span class="text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-200 flex items-center gap-1 px-2 py-0.5 rounded-full min-w-0" title="${escapeHtml(rec.responsavel)}"><i data-lucide="user" class="w-3 h-3 shrink-0"></i><span class="truncate">${escapeHtml(rec.responsavel)}</span></span>
+                                <span class="text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-200 flex items-center gap-1 px-2 py-0.5 rounded-full min-w-0 reg-chip" title="${escapeHtml(rec.responsavel)}"><i data-lucide="user" class="w-3 h-3 shrink-0"></i><span class="truncate">${escapeHtml(rec.responsavel)}</span></span>
                             </div>
                             ${rec.observation ? `
                             <div class="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500 italic bg-white px-2 py-1.5 rounded-lg border border-slate-100">
