@@ -235,10 +235,7 @@
             .cad-card > .cad-form { align-self: stretch; border-bottom: 0; border-right: 1px solid #f1f5f9; }
             .cad-lista { grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)) !important; gap: 0.75rem; }
 
-            /* Dados dos blocos: formulário à esquerda, lista à direita dentro do mesmo cartão */
-            #dadosBlocosCard:not(.hidden) { display: grid; grid-template-columns: 420px minmax(0, 1fr); align-items: start; }
-            #dadosBlocosCard > :first-child { grid-column: 1 / -1; }
-            #dadoBlocoForm { border-bottom: 0; border-right: 1px solid #f1f5f9; }
+            /* Dados dos blocos: cartões dos blocos ocupando toda a largura */
             #dadosBlocosLista { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.75rem; align-items: start; }
             #dadosBlocosLista > * { margin-top: 0 !important; }
             #dadosBlocosLista > p { grid-column: 1 / -1; }
@@ -1192,68 +1189,19 @@
                         <h2 class="text-base font-bold text-white leading-tight">Dados dos Blocos</h2>
                         <p class="text-[10px] text-green-100 font-medium">Base do cálculo de litros de cada bloco</p>
                     </div>
+                    <button type="button" onclick="window.novoBloco()"
+                        class="ml-auto flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-white/15 text-white hover:bg-white/25 border border-white/30">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Novo bloco
+                    </button>
                     <button type="button" id="blocosPdfBtn" onclick="window.baixarPdfBlocos()"
-                        class="ml-auto flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-white text-green-800 hover:bg-green-50 shadow-sm">
+                        class="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-white text-green-800 hover:bg-green-50 shadow-sm">
                         <i data-lucide="file-down" class="w-4 h-4"></i> Baixar PDF
                     </button>
                     <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white">Gestor</span>
                 </div>
 
-                <form id="dadoBlocoForm" onsubmit="window.salvarDadoBloco(event)" class="px-5 py-4 border-b border-slate-100 space-y-2">
-                    <p id="dadoBlocoFormTitulo" class="text-xs font-bold text-slate-400 uppercase tracking-wider">Novo Sistema de Aspersão</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Bloco</label>
-                            <input type="text" id="dbBloco" required maxlength="3" placeholder="ex: 8 ou E"
-                                oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"
-                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Válvulas ativas</label>
-                            <input type="number" id="dbValvulas" required min="1" step="1" inputmode="numeric" placeholder="ex: 2"
-                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Tipo de aspersor</label>
-                            <select id="dbTipo" onchange="window.alternarTipoOutro()" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-700 outline-none">
-                                <option value="MicroAspersor">MicroAspersor</option>
-                                <option value="Aspersor">Aspersor</option>
-                                <option value="Fita Gotejo">Fita Gotejo</option>
-                                <option value="Outro">Outro</option>
-                            </select>
-                            <input type="text" id="dbTipoOutro" maxlength="30" placeholder="Nome do aspersor"
-                                class="hidden mt-1.5 w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Vazão (L/H)</label>
-                            <input type="number" id="dbVazao" required min="0.1" step="0.1" inputmode="decimal" placeholder="ex: 90"
-                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Aspersores ativos</label>
-                            <input type="number" id="dbQtd" required min="1" step="1" inputmode="numeric" placeholder="ex: 856"
-                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Data atualização</label>
-                            <input type="date" id="dbData" required
-                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                        </div>
-                    </div>
-                    <p id="dadoBlocoErro" class="hidden text-xs font-bold text-red-500"></p>
-                    <div class="flex gap-2">
-                        <button type="button" id="dadoBlocoCancelar" onclick="window.editarDadoBloco(null)"
-                            class="hidden flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
-                        <button type="submit" id="dadoBlocoBtn"
-                            class="flex-1 bg-green-700 hover:bg-green-800 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                            <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Sistema
-                        </button>
-                    </div>
-                    <p class="text-[10px] text-slate-400 leading-relaxed">Um bloco pode ter vários sistemas de aspersão. Para alterar um bloco já cadastrado, toque no lápis dele na lista. Alterações precisam de internet.</p>
-                </form>
 
                 <div id="dadosBlocosLista" class="px-5 py-4 space-y-3"></div>
-                <datalist id="listaCulturas"></datalist>
             </div>
         </div>
 
@@ -2222,6 +2170,18 @@
 
         // Perfis de usuário (para listas de responsáveis), guardados no aparelho
         let perfisCache = [];
+
+        // Sub nome de cada bloco (ex.: { E: 'Tâmaras' }), cadastrado em Dados dos Blocos
+        let apelidosBloco = {};
+        function atualizarApelidos(culturas) {
+            apelidosBloco = {};
+            (culturas || []).forEach(c => { if (c.apelido && c.apelido.trim()) apelidosBloco[String(c.id)] = c.apelido.trim(); });
+        }
+        // "Bloco E (Tâmaras)" ou "Bloco 3"
+        function rotuloBloco(bloco) {
+            const a = apelidosBloco[String(bloco)];
+            return `Bloco ${bloco}${a ? ' (' + a + ')' : ''}`;
+        }
 
         // Armazena temporariamente os dados gerados da Imagem e da Planilha
         let currentReportData = {
@@ -4109,7 +4069,7 @@
                                 <i data-lucide="map-pin" class="w-4 h-4 text-white"></i>
                             </div>
                             <div>
-                                <span class="text-sm font-bold text-white uppercase tracking-wide">${bloco === 'E' ? 'Bloco E (Tâmaras)' : 'Bloco ' + escapeHtml(bloco)}</span>
+                                <span class="text-sm font-bold text-white uppercase tracking-wide">${escapeHtml(rotuloBloco(bloco))}</span>
                                 <span class="ml-2 text-xs font-bold text-sky-100 bg-white/15 px-2 py-0.5 rounded-full">
                                     ${diaDurationText}
                                 </span>
@@ -5071,7 +5031,23 @@
             renderAgua();
         }
 
+        // Dia em que a aba Água foi preenchida por último (para notar a virada do dia)
+        let diaAbaAgua = null;
+
+        // App que ficou aberto em segundo plano: ao voltar num outro dia, a aba Água
+        // volta para hoje (data das leituras e dia exibido), para não lançar no dia antigo.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState !== 'visible' || !diaAbaAgua || diaAbaAgua === dataLocalIso()) return;
+            if (!API.usuarioAtual() || document.getElementById('tabAgua').classList.contains('hidden')) return;
+            window.carregarAgua();
+        });
+
         window.carregarAgua = async function() {
+            const virouDia = diaAbaAgua !== null && diaAbaAgua !== dataLocalIso();
+            diaAbaAgua = dataLocalIso();
+            if (virouDia) {
+                ['pocosDataFiltro', 'reservDataFiltro', 'pocoDataParada'].forEach(id => document.getElementById(id).value = '');
+            }
             // Não troca a data/hora de uma leitura que está sendo editada
             if (!editandoLeituraPocoId) document.getElementById('pocoDataHora').value = agoraParaInput();
             if (!editandoLeituraReservId) document.getElementById('reservDataHora').value = agoraParaInput();
@@ -5544,6 +5520,43 @@
                 leitura.horas_ligado = horas;
             }
 
+            avisarDataLeituraPoco(leitura).then(aviso => {
+                if (!aviso) { gravarLeituraPoco(leitura); return; }
+                pendingConfirmCallback = () => gravarLeituraPoco(leitura);
+                window.showConfirmModal("Confira a data", aviso, "REGISTRAR MESMO ASSIM", "calendar-clock");
+            });
+        }
+
+        // Aviso (não bloqueia) quando a data não é hoje ou o poço já tem leitura nesse dia,
+        // para evitar lançar a aferição no dia errado. Retorna o texto do aviso ou ''.
+        async function avisarDataLeituraPoco(leitura) {
+            const dia = dataLocalIso(new Date(leitura.data_hora));
+            const hoje = dataLocalIso();
+            let original = null;
+            if (editandoLeituraPocoId) {
+                original = leiturasPocoDia.concat(leiturasPocoCache).find(x => String(x.id) === String(editandoLeituraPocoId));
+                // Editando sem trocar o dia: nada a avisar
+                if (original && dataLocalIso(new Date(original.data_hora)) === dia) return '';
+            }
+            const doDia = (await API.listarLeiturasPocoPeriodo(dia, dia).catch(() => []))
+                .filter(l => l.poco_id === leitura.poco_id && String(l.id) !== String(editandoLeituraPocoId))
+                .sort((a, b) => String(a.data_hora).localeCompare(String(b.data_hora)));
+            const poco = pocosCache.find(p => p.id === leitura.poco_id);
+            const nome = poco ? rotuloPoco(poco) : 'Este poço';
+            const partes = [];
+            if (dia !== hoje) {
+                partes.push(`A data escolhida é ${formatDate(dia)}${dia > hoje ? ' (no futuro)' : ''}, mas hoje é ${formatDate(hoje)}.`);
+            }
+            // Hoje, mais de uma leitura só é estranha numa aferição comum (desligar/religar é normal)
+            if (doDia.length && (dia !== hoje || leitura.status === 'ligado')) {
+                const lista = doDia.map(l => `${fmtHora(l.data_hora)}${l.responsavel ? ' (' + l.responsavel + ')' : ''}`).join(', ');
+                partes.push(`${nome} já tem ${doDia.length === 1 ? 'leitura' : doDia.length + ' leituras'} em ${formatDate(dia)}: ${lista}.`);
+            }
+            if (!partes.length) return '';
+            return partes.join('\n\n') + '\n\nConfira a data e a hora antes de registrar.';
+        }
+
+        function gravarLeituraPoco(leitura) {
             // Mostra a situação do dia da leitura que acabou de ser salva
             document.getElementById('pocosDataFiltro').value = dataLocalIso(new Date(leitura.data_hora));
             if (editandoLeituraPocoId) {
@@ -6502,9 +6515,9 @@
                 dica: `Poço ${l.poco.numero}: ${fmtLh(l.volume)} L (${fmtLh(l.media)} L/h)` }));
             // Sem variação aqui: repetiria a do volume (mesmas horas ligado)
             const vazoes = b.comDados.map(l => ({ rotulo: `Poço ${l.poco.numero}`, valor: l.media }));
-            const blocos = b.blocos.filter(x => x.litros != null).map(x => ({ rotulo: x.bloco === 'E' ? 'Bloco E' : `Bloco ${x.bloco}`, valor: x.litros, cor: x.cor,
+            const blocos = b.blocos.filter(x => x.litros != null).map(x => ({ rotulo: apelidosBloco[x.bloco] || `Bloco ${x.bloco}`, valor: x.litros, cor: x.cor,
                 var1: x.var1, var7: x.var7, ontem: x.litrosOntem,
-                dica: `Bloco ${x.bloco}${x.cultura ? ' (' + x.cultura + ')' : ''}: ${fmtLh(x.litros)} L` }));
+                dica: `${rotuloBloco(x.bloco)}${x.cultura ? ' · ' + x.cultura : ''}: ${fmtLh(x.litros)} L` }));
             return {
                 volumePoco: svgColunas(pocos, { fonte: fs, largura, titulo: 'Volume (L) por Poço', vazio: 'Nenhuma aferição de poço no período.' }),
                 vazaoPoco: svgLinha(vazoes, COR_ENTRADA, { fonte: fs, largura, titulo: 'Vazão média por poço', vazio: 'Nenhuma aferição de poço no período.' }),
@@ -6538,6 +6551,7 @@
             ]);
             // Ignora respostas atrasadas se o período foi trocado enquanto carregava
             if (deInput.value !== de || ateInput.value !== ate) return;
+            atualizarApelidos(culturas);
 
             // ----- Entrada (poços) -----
             const linhas = calcularEntradaPocos(pocos, leituras, horasRegs);
@@ -6707,7 +6721,7 @@
                 : blocos.map(b => `
                     <div class="py-2.5 flex items-center justify-between gap-2">
                         <div class="min-w-0">
-                            <p class="text-xs font-black text-slate-700">${b.bloco === 'E' ? 'Bloco E (Tâmaras)' : 'Bloco ' + escapeHtml(b.bloco)}</p>
+                            <p class="text-xs font-black text-slate-700">${escapeHtml(rotuloBloco(b.bloco))}</p>
                             <p class="text-[10px] text-slate-400 flex items-center gap-1">
                                 <span class="w-2 h-2 rounded-sm inline-block" style="background:${b.cor}"></span>${escapeHtml(b.cultura || 'Sem cultura')} · ${formatDuration(b.minutos)} de irrigação
                             </p>
@@ -6809,7 +6823,7 @@
             };
             const sinalL = v => `${v >= 0 ? '+' : '-'}${fmtLh(Math.abs(v))} L`;
             const sinalM = v => `${v >= 0 ? '+' : '-'}${fmtNum(Math.abs(v), 2)} m`;
-            const nomeBloco = x => x.bloco === 'E' ? 'Bloco E (Tâmaras)' : `Bloco ${x.bloco}`;
+            const nomeBloco = x => rotuloBloco(x.bloco);
             const vt = b.varTotais || {};
             const diferenca = b.entrada - b.saida;
             const linhas = [];
@@ -7162,7 +7176,7 @@
                 const varBlocos = i => [b.blocos[i].var1, b.blocos[i].var7];
                 tabela(b.blocos.length ? {
                     head: [['Bloco', 'Cultura', 'Tempo', 'Volume (L)', 'vs ontem', 'vs 7 dias']],
-                    body: b.blocos.map(x => [x.bloco === 'E' ? 'Bloco E (Tâmaras)' : `Bloco ${x.bloco}`, x.cultura || 'Sem cultura', formatDuration(x.minutos),
+                    body: b.blocos.map(x => [rotuloBloco(x.bloco), x.cultura || 'Sem cultura', formatDuration(x.minutos),
                         x.litros != null ? fmtLh(x.litros) : 'sem dados do bloco', fmtVar(x.var1), fmtVar(x.var7)]),
                     foot: [['Total', '', formatDuration(b.blocos.reduce((s, x) => s + x.minutos, 0)), fmtLh(b.saida), '', '']],
                     columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
@@ -7561,7 +7575,7 @@
         let ultimoRenderGraf = null;
         let tendenciaPorPoco = {};
 
-        function nomeBlocoFiltro(b) { return b === 'E' ? 'Bloco E (Tâmaras)' : `Bloco ${b}`; }
+        function nomeBlocoFiltro(b) { return rotuloBloco(b); }
 
         function opcoesFiltro(tipo) {
             if (!ultimoGraf) return [];
@@ -7984,7 +7998,7 @@
                 ? `<p class="text-xs text-slate-400 py-4 text-center">Nenhum registro de irrigação no período.</p>`
                 : `<table class="graf-tabela"><thead><tr><th>Bloco</th><th>Horas</th><th></th><th>Dias irrigados</th><th>Média por dia irrigado</th><th>Volume (L)</th></tr></thead><tbody>
                     ${blocos.map(b => `<tr>
-                        <td class="font-black">${b.bloco === 'E' ? 'Bloco E (Tâmaras)' : 'Bloco ' + escapeHtml(b.bloco)}</td>
+                        <td class="font-black">${escapeHtml(rotuloBloco(b.bloco))}</td>
                         <td>${formatDuration(b.minutos)}</td>
                         <td style="width:30%;min-width:80px"><div style="height:8px;border-radius:0 4px 4px 0;background:${COR_HORAS};width:${(b.minutos / maxMin * 100).toFixed(1)}%"></div></td>
                         <td>${b.dias}</td>
@@ -8285,21 +8299,7 @@
         // --- DADOS DOS BLOCOS (GESTOR) ---
 
         let dadosBlocosCache = [];
-        let dadoBlocoEditando = null;
         let culturasCache = [];
-
-        // Cultura plantada no bloco (legenda do gráfico de saída do balanço)
-        window.salvarCulturaBloco = async function(bloco, valor) {
-            const cultura = String(valor || '').trim();
-            try {
-                await API.salvarCultura(bloco, cultura ? cultura.charAt(0).toUpperCase() + cultura.slice(1) : '');
-                culturasCache = await API.listarCulturas();
-                renderDadosBlocos();
-            } catch (err) {
-                window.showAlert("Não foi possível salvar a cultura", err.message);
-                renderDadosBlocos();
-            }
-        }
 
         // Nome do aspersor = texto antes da vazão. MicroAspersor/Aspersor são padronizados
         // (a planilha tinha grafias como "MicroAspesor"); qualquer outro nome fica como foi digitado.
@@ -8309,15 +8309,6 @@
             if (!nome || /^aspersor$/i.test(nome)) return 'Aspersor';
             if (/^fita\s*gotejo$/i.test(nome)) return 'Fita Gotejo';
             return nome;
-        }
-
-        // "Outro" no tipo de aspersor: mostra o campo para digitar o nome
-        window.alternarTipoOutro = function() {
-            const outro = document.getElementById('dbTipo').value === 'Outro';
-            const campo = document.getElementById('dbTipoOutro');
-            campo.classList.toggle('hidden', !outro);
-            campo.required = outro;
-            if (outro && !campo.value) campo.focus();
         }
 
         // Interpreta uma linha no formato livre herdado da planilha
@@ -8333,7 +8324,10 @@
                 tipo: nomeTipoAspersor(tipo),
                 vazao: vaz ? parseFloat(vaz[1].replace(',', '.')) : 0,
                 qtd: parseFloat(String(l.qtd_aspersores || '').replace(/\./g, '').replace(/,/g, '.')) || 0,
-                data: l.data_atualizacao
+                data: l.data_atualizacao,
+                // Autoria (preenchida pelo banco): quem cadastrou e quem alterou por último
+                criadoPor: l.criado_por, criadoEm: l.created_at,
+                atualizadoPor: l.atualizado_por, atualizadoEm: l.updated_at
             };
         }
 
@@ -8341,11 +8335,11 @@
             const card = document.getElementById('dadosBlocosCard');
             card.classList.toggle('hidden', !API.isGestor());
             if (!API.isGestor()) return;
-            if (!document.getElementById('dbData').value) document.getElementById('dbData').value = dataLocalIso();
             try {
                 const [dados, culturas] = await Promise.all([API.listarDadosBlocos(forcar), API.listarCulturas()]);
                 dadosBlocosCache = dados.map(lerDadoBloco);
                 culturasCache = culturas || [];
+                atualizarApelidos(culturasCache);
                 renderDadosBlocos();
             } catch (err) {
                 document.getElementById('dadosBlocosLista').innerHTML = `<p class="text-xs font-medium text-red-500">Não foi possível carregar: ${escapeHtml(err.message)}</p>`;
@@ -8357,6 +8351,11 @@
         let blocoEditando = null;
         let rascunhoBloco = [];   // um item por sistema de aspersão; removido = será excluído ao salvar
         let rascunhoBlocoData = '';
+        let rascunhoApelido = '';  // sub nome do bloco (ex.: Tâmaras)
+        let rascunhoCodigo = '';   // só no bloco novo: código digitado (ex.: 8 ou E)
+        let rascunhoCultura = '';  // cultura plantada (obrigatória ao salvar)
+        let culturaOutraAtiva = false; // tocou em "Outra" na cultura (campo de digitar aberto)
+        const NOVO_BLOCO = '__novo__';
 
         // Linha no formato livre herdado da planilha (o mesmo que lerDadoBloco interpreta)
         function linhaDadoBloco(bloco, s, data) {
@@ -8372,6 +8371,10 @@
         window.editarBloco = function(bloco) {
             blocoEditando = bloco;
             rascunhoBlocoData = dataLocalIso();
+            rascunhoApelido = bloco == null ? '' : (apelidosBloco[bloco] || '');
+            rascunhoCodigo = '';
+            culturaOutraAtiva = false;
+            rascunhoCultura =bloco == null ? '' : ((culturasCache.find(c => String(c.id) === bloco) || {}).cultura || '');
             rascunhoBloco = bloco == null ? [] : dadosBlocosCache.filter(d => d.bloco === bloco).map(d => ({
                 original: d, removido: false,
                 tipo: TIPOS_ASPERSOR.includes(d.tipo) ? d.tipo : 'Outro',
@@ -8381,15 +8384,76 @@
             renderDadosBlocos();
         }
 
-        // Os campos só guardam o valor; redesenha apenas quando muda o tipo (para mostrar o campo "Outro")
+        // Bloco novo: abre o mesmo editor no topo da lista, com o campo do código do bloco
+        window.novoBloco = function() {
+            window.editarBloco(NOVO_BLOCO);
+            window.adicionarSistemaBloco();
+            const campo = document.getElementById('dbEditCodigo');
+            if (campo) { campo.scrollIntoView({ behavior: 'smooth', block: 'center' }); campo.focus(); }
+        }
+
+        // Os campos só guardam o valor (redesenhar tiraria o foco de quem está digitando)
         window.alterarSistemaBloco = function(i, campo, valor) {
             rascunhoBloco[i][campo] = valor;
-            if (campo === 'tipo') renderDadosBlocos();
+            if (campo === 'vazao') rascunhoBloco[i].vazaoAuto = false;
+        }
+
+        const nomeTipoSistema = s => s.tipo === 'Outro' ? String(s.tipoOutro || '').trim() : s.tipo;
+
+        // Tipos com nome próprio já cadastrados em algum bloco (ex.: "Canhão"), viram atalho no editor
+        function tiposPersonalizados() {
+            return [...new Set(dadosBlocosCache.map(d => d.tipo).filter(t => t && !TIPOS_ASPERSOR.includes(t)))].sort();
+        }
+
+        // Vazões já usadas com esse tipo de aspersor, da mais comum para a menos comum
+        function vazoesSugeridas(tipo) {
+            const contagem = {};
+            dadosBlocosCache.filter(d => d.tipo === tipo && d.vazao > 0).forEach(d => { contagem[d.vazao] = (contagem[d.vazao] || 0) + 1; });
+            return Object.entries(contagem).map(([v, n]) => ({ vazao: Number(v), n }))
+                .sort((a, b) => b.n - a.n || a.vazao - b.vazao).slice(0, 4);
+        }
+
+        // Troca o tipo e, se a vazão estiver vazia (ou foi sugerida), já preenche com a mais usada desse tipo
+        window.escolherTipoSistema = function(i, tipo, nomeOutro) {
+            const s = rascunhoBloco[i];
+            s.tipo = tipo;
+            s.tipoOutro = tipo === 'Outro' ? String(nomeOutro || '') : '';
+            if (s.vazao === '' || s.vazao == null || s.vazaoAuto) {
+                const sug = vazoesSugeridas(nomeTipoSistema(s))[0];
+                s.vazao = sug ? sug.vazao : '';
+                s.vazaoAuto = !!sug;
+            }
+            renderDadosBlocos();
+        }
+
+        window.escolherTipoPersonalizado = function(i, k) {
+            window.escolherTipoSistema(i, 'Outro', tiposPersonalizados()[k]);
+        }
+
+        window.usarVazaoSugerida = function(i, vazao) {
+            rascunhoBloco[i].vazao = vazao;
+            rascunhoBloco[i].vazaoAuto = false;
+            renderDadosBlocos();
+        }
+
+        window.escolherCulturaBloco = function(cultura) {
+            rascunhoCultura = cultura;
+            culturaOutraAtiva = false;
+            renderDadosBlocos();
+        }
+
+        // "Outra" na cultura: mostra o campo para digitar o nome
+        window.escolherCulturaOutra = function() {
+            if (!culturaOutraAtiva) rascunhoCultura = '';
+            culturaOutraAtiva = true;
+            renderDadosBlocos();
+            const campo = document.getElementById('dbEditCulturaOutra');
+            if (campo) campo.focus();
         }
 
         window.adicionarSistemaBloco = function() {
             rascunhoBloco.push({ original: null, removido: false, tipo: 'MicroAspersor', tipoOutro: '', vazao: '', qtd: '', valvulas: 1 });
-            renderDadosBlocos();
+            window.escolherTipoSistema(rascunhoBloco.length - 1, 'MicroAspersor');
         }
 
         window.removerSistemaBloco = function(i) {
@@ -8401,32 +8465,90 @@
         function editorBlocoHtml(bloco, culturaAtual) {
             const campo = 'w-full bg-white border-2 border-slate-200 rounded-lg py-1.5 px-2 text-xs text-slate-800';
             const rotulo = t => `<span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">${t}</span>`;
-            const sistemas = rascunhoBloco.map((s, i) => s.removido ? '' : `
-                <div class="grid grid-cols-2 sm:grid-cols-[1.4fr_1fr_1fr_0.8fr_auto] gap-1.5 items-end py-2">
-                    <label class="block col-span-2 sm:col-span-1">${rotulo('Tipo')}
-                        <select onchange="window.alterarSistemaBloco(${i}, 'tipo', this.value)" class="${campo} font-bold">
-                            ${TIPOS_ASPERSOR.concat('Outro').map(t => `<option value="${t}" ${s.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}
-                        </select>
-                        ${s.tipo === 'Outro' ? `<input type="text" value="${escapeHtml(s.tipoOutro)}" maxlength="30" placeholder="Nome do aspersor"
-                            oninput="window.alterarSistemaBloco(${i}, 'tipoOutro', this.value)" class="${campo} mt-1">` : ''}
-                    </label>
-                    <label class="block">${rotulo('Vazão (L/H)')}
-                        <input type="number" value="${s.vazao}" min="0.1" step="0.1" inputmode="decimal" oninput="window.alterarSistemaBloco(${i}, 'vazao', this.value)" class="${campo}"></label>
-                    <label class="block">${rotulo('Aspersores')}
-                        <input type="number" value="${s.qtd}" min="1" step="1" inputmode="numeric" oninput="window.alterarSistemaBloco(${i}, 'qtd', this.value)" class="${campo}"></label>
-                    <label class="block">${rotulo('Válvulas')}
-                        <input type="number" value="${s.valvulas}" min="1" step="1" inputmode="numeric" oninput="window.alterarSistemaBloco(${i}, 'valvulas', this.value)" class="${campo}"></label>
-                    <button type="button" onclick="window.removerSistemaBloco(${i})" title="Remover este sistema"
-                        class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg justify-self-end"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                </div>`).join('');
+            // Chip (pílula) de escolha: verde quando selecionado
+            const chip = (ativo, onclick, icone, texto, extra) => `
+                <button type="button" onclick="${onclick}"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${ativo
+                        ? 'bg-green-600 border-green-600 text-white shadow-sm'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-green-400 hover:text-green-700'}">
+                    ${icone ? `<i data-lucide="${icone}" class="w-3.5 h-3.5"></i>` : ''}${texto}${extra || ''}</button>`;
+            const ICONES_TIPO = { 'MicroAspersor': 'droplets', 'Aspersor': 'cloud-drizzle', 'Fita Gotejo': 'droplet' };
+            const personalizados = tiposPersonalizados();
+
+            const sistemas = rascunhoBloco.map((s, i) => {
+                if (s.removido) return '';
+                const nomeAtual = nomeTipoSistema(s);
+                const ehPersonalizado = s.tipo === 'Outro' && personalizados.includes(nomeAtual);
+                const chipsTipo = TIPOS_ASPERSOR.map(t => chip(s.tipo === t, `window.escolherTipoSistema(${i}, '${t}')`, ICONES_TIPO[t], t)).join('')
+                    + personalizados.map((t, k) => chip(s.tipo === 'Outro' && nomeAtual === t, `window.escolherTipoPersonalizado(${i}, ${k})`, 'tag', escapeHtml(t))).join('')
+                    + chip(s.tipo === 'Outro' && !ehPersonalizado, `window.escolherTipoSistema(${i}, 'Outro', '')`, 'plus', 'Outro');
+                const sugestoes = vazoesSugeridas(nomeAtual);
+                const chipsVazao = sugestoes.length ? `
+                    <div class="flex flex-wrap items-center gap-1 mt-1">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-0.5"><i data-lucide="sparkles" class="w-3 h-3 text-amber-500"></i>Mais usadas:</span>
+                        ${sugestoes.map(v => `<button type="button" onclick="window.usarVazaoSugerida(${i}, ${v.vazao})" title="Usada em ${v.n} sistema${v.n > 1 ? 's' : ''}"
+                            class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${Number(s.vazao) === v.vazao ? 'bg-green-50 border-green-400 text-green-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-green-300'}">${fmtNum(v.vazao, v.vazao % 1 ? 1 : 0)}</button>`).join('')}
+                    </div>` : '';
+                return `
+                <div class="py-3">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            ${rotulo('Tipo de aspersor')}
+                            <div class="flex flex-wrap gap-1.5 mt-1">${chipsTipo}</div>
+                            ${s.tipo === 'Outro' && !ehPersonalizado ? `<input type="text" value="${escapeHtml(s.tipoOutro)}" maxlength="30" placeholder="Nome do aspersor (ex: Canhão)"
+                                oninput="window.alterarSistemaBloco(${i}, 'tipoOutro', this.value)"
+                                class="${campo} mt-1.5 max-w-xs">` : ''}
+                        </div>
+                        <button type="button" onclick="window.removerSistemaBloco(${i})" title="Remover este sistema"
+                            class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1.5 mt-2">
+                        <label class="block">${rotulo('Vazão (L/H)')}
+                            <input type="number" value="${s.vazao}" min="0.1" step="0.1" inputmode="decimal" oninput="window.alterarSistemaBloco(${i}, 'vazao', this.value)"
+                                class="${campo} ${s.vazaoAuto ? 'bg-amber-50 border-amber-200' : ''}" ${s.vazaoAuto ? 'title="Sugerida pela vazão mais usada desse tipo"' : ''}></label>
+                        <label class="block">${rotulo('Aspersores')}
+                            <input type="number" value="${s.qtd}" min="1" step="1" inputmode="numeric" oninput="window.alterarSistemaBloco(${i}, 'qtd', this.value)" class="${campo}"></label>
+                        <label class="block">${rotulo('Válvulas')}
+                            <input type="number" value="${s.valvulas}" min="1" step="1" inputmode="numeric" oninput="window.alterarSistemaBloco(${i}, 'valvulas', this.value)" class="${campo}"></label>
+                    </div>
+                    ${chipsVazao}
+                </div>`;
+            }).join('');
+
+            // Cultura: atalhos com as culturas já usadas + campo para digitar uma nova
+            const culturasUsadas = [...new Set(culturasCache.map(c => (c.cultura || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            const culturaSel = rascunhoCultura.trim().toLowerCase();
+            // "Outra": escolhida pelo botão ou cultura digitada que ainda não está na lista
+            const culturaOutra = culturaOutraAtiva || (!!culturaSel && !culturasUsadas.some(c => c.toLowerCase() === culturaSel));
+            const chipsCultura = culturasUsadas.map(c => chip(!culturaOutra && culturaSel === c.toLowerCase(),
+                `window.escolherCulturaBloco(${escapeHtml(JSON.stringify(c))})`, 'sprout', escapeHtml(c))).join('');
+
+            const novo = bloco === NOVO_BLOCO;
             return `
             <div class="border-2 border-amber-300 rounded-xl overflow-hidden col-span-full bg-white">
                 <div class="bg-amber-50 px-3 py-2 border-b border-amber-200 flex items-center justify-between gap-2">
-                    <span class="text-xs font-black text-amber-800 uppercase tracking-wide">Editando Bloco ${escapeHtml(bloco)}</span>
-                    <span class="text-[10px] font-bold text-amber-700 flex items-center gap-1"><i data-lucide="sprout" class="w-3.5 h-3.5"></i>${escapeHtml(culturaAtual || 'Sem cultura')}</span>
+                    <span class="text-xs font-black text-amber-800 uppercase tracking-wide">${novo ? 'Novo bloco' : 'Editando Bloco ' + escapeHtml(bloco)}</span>
+                    <span class="text-[10px] font-bold ${rascunhoCultura.trim() ? 'text-amber-700' : 'text-red-500'} flex items-center gap-1"><i data-lucide="sprout" class="w-3.5 h-3.5"></i>${escapeHtml(rascunhoCultura.trim() || 'Sem cultura')}</span>
                 </div>
                 <div class="px-3">
-                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest pt-2.5">Sistemas de aspersão</p>
+                    <div class="grid ${novo ? 'grid-cols-[0.6fr_1.4fr]' : 'grid-cols-1'} gap-1.5 pt-2.5">
+                        ${novo ? `<label class="block">${rotulo('Bloco')}
+                            <input type="text" id="dbEditCodigo" value="${escapeHtml(rascunhoCodigo)}" maxlength="3" placeholder="ex: 8 ou E"
+                                oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); rascunhoCodigo = this.value" class="${campo} font-bold"></label>` : ''}
+                        <label class="block">${rotulo('Sub nome (opcional)')}
+                            <input type="text" value="${escapeHtml(rascunhoApelido)}" maxlength="30" placeholder="ex: Tâmaras"
+                                oninput="rascunhoApelido = this.value" class="${campo}"></label>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">O sub nome aparece junto do bloco nos gráficos e relatórios, ex.: Bloco E (Tâmaras).</p>
+
+                    <div class="mt-3">
+                        ${rotulo('Cultura plantada <span class="text-red-400">*</span>')}
+                        <div class="flex flex-wrap gap-1.5 mt-1">${chipsCultura}${chip(culturaOutra, 'window.escolherCulturaOutra()', 'plus', 'Outra')}</div>
+                        ${culturaOutra ? `<input type="text" id="dbEditCulturaOutra" value="${escapeHtml(rascunhoCultura)}" maxlength="40" placeholder="Nome da cultura (ex: Melancia)"
+                            oninput="rascunhoCultura = this.value" class="${campo} mt-1.5 max-w-xs">` : ''}
+                    </div>
+
+                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest pt-3">Sistemas de aspersão</p>
                     <div class="divide-y divide-slate-100">${sistemas || '<p class="text-xs text-slate-400 py-3">Nenhum sistema. Ao salvar assim, o bloco sai da lista.</p>'}</div>
                     <button type="button" onclick="window.adicionarSistemaBloco()"
                         class="mt-1 w-full flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider py-2 rounded-lg border-2 border-dashed border-green-300 text-green-700 hover:bg-green-50">
@@ -8449,10 +8571,25 @@
         }
 
         window.salvarBloco = async function() {
-            const bloco = blocoEditando;
+            const novo = blocoEditando === NOVO_BLOCO;
+            const bloco = novo ? rascunhoCodigo.trim().toUpperCase() : blocoEditando;
             const erro = document.getElementById('dbEditErro');
             const mostrarErro = msg => { erro.innerText = msg; erro.classList.remove('hidden'); };
+            if (novo) {
+                if (!bloco) return mostrarErro("Informe o bloco (ex: 8 ou E).");
+                if (dadosBlocosCache.some(d => d.bloco === bloco)) return mostrarErro(`O Bloco ${bloco} já existe. Para alterar, toque no lápis dele na lista.`);
+                if (!rascunhoBloco.some(s => !s.removido)) return mostrarErro("Adicione pelo menos um sistema de aspersão.");
+            }
             if (!rascunhoBlocoData) return mostrarErro("Informe a data de atualização.");
+            const apelido = rascunhoApelido.replace(/\s+/g, ' ').trim();
+            const mudouApelido = apelido !== (apelidosBloco[bloco] || '');
+            // Cultura obrigatória (legenda do gráfico de saída); usa a grafia de uma já cadastrada, se for a mesma
+            let cultura = rascunhoCultura.replace(/\s+/g, ' ').trim();
+            const vaiFicarNaLista = rascunhoBloco.some(s => !s.removido);
+            if (!cultura && vaiFicarNaLista) return mostrarErro("Informe a cultura plantada no bloco.");
+            const igual = culturasCache.map(c => (c.cultura || '').trim()).find(c => c && c.toLowerCase() === cultura.toLowerCase());
+            cultura = igual || (cultura ? cultura.charAt(0).toUpperCase() + cultura.slice(1) : '');
+            const mudouCultura = !!cultura && cultura !== ((culturasCache.find(c => String(c.id) === bloco) || {}).cultura || '');
 
             // Confere cada sistema e monta o que muda no banco
             const salvar = [], excluir = [];
@@ -8476,19 +8613,23 @@
                 try {
                     for (const linha of salvar) await API.salvarDadoBloco(linha);
                     for (const id of excluir) await API.excluirDadoBloco(id);
+                    if (mudouApelido) await API.salvarApelidoBloco(bloco, apelido);
+                    if (mudouCultura) await API.salvarCultura(bloco, cultura);
                     blocoEditando = null;
                     await carregarDadosBlocos(true);
                     window.calcularConsumoProgramacao();
+                    if (mudouApelido) renderList();
                 } catch (err) {
                     // Parte pode ter sido gravada: recarrega e mantém o editor aberto com o erro
                     await carregarDadosBlocos(true);
-                    window.editarBloco(bloco);
+                    // Bloco novo que não chegou a ser gravado: mantém o que foi digitado
+                    if (!novo || dadosBlocosCache.some(d => d.bloco === bloco)) window.editarBloco(bloco);
                     const e = document.getElementById('dbEditErro');
                     if (e) { e.innerText = err.message; e.classList.remove('hidden'); }
                 }
             };
 
-            if (!salvar.length && !excluir.length) { window.editarBloco(null); return; }
+            if (!salvar.length && !excluir.length && !mudouApelido && !mudouCultura) { window.editarBloco(null); return; }
             if (rascunhoBloco.every(s => s.removido)) {
                 pendingConfirmCallback = aplicar;
                 window.showConfirmModal("Remover o bloco?",
@@ -8500,20 +8641,29 @@
 
         function renderDadosBlocos() {
             const lista = document.getElementById('dadosBlocosLista');
+            const editorNovo = blocoEditando === NOVO_BLOCO ? editorBlocoHtml(NOVO_BLOCO, '') : '';
             if (dadosBlocosCache.length === 0) {
-                lista.innerHTML = `<p class="text-xs text-slate-400">Nenhum dado cadastrado. Sem eles, os litros dos relatórios aparecem como "--".</p>`;
+                lista.innerHTML = editorNovo + `<p class="text-xs text-slate-400">Nenhum dado cadastrado. Sem eles, os litros dos relatórios aparecem como "--". Toque em "Novo bloco" para começar.</p>`;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
                 return;
             }
+
+            // Quem cadastrou e quem alterou cada sistema (linhas antigas, vindas da planilha, não têm autor)
+            const quandoFoi = iso => iso ? `${formatDate(dataLocalIso(new Date(iso)))} ${fmtHora(iso)}` : '';
+            const autoriaHtml = d => {
+                const partes = [];
+                if (d.criadoPor) partes.push(`Cadastrado por <b class="text-slate-500">${escapeHtml(nomeDoUsuario(d.criadoPor))}</b> em ${quandoFoi(d.criadoEm)}`);
+                const alterado = d.atualizadoPor && d.atualizadoEm && d.atualizadoEm !== d.criadoEm
+                    && new Date(d.atualizadoEm) - new Date(d.criadoEm) > 60000;
+                if (alterado) partes.push(`Alterado por <b class="text-slate-500">${escapeHtml(nomeDoUsuario(d.atualizadoPor))}</b> em ${quandoFoi(d.atualizadoEm)}`);
+                return partes.length ? `<p class="text-[10px] text-slate-400 mt-0.5">${partes.join(' · ')}</p>` : '';
+            };
 
             const grupos = {};
             dadosBlocosCache.forEach(d => { (grupos[d.bloco] = grupos[d.bloco] || []).push(d); });
             const chaves = Object.keys(grupos).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
-            // Sugestões de cultura para os campos (culturas já usadas em outros blocos)
-            const sugestoes = [...new Set(culturasCache.map(c => (c.cultura || '').trim()).filter(Boolean))].sort();
-            document.getElementById('listaCulturas').innerHTML = sugestoes.map(c => `<option value="${escapeHtml(c)}">`).join('');
-
-            lista.innerHTML = chaves.map(bloco => {
+            lista.innerHTML = editorNovo + chaves.map(bloco => {
                 const linhas = grupos[bloco];
                 const valvTotal = linhas.reduce((s, d) => s + d.valvulas, 0);
                 const aspTotal = linhas.reduce((s, d) => s + d.qtd, 0);
@@ -8528,24 +8678,28 @@
                     <div class="py-2 text-[11px]">
                         <p class="font-bold text-slate-700">${escapeHtml(d.tipo)} ${fmtNum(d.vazao, d.vazao % 1 ? 1 : 0)} L/H · ${fmtNum(d.qtd, 0)} aspersores</p>
                         <p class="text-slate-400">${d.valvulas} válvula${d.valvulas > 1 ? 's' : ''} · atualizado ${d.data ? formatDate(d.data) : '—'}</p>
+                        ${autoriaHtml(d)}
                     </div>`).join('');
 
                 return `
                 <div class="border border-slate-200 rounded-xl overflow-hidden">
                     <div class="bg-green-50 px-3 py-2 border-b border-green-100">
                         <div class="flex items-center justify-between gap-2">
-                            <span class="text-xs font-black text-green-800 uppercase tracking-wide">Bloco ${escapeHtml(bloco)}</span>
+                            <span class="text-xs font-black text-green-800 uppercase tracking-wide">Bloco ${escapeHtml(bloco)}${apelidosBloco[bloco]
+                                ? ` <span class="normal-case font-bold text-green-700">· ${escapeHtml(apelidosBloco[bloco])}</span>` : ''}</span>
                             <div class="flex items-center gap-1 min-w-0">
                                 <span class="text-[10px] font-bold text-green-700 truncate">${fmtNum(aspTotal, 0)} asp. · ${valvTotal} válv. · ≈ ${fmtNum(milLitrosHora, 3)} mil L/h</span>
                                 <button type="button" onclick="window.editarBloco('${escapeHtml(bloco)}')" title="Editar os sistemas de aspersão do bloco"
                                     class="p-1.5 text-green-700 hover:text-amber-600 hover:bg-amber-50 rounded-lg shrink-0"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1.5 mt-1.5">
-                            <i data-lucide="sprout" class="w-3.5 h-3.5 text-green-700 shrink-0"></i>
-                            <input type="text" value="${escapeHtml(culturaAtual)}" placeholder="Cultura (ex: Brócolis)" list="listaCulturas" maxlength="40"
-                                onchange="window.salvarCulturaBloco('${escapeHtml(bloco)}', this.value)"
-                                class="flex-1 min-w-0 bg-white border border-green-200 rounded-md py-1 px-2 text-[11px] font-bold text-slate-700">
+                        <div class="mt-1.5">
+                            ${culturaAtual
+                                ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-green-200 text-[11px] font-bold text-green-800">
+                                    <i data-lucide="sprout" class="w-3.5 h-3.5"></i>${escapeHtml(culturaAtual)}</span>`
+                                : `<button type="button" onclick="window.editarBloco('${escapeHtml(bloco)}')"
+                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-300 text-[11px] font-bold text-amber-700 hover:bg-amber-100">
+                                    <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>Sem cultura · definir</button>`}
                         </div>
                     </div>
                     <div class="px-3 divide-y divide-slate-100">${linhasHtml}</div>
@@ -8764,6 +8918,8 @@
                 const totalValv = blocos.reduce((s, b) => s + b.valv, 0);
                 const maisRecente = blocos.map(b => b.ultima).filter(Boolean).sort().pop();
                 const maisAntiga = blocos.map(b => b.ultima).filter(Boolean).sort()[0];
+                atualizarApelidos(culturas);
+                const nomePdf = bloco => apelidosBloco[bloco] ? `${bloco} (${apelidosBloco[bloco]})` : bloco;
                 const rotuloData = iso => iso ? `${formatDate(iso)} (há ${diasDesde(iso)} dia${diasDesde(iso) === 1 ? '' : 's'})` : '—';
 
                 const { jsPDF } = window.jspdf;
@@ -8811,7 +8967,7 @@
                 secao('Resumo por bloco');
                 tabela({
                     head: [['Bloco', 'Cultura', 'Aspersores', 'Válvulas', 'Vazão total (L/h)', 'Irrigação (mil L/h)', 'Última atualização']],
-                    body: blocos.map(b => [b.bloco === 'E' ? 'E (Tâmaras)' : b.bloco, b.cultura || '—', fmtNum(b.asp, 0), String(b.valv),
+                    body: blocos.map(b => [nomePdf(b.bloco), b.cultura || '—', fmtNum(b.asp, 0), String(b.valv),
                         fmtNum(b.vazao, 0), fmtNum(b.milLh, 3), rotuloData(b.ultima)]),
                     foot: [['Total', '', fmtNum(totalAsp, 0), String(totalValv), '', '', '']],
                     footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
@@ -8826,7 +8982,7 @@
                 secao('Detalhe por tipo de aspersor');
                 const corpo = [];
                 blocos.forEach(b => b.linhas.forEach((d, i) => corpo.push([
-                    i === 0 ? (b.bloco === 'E' ? 'E (Tâmaras)' : b.bloco) : '',
+                    i === 0 ? nomePdf(b.bloco) : '',
                     d.tipo, fmtNum(d.vazao, d.vazao % 1 ? 1 : 0), fmtNum(d.qtd, 0), String(d.valvulas),
                     fmtNum(d.qtd * d.vazao, 0), d.data ? formatDate(d.data) : '—'
                 ])));
@@ -8853,73 +9009,6 @@
                 btn.disabled = false;
                 btn.innerHTML = textoOriginal;
                 if(typeof lucide !== 'undefined') lucide.createIcons();
-            }
-        }
-
-        window.editarDadoBloco = function(id) {
-            const d = id == null ? null : dadosBlocosCache.find(x => x.id === id);
-            dadoBlocoEditando = d ? d.id : null;
-            document.getElementById('dadoBlocoErro').classList.add('hidden');
-            document.getElementById('dbBloco').value = d ? d.bloco : '';
-            document.getElementById('dbValvulas').value = d ? d.valvulas : '';
-            const tipoPadrao = !d || ['MicroAspersor', 'Aspersor', 'Fita Gotejo'].includes(d.tipo);
-            document.getElementById('dbTipo').value = tipoPadrao ? (d ? d.tipo : 'MicroAspersor') : 'Outro';
-            document.getElementById('dbTipoOutro').value = tipoPadrao ? '' : d.tipo;
-            window.alternarTipoOutro();
-            document.getElementById('dbVazao').value = d ? d.vazao : '';
-            document.getElementById('dbQtd').value = d ? d.qtd : '';
-            // Ao editar, sugere a data de hoje como nova data de atualização
-            document.getElementById('dbData').value = dataLocalIso();
-
-            document.getElementById('dadoBlocoFormTitulo').innerText = d ? `Editando Bloco ${d.bloco}` : 'Novo Sistema de Aspersão';
-            document.getElementById('dadoBlocoCancelar').classList.toggle('hidden', !d);
-            document.getElementById('dadoBlocoBtn').innerHTML = d
-                ? `<i data-lucide="save" class="w-4 h-4"></i> Salvar Alteração`
-                : `<i data-lucide="plus" class="w-4 h-4"></i> Adicionar Sistema`;
-            const form = document.getElementById('dadoBlocoForm');
-            form.classList.toggle('bg-amber-50', !!d);
-            if (d) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            renderDadosBlocos();
-        }
-
-        window.salvarDadoBloco = async function(e) {
-            e.preventDefault();
-            const erro = document.getElementById('dadoBlocoErro');
-            const btn = document.getElementById('dadoBlocoBtn');
-            const bloco = document.getElementById('dbBloco').value.trim().toUpperCase();
-            const valvulas = parseInt(document.getElementById('dbValvulas').value) || 0;
-            const vazao = lerNumero('dbVazao');
-            const qtd = parseInt(document.getElementById('dbQtd').value) || 0;
-            const tipoSel = document.getElementById('dbTipo').value;
-            // Sem números no nome, para não confundir a leitura da vazão
-            const tipo = tipoSel === 'Outro' ? document.getElementById('dbTipoOutro').value.replace(/[\d.,]/g, '').replace(/\s+/g, ' ').trim() : tipoSel;
-            erro.classList.add('hidden');
-
-            if (!bloco || valvulas < 1 || !vazao || qtd < 1) {
-                erro.innerText = "Preencha bloco, válvulas, vazão e quantidade de aspersores.";
-                erro.classList.remove('hidden');
-                return;
-            }
-            if (!tipo) {
-                erro.innerText = "Digite o nome do aspersor (sem números).";
-                erro.classList.remove('hidden');
-                return;
-            }
-
-            const linha = linhaDadoBloco(bloco, { tipo, vazao, qtd, valvulas }, document.getElementById('dbData').value);
-            if (dadoBlocoEditando) linha.id = dadoBlocoEditando;
-
-            btn.disabled = true;
-            try {
-                await API.salvarDadoBloco(linha);
-                window.editarDadoBloco(null);
-                await carregarDadosBlocos(true);
-                window.calcularConsumoProgramacao();
-            } catch (err) {
-                erro.innerText = err.message;
-                erro.classList.remove('hidden');
-            } finally {
-                btn.disabled = false;
             }
         }
 
@@ -10091,6 +10180,7 @@
             renderList();
             iniciarTempoReal();
             window.updateProgLockUI();
+            API.listarCulturas().then(c => { atualizarApelidos(c); renderList(); }).catch(() => {});
             await carregarPerfis();
             window.calcularConsumoProgramacao();
             API.sincronizar();
