@@ -995,9 +995,18 @@
             .filter(l => { const t = new Date(l.data_hora); return t >= inicio && t < fim; });
     }
 
-    // Cultura de cada bloco (legenda do gráfico de saída)
+    // Cultura e sub nome de cada bloco (legenda do gráfico de saída, nomes dos blocos)
     async function listarCulturas() {
-        return buscarComCache('culturas_bloco', () => sb.from('culturas_bloco').select('id,cultura'), 10 * 60 * 1000).catch(() => []);
+        return buscarComCache('culturas_bloco', () => sb.from('culturas_bloco').select('*'), 10 * 60 * 1000).catch(() => []);
+    }
+
+    // Sub nome do bloco (ex.: Tâmaras). Somente gestor, precisa de internet
+    async function salvarApelidoBloco(bloco, apelido) {
+        if (!navigator.onLine) throw new Error("Sem conexão. Alterar o sub nome precisa de internet.");
+        const resp = await sb.from('culturas_bloco').upsert({ id: String(bloco), apelido: apelido || null }, { onConflict: 'id' }).select().maybeSingle();
+        if (resp.error) throw erroSupabase(resp);
+        if (!resp.data) throw new Error("Sem permissão para alterar o sub nome.");
+        localStorage.removeItem(K.cache('culturas_bloco'));
     }
 
     // Somente gestor, precisa de internet
@@ -1287,7 +1296,7 @@
         excluirCadastro, listarManutencoes, salvarManutencao, excluirManutencao,
         // balanço de água
         lerConfiguracao, salvarConfiguracao, listarHorasPocoPeriodo, salvarHorasPoco, listarRegistrosPeriodo, listarLeiturasPocoPeriodo,
-        listarCulturas, salvarCultura,
+        listarCulturas, salvarCultura, salvarApelidoBloco,
         // tempo real (registros dos outros irrigadores)
         listarRegistrosEquipe, listarMeusRegistros, listarRegistrosDia, assinarRegistros, cancelarAssinaturaRegistros, assinarAgua,
         // auditoria e sessões
