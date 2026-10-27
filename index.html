@@ -1118,65 +1118,55 @@
 
         <!-- ===== CADASTRO DE POÇOS ===== -->
         <div id="cadSecPocos" class="cad-sec">
-            <div class="cad-card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
                     <i data-lucide="droplet" class="w-5 h-5 text-white opacity-90"></i>
-                    <h2 class="text-base font-bold text-white">Cadastro de Poços</h2>
-                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Gestor</span>
-                </div>
-                <form onsubmit="window.addPoco(event)" class="cad-form px-5 py-4 border-b border-slate-100">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Novo Poço</p>
-                    <div class="grid grid-cols-3 gap-2">
-                        <input type="text" id="novoPocoNumero" required placeholder="Nº" maxlength="10"
-                            class="col-span-1 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
-                        <input type="text" id="novoPocoNome" placeholder="Nome / local (opcional)"
-                            class="col-span-2 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                    <div>
+                        <h2 class="text-base font-bold text-white leading-tight">Cadastro de Poços</h2>
+                        <p id="cadContagem_poco" class="text-[10px] text-slate-300 font-medium"></p>
                     </div>
-                    <button type="submit" class="mt-2 w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                        <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Poço
+                    <button type="button" onclick="window.novoCadastro('poco')"
+                        class="ml-auto flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-white text-slate-800 hover:bg-slate-100 shadow-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Novo poço
                     </button>
-                </form>
-                <div class="px-5 py-4">
-                    <div class="flex items-center justify-between gap-2 mb-2.5">
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Poços cadastrados</p>
-                        <span id="cadastrosPocosContagem" class="text-[10px] font-bold text-slate-400"></span>
-                    </div>
-                    <p class="text-[10px] text-slate-400 mb-2">Toque no poço para abrir a ficha.</p>
-                    <div id="cadastrosPocosLista" class="cad-lista grid sm:grid-cols-2 gap-2 text-xs"></div>
+                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white">Gestor</span>
                 </div>
+                <div class="px-5 pt-4 flex flex-wrap items-center gap-2">
+                    <div id="cadFiltros_poco" class="flex flex-wrap gap-1.5"></div>
+                    <div class="relative ml-auto w-full sm:w-56">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+                        <input type="search" id="cadBusca_poco" placeholder="Buscar" oninput="window.renderCadastrosBusca()"
+                            class="w-full bg-slate-50 border-2 border-slate-200 rounded-full py-1.5 pl-8 pr-3 text-xs text-slate-800">
+                    </div>
+                </div>
+                <div id="cadLista_poco" class="cad-lista px-5 py-4 grid sm:grid-cols-2 gap-2 text-xs"></div>
             </div>
         </div>
 
         <!-- ===== CADASTRO DE RESERVATÓRIOS ===== -->
         <div id="cadSecReserv" class="cad-sec hidden">
-            <div class="cad-card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
                     <i data-lucide="container" class="w-5 h-5 text-white opacity-90"></i>
-                    <h2 class="text-base font-bold text-white">Cadastro de Reservatórios</h2>
-                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Gestor</span>
-                </div>
-                <form onsubmit="window.addReservatorio(event)" class="cad-form px-5 py-4 border-b border-slate-100">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Novo Reservatório</p>
-                    <input type="text" id="novoReservNome" required placeholder="Nome (ex: Reservatório Principal)"
-                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all mb-2">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="novoReservAltura" step="0.01" min="0" inputmode="decimal" placeholder="Altura máx. (m)"
-                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                        <input type="number" id="novoReservCapacidade" step="0.01" min="0" inputmode="decimal" placeholder="Capacidade (m³)"
-                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                    <div>
+                        <h2 class="text-base font-bold text-white leading-tight">Cadastro de Reservatórios</h2>
+                        <p id="cadContagem_reservatorio" class="text-[10px] text-slate-300 font-medium"></p>
                     </div>
-                    <p class="text-[10px] text-slate-400 font-medium mt-1.5">Altura e capacidade são opcionais; servem para mostrar o % cheio e o volume estimado.</p>
-                    <button type="submit" class="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                        <i data-lucide="plus" class="w-4 h-4"></i> Adicionar Reservatório
+                    <button type="button" onclick="window.novoCadastro('reservatorio')"
+                        class="ml-auto flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-white text-slate-800 hover:bg-slate-100 shadow-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Novo reservatório
                     </button>
-                </form>
-                <div class="px-5 py-4">
-                    <div class="flex items-center justify-between gap-2 mb-2.5">
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Reservatórios cadastrados</p>
-                        <span id="cadastrosReservContagem" class="text-[10px] font-bold text-slate-400"></span>
-                    </div>
-                    <div id="cadastrosReservLista" class="cad-lista grid sm:grid-cols-2 gap-2 text-xs"></div>
+                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white">Gestor</span>
                 </div>
+                <div class="px-5 pt-4 flex flex-wrap items-center gap-2">
+                    <div id="cadFiltros_reservatorio" class="flex flex-wrap gap-1.5"></div>
+                    <div class="relative ml-auto w-full sm:w-56">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+                        <input type="search" id="cadBusca_reservatorio" placeholder="Buscar" oninput="window.renderCadastrosBusca()"
+                            class="w-full bg-slate-50 border-2 border-slate-200 rounded-full py-1.5 pl-8 pr-3 text-xs text-slate-800">
+                    </div>
+                </div>
+                <div id="cadLista_reservatorio" class="cad-lista px-5 py-4 grid sm:grid-cols-2 gap-2 text-xs"></div>
             </div>
         </div>
 
@@ -1207,49 +1197,29 @@
 
         <!-- ===== USUÁRIOS (SOMENTE ADMINISTRADOR) ===== -->
         <div id="cadSecUsuarios" class="cad-sec hidden">
-            <div class="cad-card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
                     <i data-lucide="users" class="w-5 h-5 text-white opacity-90"></i>
-                    <h2 class="text-base font-bold text-white">Usuários</h2>
-                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white ml-auto">Admin</span>
+                    <div>
+                        <h2 class="text-base font-bold text-white leading-tight">Usuários</h2>
+                        <p id="usuariosContagem" class="text-[10px] text-slate-300 font-medium"></p>
+                    </div>
+                    <button type="button" onclick="window.novoUsuario()"
+                        class="ml-auto flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-white text-slate-800 hover:bg-slate-100 shadow-sm">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i> Novo usuário
+                    </button>
+                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white">Admin</span>
                 </div>
-            <!-- NOVO USUÁRIO -->
-            <form onsubmit="window.criarUsuario(event)" class="cad-form px-5 py-4 border-b border-slate-100 space-y-2">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Novo Usuário</p>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="novoUsuarioLogin" required placeholder="Usuário (ex: joao)" autocapitalize="none" spellcheck="false" maxlength="30"
-                        oninput="this.value = this.value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9._-]/g, '')"
-                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-800 transition-all">
-                    <input type="password" id="novoUsuarioSenha" required minlength="6" placeholder="Senha (mín. 6)" autocomplete="new-password"
-                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
+                <div class="px-5 pt-4 flex flex-wrap items-center gap-2">
+                    <div id="usuariosFiltros" class="flex flex-wrap gap-1.5"></div>
+                    <div class="relative ml-auto w-full sm:w-56">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+                        <input type="search" id="usuariosBusca" placeholder="Buscar por nome ou usuário" oninput="window.renderUsuariosBusca()"
+                            class="w-full bg-slate-50 border-2 border-slate-200 rounded-full py-1.5 pl-8 pr-3 text-xs text-slate-800">
+                    </div>
                 </div>
-                <input type="text" id="novoUsuarioNome" required placeholder="Nome completo (aparece no relatório)"
-                    oninput="this.value = this.value.toUpperCase()"
-                    class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="novoUsuarioNomeCurto" placeholder="Nome curto (ex: João Silva)"
-                        class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm text-slate-800 transition-all">
-                    <select id="novoUsuarioPapel" class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-bold text-slate-700 outline-none">
-                        <option value="irrigador">Irrigador</option>
-                        <option value="gestor">Gestor</option>
-                    </select>
-                </div>
-                <p id="novoUsuarioErro" class="hidden text-xs font-bold text-red-500"></p>
-                <button type="submit" id="novoUsuarioBtn"
-                    class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                    <i data-lucide="user-plus" class="w-4 h-4"></i> Criar Usuário
-                </button>
-                <p class="text-[10px] text-slate-400 leading-relaxed">A pessoa entra no app com o usuário e a senha definidos aqui. Precisa de internet.</p>
-            </form>
-
-            <!-- LISTA -->
-            <div class="px-5 py-4">
-                <div class="flex items-center justify-between gap-2 mb-2.5">
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Usuários cadastrados</p>
-                    <span id="usuariosContagem" class="text-[10px] font-bold text-slate-400"></span>
-                </div>
-                <div id="usersList" class="cad-lista grid sm:grid-cols-2 gap-2"></div>
-            </div>
+                <div id="usersList" class="cad-lista px-5 py-4 grid sm:grid-cols-2 gap-2"></div>
+                <p class="px-5 pb-4 text-[10px] text-slate-400 leading-relaxed">A pessoa entra no app com o usuário e a senha definidos aqui. Criar, editar e trocar senha precisam de internet.</p>
             </div>
         </div>
     </div>
@@ -5016,7 +4986,6 @@
             if (secao === 'blocos') carregarDadosBlocos(false);
             if (secao === 'usuarios') {
                 usuarioEditando = null;
-                document.getElementById('novoUsuarioErro').classList.add('hidden');
                 recarregarUsuarios();
             }
             if(typeof lucide !== 'undefined') lucide.createIcons();
@@ -5386,92 +5355,7 @@
                 }).join('');
 
             // Cadastros (gestor), cada um na sua sub-aba
-            const campo = 'bg-white border-2 border-slate-200 rounded-lg py-1.5 px-2 text-xs text-slate-800';
-            const formEdicaoCadastro = (tipo, item) => {
-                const id = escapeHtml(item.id);
-                const campos = tipo === 'poco'
-                    ? `<div class="grid grid-cols-3 gap-1.5">
-                           <input type="text" id="editCad_numero" value="${escapeHtml(item.numero)}" maxlength="10" placeholder="Nº" class="${campo} col-span-1 font-bold">
-                           <input type="text" id="editCad_nome" value="${escapeHtml(item.nome || '')}" placeholder="Nome / local (opcional)" class="${campo} col-span-2">
-                       </div>`
-                    : `<input type="text" id="editCad_nome" value="${escapeHtml(item.nome)}" placeholder="Nome" class="${campo} w-full font-bold mb-1.5">
-                       <div class="grid grid-cols-2 gap-1.5">
-                           <input type="number" id="editCad_altura" value="${item.altura_maxima_m ?? ''}" step="0.01" min="0" inputmode="decimal" placeholder="Altura máx. (m)" class="${campo}">
-                           <input type="number" id="editCad_capacidade" value="${item.capacidade_m3 ?? ''}" step="0.01" min="0" inputmode="decimal" placeholder="Capacidade (m³)" class="${campo}">
-                       </div>`;
-                return `
-                <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5 col-span-full">
-                    ${campos}
-                    <div class="flex gap-1.5">
-                        <button type="button" onclick="window.editarCadastro(null)" class="flex-1 bg-slate-200 text-slate-600 font-bold py-1.5 rounded-lg text-[11px]">Cancelar</button>
-                        <button type="button" onclick="window.salvarEdicaoCadastro('${tipo}', '${id}')" class="flex-1 bg-slate-800 text-white font-bold py-1.5 rounded-lg text-[11px]">Salvar</button>
-                    </div>
-                </div>`;
-            };
-            // Cartão de cada cadastro: tocar no cartão abre a ficha (poço) ou a edição (reservatório)
-            const cartaoCadastro = (tipo, item) => {
-                if (cadastroEditando && cadastroEditando.tipo === tipo && cadastroEditando.id === item.id) return formEdicaoCadastro(tipo, item);
-                const id = escapeHtml(item.id);
-                const ehPoco = tipo === 'poco';
-                const ativo = item.ativo !== false;
-                const ultima = ehPoco
-                    ? leiturasPocoCache.find(l => l.poco_id === item.id)
-                    : leiturasReservCache.find(l => l.reservatorio_id === item.id);
-                const horas = ehPoco ? horasPadraoDoPoco(item) : 0;
-                const detalhes = (ehPoco
-                    ? [item.nome, item.motor, `Bombeia ${fmtNum(horas, horas % 1 ? 1 : 0)} h/dia`]
-                    : [item.altura_maxima_m ? 'máx. ' + fmtNum(item.altura_maxima_m, 2) + ' m' : '', item.capacidade_m3 ? fmtNum(item.capacidade_m3, 0) + ' m³' : '']
-                ).filter(Boolean).map(escapeHtml).join(' · ') || 'Sem detalhes cadastrados';
-                const corStatus = !ativo || !ultima ? 'bg-slate-300' : ehPoco && ultima.status === 'desligado' ? 'bg-rose-500' : 'bg-emerald-500';
-                const situacao = !ativo ? 'Desativado'
-                    : !ultima ? 'Sem leituras'
-                    : `Última leitura ${fmtDataHora(ultima.data_hora)}${ehPoco && ultima.status === 'desligado' ? ' · desligado' : ''}`;
-                const outorga = ehPoco ? situacaoOutorga(item.outorga_validade) : null;
-                const abrir = ehPoco ? `window.abrirFichaPoco('${id}')` : `window.editarCadastro('${tipo}', '${id}')`;
-                const cor = ehPoco ? { fundo: 'bg-teal-50 text-teal-700', borda: 'hover:border-teal-300', seta: 'group-hover:text-teal-500' }
-                                   : { fundo: 'bg-indigo-50 text-indigo-700', borda: 'hover:border-indigo-300', seta: 'group-hover:text-indigo-500' };
-                return `
-                <div role="button" tabindex="0" onclick="${abrir}" onkeydown="if (event.key === 'Enter') ${abrir}"
-                    title="${ehPoco ? 'Abrir a ficha do poço' : 'Editar reservatório'}"
-                    class="group flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white ${cor.borda} hover:shadow-sm transition-all cursor-pointer ${ativo ? '' : 'opacity-60'}">
-                    <div class="relative w-11 h-11 rounded-xl ${cor.fundo} flex items-center justify-center text-sm font-black shrink-0">
-                        ${ehPoco ? escapeHtml(item.numero) : '<i data-lucide="container" class="w-5 h-5"></i>'}
-                        <span class="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${corStatus}"></span>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-sm font-black text-slate-800 truncate ${ativo ? '' : 'line-through'}">${ehPoco ? 'Poço ' + escapeHtml(item.numero) : escapeHtml(item.nome)}</p>
-                        <p class="text-[11px] text-slate-500 truncate">${detalhes}</p>
-                        <p class="text-[10px] font-bold text-slate-400 truncate">${situacao}</p>
-                        ${outorga && outorga.nivel !== 'ok' ? `<p class="text-[10px] font-bold ${outorga.cor} truncate flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3 shrink-0"></i>${outorga.texto}</p>` : ''}
-                    </div>
-                    <div class="flex items-center gap-0.5 shrink-0" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
-                        ${ehPoco ? `<button type="button" onclick="window.abrirFichaPoco('${id}')"
-                            class="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 mr-1 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100">
-                            <i data-lucide="file-text" class="w-3 h-3"></i> Ficha</button>` : ''}
-                        <button type="button" onclick="window.editarCadastro('${tipo}', '${id}')" title="${ehPoco ? 'Editar número e nome' : 'Editar'}"
-                            class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
-                        <button type="button" onclick="window.excluirCadastro('${tipo}', '${id}')" title="Excluir"
-                            class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                        <button type="button" role="switch" aria-checked="${ativo}" onclick="window.alternarAtivo('${tipo}', '${id}')" title="${ativo ? 'Ativo (toque para desativar)' : 'Desativado (toque para reativar)'}"
-                            class="relative inline-block w-9 h-5 ml-1 rounded-full transition-colors ${ativo ? 'bg-emerald-500' : 'bg-slate-300'}">
-                            <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${ativo ? 'translate-x-4' : ''}"></span>
-                        </button>
-                    </div>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 ${cor.seta} shrink-0"></i>
-                </div>`;
-            };
-            const contagem = lista => {
-                const ativos = lista.filter(x => x.ativo !== false).length;
-                return `${ativos} ativo${ativos === 1 ? '' : 's'}${lista.length > ativos ? ` · ${lista.length - ativos} desativado${lista.length - ativos === 1 ? '' : 's'}` : ''}`;
-            };
-            document.getElementById('cadastrosPocosContagem').innerText = pocosCache.length ? contagem(pocosCache) : '';
-            document.getElementById('cadastrosReservContagem').innerText = reservCache.length ? contagem(reservCache) : '';
-            document.getElementById('cadastrosPocosLista').innerHTML = pocosCache.length === 0
-                ? `<p class="text-slate-400 py-2 col-span-full">Nenhum poço cadastrado ainda.</p>`
-                : pocosCache.map(p => cartaoCadastro('poco', p)).join('');
-            document.getElementById('cadastrosReservLista').innerHTML = reservCache.length === 0
-                ? `<p class="text-slate-400 py-2 col-span-full">Nenhum reservatório cadastrado ainda.</p>`
-                : reservCache.map(r => cartaoCadastro('reservatorio', r)).join('');
+            renderCadastrosAgua();
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -5731,40 +5615,6 @@
                 window.carregarAgua();
             };
             window.showConfirmModal("Excluir Leitura?", "Tem certeza que deseja apagar esta leitura do reservatório?", "EXCLUIR");
-        }
-
-        window.addPoco = function(e) {
-            e.preventDefault();
-            if (!API.isGestor()) return;
-            // "1" vira "01", no mesmo padrão "Poço 01 ... Poço 17"
-            let numero = document.getElementById('novoPocoNumero').value.trim().toUpperCase();
-            if (/^\d$/.test(numero)) numero = numero.padStart(2, '0');
-            const nome = document.getElementById('novoPocoNome').value.trim();
-            if (pocosCache.some(p => String(p.numero).toUpperCase() === numero)) {
-                window.showAlert("Poço já cadastrado", `Já existe um poço com o número ${numero}.`);
-                return;
-            }
-            API.salvarPoco({ numero, nome: nome || null });
-            document.getElementById('novoPocoNumero').value = '';
-            document.getElementById('novoPocoNome').value = '';
-            window.carregarAgua();
-        }
-
-        window.addReservatorio = function(e) {
-            e.preventDefault();
-            if (!API.isGestor()) return;
-            const nome = document.getElementById('novoReservNome').value.trim();
-            if (reservCache.some(r => r.nome.toLowerCase() === nome.toLowerCase())) {
-                window.showAlert("Reservatório já cadastrado", `Já existe um reservatório chamado "${nome}".`);
-                return;
-            }
-            API.salvarReservatorio({
-                nome,
-                altura_maxima_m: lerNumero('novoReservAltura'),
-                capacidade_m3: lerNumero('novoReservCapacidade')
-            });
-            ['novoReservNome', 'novoReservAltura', 'novoReservCapacidade'].forEach(id => document.getElementById(id).value = '');
-            window.carregarAgua();
         }
 
         // ----- Ficha do poço (dados técnicos + manutenções) -----
@@ -6144,42 +5994,255 @@
         }
 
         // ----- Editar / excluir poços e reservatórios (gestor) -----
-        let cadastroEditando = null; // { tipo: 'poco' | 'reservatorio', id }
+        // Mesmo padrão dos blocos e usuários: botão "Novo" no cabeçalho, filtros, busca e um editor só
+        let cadastroEditando = null; // { tipo: 'poco' | 'reservatorio', id } (id = NOVO_CADASTRO no novo)
+        let rascunhoCadastro = {};
+        const filtroCadastro = { poco: 'ativos', reservatorio: 'ativos' };
+        const NOVO_CADASTRO = '__novo__';
+
+        // "1" vira "01", no mesmo padrão "Poço 01 ... Poço 17"
+        const normalizarNumeroPoco = n => { const v = String(n || '').trim().toUpperCase(); return /^\d$/.test(v) ? v.padStart(2, '0') : v; };
+
+        // Próximo número livre depois do maior número cadastrado (ex.: 17 -> 18)
+        function proximoNumeroPoco() {
+            const nums = pocosCache.map(p => parseInt(p.numero)).filter(n => !isNaN(n));
+            let n = nums.length ? Math.max(...nums) + 1 : 1;
+            while (pocosCache.some(p => String(p.numero) === normalizarNumeroPoco(String(n)))) n++;
+            return normalizarNumeroPoco(String(n));
+        }
+
+        window.novoCadastro = function(tipo) {
+            window.editarCadastro(tipo, NOVO_CADASTRO);
+            const campo = document.getElementById(tipo === 'poco' ? 'editCad_numero' : 'editCad_nome');
+            if (campo) { campo.scrollIntoView({ behavior: 'smooth', block: 'center' }); campo.focus(); campo.select(); }
+        }
 
         window.editarCadastro = function(tipo, id) {
             cadastroEditando = tipo ? { tipo, id } : null;
-            renderAgua();
+            const item = !tipo || id === NOVO_CADASTRO ? null : (tipo === 'poco' ? pocosCache : reservCache).find(x => x.id === id);
+            rascunhoCadastro = tipo === 'poco'
+                ? { numero: item ? item.numero : proximoNumeroPoco(), nome: item ? item.nome || '' : '',
+                    horas: item ? horasPadraoDoPoco(item) : 24 }
+                : { nome: item ? item.nome : '', altura: item ? item.altura_maxima_m ?? '' : '', capacidade: item ? item.capacidade_m3 ?? '' : '' };
+            renderCadastrosAgua();
         }
 
-        window.salvarEdicaoCadastro = function(tipo, id) {
-            if (!API.isGestor()) return;
-            if (tipo === 'poco') {
-                const p = pocosCache.find(x => x.id === id);
-                if (!p) return;
-                let numero = document.getElementById('editCad_numero').value.trim().toUpperCase();
-                if (/^\d$/.test(numero)) numero = numero.padStart(2, '0');
-                const nome = document.getElementById('editCad_nome').value.trim();
-                if (!numero) { window.showAlert("Número obrigatório", "Informe o número do poço."); return; }
-                if (pocosCache.some(x => x.id !== id && String(x.numero).toUpperCase() === numero)) {
-                    window.showAlert("Poço já cadastrado", `Já existe outro poço com o número ${numero}.`);
-                    return;
-                }
-                API.salvarPoco({ id: p.id, numero, nome: nome || null, observacao: p.observacao, ativo: p.ativo !== false });
+        window.alterarRascunhoCadastro = function(campo, valor) { rascunhoCadastro[campo] = valor; }
+
+        window.escolherHorasPoco = function(horas) {
+            rascunhoCadastro.horas = horas;
+            renderCadastrosAgua();
+        }
+
+        window.renderCadastrosBusca = function() { renderCadastrosAgua(); }
+
+        window.filtrarCadastro = function(tipo, filtro) {
+            filtroCadastro[tipo] = filtro;
+            renderCadastrosAgua();
+        }
+
+        function editorCadastroHtml(tipo, item) {
+            const novo = !item;
+            const ehPoco = tipo === 'poco';
+            const r = rascunhoCadastro;
+            const campo = 'w-full bg-white border-2 border-slate-200 rounded-lg py-1.5 px-2 text-xs text-slate-800';
+            const rotulo = t => `<span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">${t}</span>`;
+            const titulo = novo ? (ehPoco ? 'Novo poço' : 'Novo reservatório') : (ehPoco ? `Editando Poço ${escapeHtml(item.numero)}` : `Editando ${escapeHtml(item.nome)}`);
+            let corpo;
+            if (ehPoco) {
+                const horasAtual = Number(String(r.horas).replace(',', '.'));
+                const chipHoras = h => `<button type="button" onclick="window.escolherHorasPoco(${h})"
+                    class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${horasAtual === h
+                        ? 'bg-teal-600 border-teal-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-700'}">${h} h</button>`;
+                corpo = `
+                    <div class="grid grid-cols-[0.5fr_1.5fr] gap-1.5">
+                        <label class="block">${rotulo('Número <span class="text-red-400">*</span>')}
+                            <input type="text" id="editCad_numero" value="${escapeHtml(r.numero)}" maxlength="10" placeholder="ex: 18"
+                                oninput="window.alterarRascunhoCadastro('numero', this.value)" class="${campo} font-bold"></label>
+                        <label class="block">${rotulo('Nome / local (opcional)')}
+                            <input type="text" id="editCad_nome" value="${escapeHtml(r.nome)}" maxlength="40" placeholder="ex: Perto do galpão"
+                                oninput="window.alterarRascunhoCadastro('nome', this.value)" class="${campo}"></label>
+                    </div>
+                    ${novo ? '<p class="text-[10px] text-slate-400 mt-1">Número sugerido: o próximo depois do maior cadastrado.</p>' : ''}
+                    <div class="mt-3">
+                        ${rotulo('Horas ligado por dia (padrão)')}
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                            ${[24, 20, 16, 12, 8].map(chipHoras).join('')}
+                            <input type="number" value="${escapeHtml(r.horas)}" min="0.5" max="24" step="0.5" inputmode="decimal" title="Outro valor"
+                                oninput="window.alterarRascunhoCadastro('horas', this.value)" class="${campo} !w-20">
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">Usado no balanço de água. As leituras do dia atualizam esse valor.</p>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-3 flex items-center gap-1"><i data-lucide="file-text" class="w-3.5 h-3.5 text-teal-600"></i>
+                        Profundidade, motor, outorga e manutenções ficam na <b>ficha do poço</b>${novo ? ' (abre depois de salvar)' : ''}.</p>`;
             } else {
-                const r = reservCache.find(x => x.id === id);
-                if (!r) return;
-                const nome = document.getElementById('editCad_nome').value.trim();
-                if (!nome) { window.showAlert("Nome obrigatório", "Informe o nome do reservatório."); return; }
-                if (reservCache.some(x => x.id !== id && x.nome.toLowerCase() === nome.toLowerCase())) {
-                    window.showAlert("Reservatório já cadastrado", `Já existe outro reservatório chamado "${nome}".`);
-                    return;
+                const alt = Number(String(r.altura).replace(',', '.')), cap = Number(String(r.capacidade).replace(',', '.'));
+                corpo = `
+                    <label class="block">${rotulo('Nome <span class="text-red-400">*</span>')}
+                        <input type="text" id="editCad_nome" value="${escapeHtml(r.nome)}" maxlength="50" placeholder="ex: Reservatório Principal"
+                            oninput="window.alterarRascunhoCadastro('nome', this.value)" class="${campo} font-bold"></label>
+                    <div class="grid grid-cols-2 gap-1.5 mt-2">
+                        <label class="block">${rotulo('Altura máxima (m)')}
+                            <input type="number" value="${escapeHtml(r.altura)}" step="0.01" min="0" inputmode="decimal" placeholder="ex: 4,5"
+                                oninput="window.alterarRascunhoCadastro('altura', this.value)" class="${campo}"></label>
+                        <label class="block">${rotulo('Capacidade (m³)')}
+                            <input type="number" value="${escapeHtml(r.capacidade)}" step="0.01" min="0" inputmode="decimal" placeholder="ex: 1200"
+                                oninput="window.alterarRascunhoCadastro('capacidade', this.value)" class="${campo}"></label>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">Opcionais: servem para mostrar o % cheio e o volume estimado${alt > 0 && cap > 0 ? ` (≈ ${fmtNum(cap / alt, 1)} m³ por metro de nível)` : ''}.</p>`;
+            }
+            return `
+            <div class="border-2 border-amber-300 rounded-xl overflow-hidden col-span-full bg-white">
+                <div class="bg-amber-50 px-3 py-2 border-b border-amber-200 flex items-center justify-between gap-2">
+                    <span class="text-xs font-black text-amber-800 uppercase tracking-wide">${titulo}</span>
+                    ${!novo && ehPoco ? `<button type="button" onclick="window.abrirFichaPoco('${escapeHtml(item.id)}')"
+                        class="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-white text-teal-700 border border-teal-200 hover:bg-teal-50">
+                        <i data-lucide="file-text" class="w-3 h-3"></i> Ficha</button>` : ''}
+                </div>
+                <div class="px-3 pt-2.5">
+                    ${corpo}
+                    <p id="editCadErro" class="hidden text-xs font-bold text-red-500 mt-2"></p>
+                    <div class="flex gap-2 py-3">
+                        <button type="button" onclick="window.editarCadastro(null)" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
+                        <button type="button" onclick="window.salvarCadastroAgua()"
+                            class="flex-1 ${ehPoco ? 'bg-teal-600 hover:bg-teal-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                            <i data-lucide="${novo ? 'plus' : 'save'}" class="w-4 h-4"></i> ${novo ? (ehPoco ? 'Adicionar Poço' : 'Adicionar Reservatório') : 'Salvar'}</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        // Cartão de cada cadastro: tocar no cartão abre a ficha (poço) ou a edição (reservatório)
+        function cartaoCadastroHtml(tipo, item) {
+            const id = escapeHtml(item.id);
+            const ehPoco = tipo === 'poco';
+            const ativo = item.ativo !== false;
+            const ultima = ehPoco
+                ? leiturasPocoCache.find(l => l.poco_id === item.id)
+                : leiturasReservCache.find(l => l.reservatorio_id === item.id);
+            const horas = ehPoco ? horasPadraoDoPoco(item) : 0;
+            const detalhes = (ehPoco
+                ? [item.nome, item.motor, `Bombeia ${fmtNum(horas, horas % 1 ? 1 : 0)} h/dia`]
+                : [item.altura_maxima_m ? 'máx. ' + fmtNum(item.altura_maxima_m, 2) + ' m' : '', item.capacidade_m3 ? fmtNum(item.capacidade_m3, 0) + ' m³' : '']
+            ).filter(Boolean).map(escapeHtml).join(' · ') || 'Sem detalhes cadastrados';
+            const corStatus = !ativo || !ultima ? 'bg-slate-300' : ehPoco && ultima.status === 'desligado' ? 'bg-rose-500' : 'bg-emerald-500';
+            const situacao = !ativo ? 'Desativado'
+                : !ultima ? 'Sem leituras'
+                : `Última leitura ${fmtDataHora(ultima.data_hora)}${ehPoco && ultima.status === 'desligado' ? ' · desligado' : ''}`;
+            const outorga = ehPoco ? situacaoOutorga(item.outorga_validade) : null;
+            const abrir = ehPoco ? `window.abrirFichaPoco('${id}')` : `window.editarCadastro('${tipo}', '${id}')`;
+            const cor = ehPoco ? { fundo: 'bg-teal-50 text-teal-700', borda: 'hover:border-teal-300', seta: 'group-hover:text-teal-500' }
+                               : { fundo: 'bg-indigo-50 text-indigo-700', borda: 'hover:border-indigo-300', seta: 'group-hover:text-indigo-500' };
+            return `
+            <div role="button" tabindex="0" onclick="${abrir}" onkeydown="if (event.key === 'Enter') ${abrir}"
+                title="${ehPoco ? 'Abrir a ficha do poço' : 'Editar reservatório'}"
+                class="group flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white ${cor.borda} hover:shadow-sm transition-all cursor-pointer ${ativo ? '' : 'opacity-60'}">
+                <div class="relative w-11 h-11 rounded-xl ${cor.fundo} flex items-center justify-center text-sm font-black shrink-0">
+                    ${ehPoco ? escapeHtml(item.numero) : '<i data-lucide="container" class="w-5 h-5"></i>'}
+                    <span class="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${corStatus}"></span>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-black text-slate-800 truncate ${ativo ? '' : 'line-through'}">${ehPoco ? 'Poço ' + escapeHtml(item.numero) : escapeHtml(item.nome)}</p>
+                    <p class="text-[11px] text-slate-500 truncate">${detalhes}</p>
+                    <p class="text-[10px] font-bold text-slate-400 truncate">${situacao}</p>
+                    ${outorga && outorga.nivel !== 'ok' ? `<p class="text-[10px] font-bold ${outorga.cor} truncate flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3 shrink-0"></i>${outorga.texto}</p>` : ''}
+                </div>
+                <div class="flex items-center gap-0.5 shrink-0" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+                    ${ehPoco ? `<button type="button" onclick="window.abrirFichaPoco('${id}')"
+                        class="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 mr-1 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100">
+                        <i data-lucide="file-text" class="w-3 h-3"></i> Ficha</button>` : ''}
+                    <button type="button" onclick="window.editarCadastro('${tipo}', '${id}')" title="Editar"
+                        class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                    <button type="button" onclick="window.excluirCadastro('${tipo}', '${id}')" title="Excluir"
+                        class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                    <button type="button" role="switch" aria-checked="${ativo}" onclick="window.alternarAtivo('${tipo}', '${id}')" title="${ativo ? 'Ativo (toque para desativar)' : 'Desativado (toque para reativar)'}"
+                        class="relative inline-block w-9 h-5 ml-1 rounded-full transition-colors ${ativo ? 'bg-emerald-500' : 'bg-slate-300'}">
+                        <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${ativo ? 'translate-x-4' : ''}"></span>
+                    </button>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 ${cor.seta} shrink-0"></i>
+            </div>`;
+        }
+
+        // Filtros, busca e lista de poços e reservatórios (aba Cadastros)
+        function renderCadastrosAgua() {
+            if (!document.getElementById('cadLista_poco')) return;
+            const semAcento = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+            const ultimaPoco = p => leiturasPocoCache.find(l => l.poco_id === p.id);
+            const FILTROS = {
+                poco: {
+                    ativos:      { rotulo: 'Ativos',      icone: 'droplet',     teste: p => p.ativo !== false },
+                    ligados:     { rotulo: 'Ligados',     icone: 'power',       teste: p => p.ativo !== false && ultimaPoco(p) && ultimaPoco(p).status !== 'desligado' },
+                    desligados:  { rotulo: 'Desligados',  icone: 'power-off',   teste: p => p.ativo !== false && ultimaPoco(p) && ultimaPoco(p).status === 'desligado' },
+                    semLeitura:  { rotulo: 'Sem leitura', icone: 'circle-dashed', teste: p => p.ativo !== false && !ultimaPoco(p) },
+                    desativados: { rotulo: 'Desativados', icone: 'eye-off',     teste: p => p.ativo === false }
+                },
+                reservatorio: {
+                    ativos:      { rotulo: 'Ativos',      icone: 'container',   teste: r => r.ativo !== false },
+                    desativados: { rotulo: 'Desativados', icone: 'eye-off',     teste: r => r.ativo === false }
                 }
-                API.salvarReservatorio({
-                    id: r.id, nome,
-                    altura_maxima_m: lerNumero('editCad_altura'),
-                    capacidade_m3: lerNumero('editCad_capacidade'),
-                    ativo: r.ativo !== false
-                });
+            };
+            const contagem = lista => {
+                const ativos = lista.filter(x => x.ativo !== false).length;
+                return lista.length ? `${ativos} ativo${ativos === 1 ? '' : 's'}${lista.length > ativos ? ` · ${lista.length - ativos} desativado${lista.length - ativos === 1 ? '' : 's'}` : ''}` : '';
+            };
+            const cores = { poco: 'bg-teal-600 border-teal-600', reservatorio: 'bg-indigo-600 border-indigo-600' };
+
+            [['poco', pocosCache], ['reservatorio', reservCache]].forEach(([tipo, lista]) => {
+                const filtros = FILTROS[tipo];
+                if (!filtros[filtroCadastro[tipo]]) filtroCadastro[tipo] = 'ativos';
+                document.getElementById('cadContagem_' + tipo).innerText = contagem(lista);
+                document.getElementById('cadFiltros_' + tipo).innerHTML = Object.entries(filtros).map(([chave, f]) => {
+                    const qtd = lista.filter(f.teste).length;
+                    if (chave !== 'ativos' && !qtd && filtroCadastro[tipo] !== chave) return '';
+                    const sel = filtroCadastro[tipo] === chave;
+                    return `<button type="button" onclick="window.filtrarCadastro('${tipo}', '${chave}')"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${sel
+                            ? cores[tipo] + ' text-white shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'}">
+                        <i data-lucide="${f.icone}" class="w-3.5 h-3.5"></i>${f.rotulo}<span class="${sel ? 'text-white/70' : 'text-slate-400'}">${qtd}</span></button>`;
+                }).join('');
+
+                const busca = semAcento(document.getElementById('cadBusca_' + tipo).value.trim());
+                const editando = cadastroEditando && cadastroEditando.tipo === tipo ? cadastroEditando.id : null;
+                const visiveis = lista.filter(x => x.id === editando || (filtros[filtroCadastro[tipo]].teste(x) &&
+                    (!busca || [x.numero, x.nome, tipo === 'poco' ? 'poco ' + x.numero : ''].some(v => semAcento(v).includes(busca)))));
+                const vazio = lista.length === 0
+                    ? `Nenhum ${tipo === 'poco' ? 'poço' : 'reservatório'} cadastrado ainda. Toque em "${tipo === 'poco' ? 'Novo poço' : 'Novo reservatório'}".`
+                    : 'Nada encontrado com esse filtro.';
+                document.getElementById('cadLista_' + tipo).innerHTML =
+                    (editando === NOVO_CADASTRO ? editorCadastroHtml(tipo, null) : '') +
+                    (visiveis.map(x => x.id === editando ? editorCadastroHtml(tipo, x) : cartaoCadastroHtml(tipo, x)).join('')
+                        || `<p class="text-slate-400 py-2 col-span-full">${vazio}</p>`);
+            });
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.salvarCadastroAgua = function() {
+            if (!API.isGestor() || !cadastroEditando) return;
+            const { tipo, id } = cadastroEditando;
+            const novo = id === NOVO_CADASTRO;
+            const r = rascunhoCadastro;
+            const erro = document.getElementById('editCadErro');
+            const mostrarErro = msg => { erro.innerText = msg; erro.classList.remove('hidden'); };
+            const nome = String(r.nome || '').replace(/\s+/g, ' ').trim();
+
+            if (tipo === 'poco') {
+                const p = novo ? null : pocosCache.find(x => x.id === id);
+                const numero = normalizarNumeroPoco(r.numero);
+                const horas = parseFloat(String(r.horas).replace(',', '.'));
+                if (!numero) return mostrarErro("Informe o número do poço.");
+                if (pocosCache.some(x => x.id !== id && String(x.numero).toUpperCase() === numero)) return mostrarErro(`Já existe um poço com o número ${numero}.`);
+                if (!(horas > 0 && horas <= 24)) return mostrarErro("As horas ligado por dia precisam ficar entre 0,5 e 24.");
+                API.salvarPoco(p
+                    ? { id: p.id, numero, nome: nome || null, observacao: p.observacao, ativo: p.ativo !== false, horas_padrao: horas }
+                    : { numero, nome: nome || null, horas_padrao: horas });
+            } else {
+                const res = novo ? null : reservCache.find(x => x.id === id);
+                if (!nome) return mostrarErro("Informe o nome do reservatório.");
+                if (reservCache.some(x => x.id !== id && x.nome.toLowerCase() === nome.toLowerCase())) return mostrarErro(`Já existe um reservatório chamado "${nome}".`);
+                const numeroOuNull = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isNaN(n) ? null : n; };
+                const dados = { nome, altura_maxima_m: numeroOuNull(r.altura), capacidade_m3: numeroOuNull(r.capacidade) };
+                API.salvarReservatorio(res ? Object.assign({ id: res.id, ativo: res.ativo !== false }, dados) : dados);
             }
             cadastroEditando = null;
             window.carregarAgua();
@@ -9619,7 +9682,10 @@
         // --- USUÁRIOS (ADMINISTRADOR, aba Cadastros) ---
 
         let usuariosLista = [];
-        let usuarioEditando = null;
+        let usuarioEditando = null;    // id do perfil em edição, NOVO_USUARIO ou null
+        let rascunhoUsuario = {};      // campos do editor (só guardam o valor; redesenha nas escolhas)
+        let filtroUsuarios = 'todos';
+        const NOVO_USUARIO = '__novo__';
 
         async function recarregarUsuarios() {
             const lista = document.getElementById('usersList');
@@ -9641,55 +9707,195 @@
             }
         }
 
-        function renderUsuarios() {
+        // "MATEUS PAULO DA SILVA" -> "Mateus Silva" (primeiro e último nome)
+        function sugerirNomeCurto(nomeCompleto) {
+            const partes = String(nomeCompleto || '').trim().split(/\s+/).filter(Boolean)
+                .map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase());
+            if (partes.length <= 1) return partes.join('');
+            return `${partes[0]} ${partes[partes.length - 1]}`;
+        }
+
+        // Primeiro nome sem acento (ex.: "joão" -> "joao"); se já existir, tenta com o sobrenome e depois com número
+        function sugerirLogin(nomeCompleto) {
+            const limpar = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+            const partes = String(nomeCompleto || '').trim().split(/\s+/).map(limpar).filter(Boolean);
+            if (!partes.length) return '';
+            const existe = u => usuariosLista.some(p => p.usuario === u);
+            const opcoes = [partes[0]];
+            if (partes.length > 1) opcoes.push(`${partes[0]}.${partes[partes.length - 1]}`);
+            const livre = opcoes.find(u => u.length >= 2 && !existe(u));
+            if (livre) return livre.slice(0, 30);
+            for (let n = 2; n < 100; n++) if (!existe(partes[0] + n)) return (partes[0] + n).slice(0, 30);
+            return '';
+        }
+
+        // Senha fácil de ditar: sem letras parecidas (l/1, O/0)
+        function gerarSenha() {
+            const letras = 'abcdefghjkmnpqrstuvwxyz', numeros = '23456789';
+            const sorteio = (base, n) => Array.from({ length: n }, () => base[Math.floor(Math.random() * base.length)]).join('');
+            return sorteio(letras, 4) + sorteio(numeros, 4);
+        }
+
+        window.novoUsuario = function() {
+            window.editarUsuario(NOVO_USUARIO);
+            const campo = document.getElementById('editUsuarioNome');
+            if (campo) { campo.scrollIntoView({ behavior: 'smooth', block: 'center' }); campo.focus(); }
+        }
+
+        window.editarUsuario = function(id) {
+            usuarioEditando = id;
+            const p = usuariosLista.find(x => x.id === id);
+            rascunhoUsuario = p
+                ? { nome: p.nome || '', nome_curto: p.nome_curto || '', papel: p.papel, senha: '', mostrarSenha: false, curtoAuto: false }
+                : { usuario: '', nome: '', nome_curto: '', papel: 'irrigador', senha: '', mostrarSenha: false, curtoAuto: true, loginAuto: true };
+            renderUsuarios();
+        }
+
+        // Nome completo: em maiúsculas; vai sugerindo nome curto e login enquanto não forem mexidos
+        window.digitarNomeUsuario = function(campo) {
+            campo.value = campo.value.toUpperCase();
+            rascunhoUsuario.nome = campo.value;
+            if (rascunhoUsuario.curtoAuto) {
+                rascunhoUsuario.nome_curto = sugerirNomeCurto(campo.value);
+                const c = document.getElementById('editUsuarioNomeCurto');
+                if (c) c.value = rascunhoUsuario.nome_curto;
+            }
+            if (usuarioEditando === NOVO_USUARIO && rascunhoUsuario.loginAuto) {
+                rascunhoUsuario.usuario = sugerirLogin(campo.value);
+                const l = document.getElementById('editUsuarioLogin');
+                if (l) l.value = rascunhoUsuario.usuario;
+            }
+        }
+
+        window.alterarRascunhoUsuario = function(campo, valor) {
+            rascunhoUsuario[campo] = valor;
+            if (campo === 'nome_curto') rascunhoUsuario.curtoAuto = false;
+            if (campo === 'usuario') rascunhoUsuario.loginAuto = false;
+        }
+
+        window.escolherPapelUsuario = function(papel) {
+            rascunhoUsuario.papel = papel;
+            renderUsuarios();
+        }
+
+        window.gerarSenhaUsuario = function() {
+            rascunhoUsuario.senha = gerarSenha();
+            rascunhoUsuario.mostrarSenha = true;
+            renderUsuarios();
+        }
+
+        window.alternarVerSenhaUsuario = function() {
+            rascunhoUsuario.mostrarSenha = !rascunhoUsuario.mostrarSenha;
+            renderUsuarios();
+        }
+
+        window.filtrarUsuarios = function(filtro) {
+            filtroUsuarios = filtro;
+            renderUsuarios();
+        }
+
+        // Busca: redesenha só a lista, sem perder o foco do campo
+        window.renderUsuariosBusca = function() { renderUsuarios(); }
+
+        // Editor (mesmo padrão do editor de blocos): novo usuário no topo, edição no lugar do cartão
+        function editorUsuarioHtml(p) {
+            const novo = !p;
+            const r = rascunhoUsuario;
             const eu = API.usuarioAtual() || {};
-            const nomeExibido = p => p.nome_curto || p.nome;
-            const ordenados = usuariosLista.slice().sort((a, b) =>
-                (Number(b.ativo) - Number(a.ativo)) ||
-                ((a.papel === 'gestor' ? 0 : 1) - (b.papel === 'gestor' ? 0 : 1)) ||
-                nomeExibido(a).localeCompare(nomeExibido(b)));
+            // O próprio usuário e o administrador não têm o papel trocado por aqui
+            const papelTravado = !novo && (p.id === eu.id || p.administrador);
+            const campo = 'w-full bg-white border-2 border-slate-200 rounded-lg py-1.5 px-2 text-xs text-slate-800';
+            const rotulo = t => `<span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">${t}</span>`;
+            const chip = (ativo, onclick, icone, texto, desc) => `
+                <button type="button" ${papelTravado ? 'disabled' : `onclick="${onclick}"`}
+                    class="flex-1 min-w-[140px] text-left px-3 py-2 rounded-xl border-2 transition-all ${ativo
+                        ? 'bg-slate-800 border-slate-800 text-white shadow-sm'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'} ${papelTravado && !ativo ? 'opacity-40' : ''}">
+                    <span class="flex items-center gap-1.5 text-xs font-black"><i data-lucide="${icone}" class="w-3.5 h-3.5"></i>${texto}</span>
+                    <span class="block text-[10px] mt-0.5 ${ativo ? 'text-slate-300' : 'text-slate-400'}">${desc}</span>
+                </button>`;
+            const titulo = novo ? 'Novo usuário' : `Editando ${escapeHtml(p.nome_curto || p.nome)}`;
+            return `
+            <div class="border-2 border-amber-300 rounded-xl overflow-hidden col-span-full bg-white">
+                <div class="bg-amber-50 px-3 py-2 border-b border-amber-200 flex items-center justify-between gap-2">
+                    <span class="text-xs font-black text-amber-800 uppercase tracking-wide">${titulo}</span>
+                    ${novo ? '' : `<span class="text-[10px] font-bold text-amber-700">@${escapeHtml(p.usuario)}</span>`}
+                </div>
+                <div class="px-3 pt-2.5">
+                    <label class="block">${rotulo('Nome completo <span class="text-red-400">*</span>')}
+                        <input type="text" id="editUsuarioNome" value="${escapeHtml(r.nome)}" placeholder="Aparece no relatório (ex: JOÃO DA SILVA)"
+                            oninput="window.digitarNomeUsuario(this)" class="${campo} font-bold"></label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2">
+                        <label class="block">${rotulo('Nome curto')}
+                            <input type="text" id="editUsuarioNomeCurto" value="${escapeHtml(r.nome_curto)}" maxlength="40" placeholder="ex: João Silva"
+                                oninput="window.alterarRascunhoUsuario('nome_curto', this.value)" class="${campo}"></label>
+                        ${novo ? `<label class="block">${rotulo('Usuário (login) <span class="text-red-400">*</span>')}
+                            <input type="text" id="editUsuarioLogin" value="${escapeHtml(r.usuario)}" maxlength="30" placeholder="ex: joao" autocapitalize="none" spellcheck="false"
+                                oninput="this.value = this.value.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9._-]/g, ''); window.alterarRascunhoUsuario('usuario', this.value)"
+                                class="${campo} font-bold"></label>` : ''}
+                    </div>
+                    ${novo ? '<p class="text-[10px] text-slate-400 mt-1">Nome curto e login são sugeridos a partir do nome completo. Dá para mudar.</p>' : ''}
 
-            document.getElementById('usersList').innerHTML = ordenados.map(p => {
-                const souEu = p.id === eu.id;
-                const gestor = p.papel === 'gestor';
-                const id = escapeHtml(p.id);
-                const formEdicao = usuarioEditando !== p.id ? '' : `
-                    <div class="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                        <input type="text" id="editUsuarioNome" value="${escapeHtml(p.nome)}" placeholder="Nome completo"
-                            oninput="this.value = this.value.toUpperCase()"
-                            class="w-full bg-white border-2 border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800">
-                        <input type="text" id="editUsuarioNomeCurto" value="${escapeHtml(p.nome_curto || '')}" placeholder="Nome curto"
-                            class="w-full bg-white border-2 border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800">
-                        <input type="password" id="editUsuarioSenha" placeholder="Nova senha (deixe vazio para manter)" autocomplete="new-password"
-                            class="w-full bg-white border-2 border-slate-200 rounded-lg py-2 px-3 text-xs text-slate-800">
-                        <p id="editUsuarioErro" class="hidden text-[11px] font-bold text-red-500"></p>
-                        <div class="flex gap-2">
-                            <button type="button" onclick="window.editarUsuario(null)" class="flex-1 bg-slate-200 text-slate-600 font-bold py-2 rounded-lg text-xs">Cancelar</button>
-                            <button type="button" id="editUsuarioBtn" onclick="window.salvarEdicaoUsuario('${id}')" class="flex-1 bg-slate-800 text-white font-bold py-2 rounded-lg text-xs">Salvar</button>
+                    <div class="mt-3">
+                        ${rotulo('Função')}
+                        <div class="flex flex-wrap gap-1.5 mt-1">
+                            ${chip(r.papel === 'irrigador', "window.escolherPapelUsuario('irrigador')", 'droplets', 'Irrigador', 'Registra irrigação, poços e reservatórios')}
+                            ${chip(r.papel === 'gestor', "window.escolherPapelUsuario('gestor')", 'shield-check', 'Gestor', 'Edita programação, cadastros e vê o log')}
                         </div>
-                    </div>`;
+                        ${papelTravado ? `<p class="text-[10px] text-slate-400 mt-1">${p.administrador ? 'O administrador é sempre gestor.' : 'Você não pode mudar a sua própria função.'}</p>` : ''}
+                    </div>
 
-                // O próprio usuário e o administrador não podem ter o papel trocado nem ser desativados por aqui
-                const protegido = souEu || p.administrador;
-                const iniciais = nomeExibido(p).split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]).join('').toUpperCase();
-                return `
-                <div class="p-3 rounded-xl border ${usuarioEditando === p.id ? 'border-amber-300 col-span-full' : 'border-slate-200'} bg-white hover:shadow-sm transition-all ${p.ativo ? '' : 'opacity-60'}">
+                    <div class="mt-3">
+                        ${rotulo(novo ? 'Senha <span class="text-red-400">*</span>' : 'Nova senha')}
+                        <div class="flex gap-1.5 mt-0.5 max-w-sm">
+                            <div class="relative flex-1">
+                                <input type="${r.mostrarSenha ? 'text' : 'password'}" id="editUsuarioSenha" value="${escapeHtml(r.senha)}" autocomplete="new-password"
+                                    placeholder="${novo ? 'Mínimo 6 caracteres' : 'Deixe vazio para manter a atual'}"
+                                    oninput="window.alterarRascunhoUsuario('senha', this.value)" class="${campo} pr-8">
+                                <button type="button" onclick="window.alternarVerSenhaUsuario()" title="${r.mostrarSenha ? 'Esconder' : 'Mostrar'} senha"
+                                    class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700"><i data-lucide="${r.mostrarSenha ? 'eye-off' : 'eye'}" class="w-3.5 h-3.5"></i></button>
+                            </div>
+                            <button type="button" onclick="window.gerarSenhaUsuario()" title="Gerar uma senha fácil de passar para a pessoa"
+                                class="flex items-center gap-1 px-2.5 rounded-lg border-2 border-slate-200 text-[11px] font-bold text-slate-600 hover:border-slate-400"><i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i>Gerar</button>
+                        </div>
+                    </div>
+
+                    <p id="editUsuarioErro" class="hidden text-xs font-bold text-red-500 mt-2"></p>
+                    <div class="flex gap-2 py-3">
+                        <button type="button" onclick="window.editarUsuario(null)" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
+                        <button type="button" id="editUsuarioBtn" onclick="window.salvarUsuario()"
+                            class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                            <i data-lucide="${novo ? 'user-plus' : 'save'}" class="w-4 h-4"></i> ${novo ? 'Criar Usuário' : 'Salvar Usuário'}</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function cartaoUsuarioHtml(p) {
+            const eu = API.usuarioAtual() || {};
+            const souEu = p.id === eu.id;
+            const gestor = p.papel === 'gestor';
+            const id = escapeHtml(p.id);
+            const nomeExibido = p.nome_curto || p.nome;
+            // O próprio usuário e o administrador não podem ser desativados por aqui
+            const protegido = souEu || p.administrador;
+            const iniciais = nomeExibido.split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]).join('').toUpperCase();
+            const selo = (cor, icone, texto) => `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${cor}"><i data-lucide="${icone}" class="w-3 h-3"></i>${texto}</span>`;
+            return `
+                <div class="p-3 rounded-xl border border-slate-200 bg-white hover:shadow-sm transition-all ${p.ativo ? '' : 'opacity-60'}">
                     <div class="flex items-center gap-3">
                         <div class="w-11 h-11 rounded-xl ${p.administrador ? 'bg-slate-800 text-white' : gestor ? 'bg-sky-50 text-sky-700' : 'bg-green-50 text-green-700'} flex items-center justify-center text-sm font-black shrink-0">${escapeHtml(iniciais)}</div>
                         <div class="min-w-0 flex-1">
-                            <p class="text-sm font-black text-slate-800 truncate ${p.ativo ? '' : 'line-through'}">${escapeHtml(nomeExibido(p))}${souEu ? ' <span class="text-[10px] font-medium text-slate-400">(você)</span>' : ''}</p>
+                            <p class="text-sm font-black text-slate-800 truncate ${p.ativo ? '' : 'line-through'}">${escapeHtml(nomeExibido)}${souEu ? ' <span class="text-[10px] font-medium text-slate-400">(você)</span>' : ''}</p>
                             <p class="text-[11px] text-slate-500 truncate">@${escapeHtml(p.usuario)} · ${escapeHtml(p.nome)}</p>
                             <div class="flex flex-wrap gap-1 mt-1">
-                                <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${gestor ? 'bg-sky-100 text-sky-700' : 'bg-green-100 text-green-700'}">${gestor ? 'Gestor' : 'Irrigador'}</span>
-                                ${p.administrador ? '<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-white">Administrador</span>' : ''}
-                                ${p.ativo ? '' : '<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-100 text-red-600">Desativado</span>'}
+                                ${gestor ? selo('bg-sky-50 text-sky-700 border border-sky-200', 'shield-check', 'Gestor') : selo('bg-green-50 text-green-700 border border-green-200', 'droplets', 'Irrigador')}
+                                ${p.administrador ? selo('bg-slate-800 text-white', 'crown', 'Administrador') : ''}
+                                ${p.ativo ? '' : selo('bg-red-50 text-red-600 border border-red-200', 'user-x', 'Desativado')}
                             </div>
                         </div>
                         <div class="flex items-center gap-0.5 shrink-0">
-                            ${protegido ? '' : `<button type="button" onclick="window.alternarPapelUsuario('${id}')" title="${gestor ? 'Tornar irrigador' : 'Tornar gestor'}"
-                                class="hidden sm:flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 mr-1 rounded-lg ${gestor ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-sky-50 text-sky-700 hover:bg-sky-100'}">
-                                <i data-lucide="${gestor ? 'user-minus' : 'shield-check'}" class="w-3 h-3"></i> ${gestor ? 'Tornar irrigador' : 'Tornar gestor'}</button>`}
-                            <button type="button" onclick="window.editarUsuario('${id}')" title="Editar nome e senha"
+                            <button type="button" onclick="window.editarUsuario('${id}')" title="Editar nome, função e senha"
                                 class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
                             ${protegido ? '' : `<button type="button" role="switch" aria-checked="${!!p.ativo}" onclick="window.alternarAtivoUsuario('${id}')" title="${p.ativo ? 'Ativo (toque para desativar)' : 'Desativado (toque para reativar)'}"
                                 class="relative inline-block w-9 h-5 ml-1 rounded-full transition-colors ${p.ativo ? 'bg-emerald-500' : 'bg-slate-300'}">
@@ -9697,13 +9903,44 @@
                             </button>`}
                         </div>
                     </div>
-                    ${protegido ? '' : `
-                    <button type="button" onclick="window.alternarPapelUsuario('${id}')"
-                        class="sm:hidden mt-2 w-full flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-wider py-1.5 rounded-lg ${gestor ? 'bg-green-50 text-green-700' : 'bg-sky-50 text-sky-700'}">
-                        <i data-lucide="${gestor ? 'user-minus' : 'shield-check'}" class="w-3 h-3"></i> ${gestor ? 'Tornar irrigador' : 'Tornar gestor'}</button>`}
-                    ${formEdicao}
                 </div>`;
-            }).join('') || `<p class="text-xs text-slate-400 py-4 col-span-full">Nenhum usuário.</p>`;
+        }
+
+        function renderUsuarios() {
+            const nomeExibido = p => p.nome_curto || p.nome;
+            const ordenados = usuariosLista.slice().sort((a, b) =>
+                (Number(b.ativo) - Number(a.ativo)) ||
+                ((a.papel === 'gestor' ? 0 : 1) - (b.papel === 'gestor' ? 0 : 1)) ||
+                nomeExibido(a).localeCompare(nomeExibido(b)));
+
+            // Filtros em pílulas, com a quantidade de cada um
+            const FILTROS = {
+                todos:       { rotulo: 'Todos',        icone: 'users',        teste: p => p.ativo },
+                gestor:      { rotulo: 'Gestores',     icone: 'shield-check', teste: p => p.ativo && p.papel === 'gestor' },
+                irrigador:   { rotulo: 'Irrigadores',  icone: 'droplets',     teste: p => p.ativo && p.papel !== 'gestor' },
+                desativados: { rotulo: 'Desativados',  icone: 'user-x',       teste: p => !p.ativo }
+            };
+            document.getElementById('usuariosFiltros').innerHTML = Object.entries(FILTROS).map(([chave, f]) => {
+                const qtd = usuariosLista.filter(f.teste).length;
+                if (chave === 'desativados' && !qtd) return '';
+                const ativo = filtroUsuarios === chave;
+                return `<button type="button" onclick="window.filtrarUsuarios('${chave}')"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${ativo
+                        ? 'bg-slate-800 border-slate-800 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'}">
+                    <i data-lucide="${f.icone}" class="w-3.5 h-3.5"></i>${f.rotulo}<span class="${ativo ? 'text-slate-300' : 'text-slate-400'}">${qtd}</span></button>`;
+            }).join('');
+
+            const busca = (document.getElementById('usuariosBusca').value || '').trim().toLowerCase()
+                .normalize('NFD').replace(/[̀-ͯ]/g, '');
+            const semAcento = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+            const filtro = FILTROS[filtroUsuarios] || FILTROS.todos;
+            const visiveis = ordenados.filter(p => p.id === usuarioEditando || (filtro.teste(p) &&
+                (!busca || [p.nome, p.nome_curto, p.usuario].some(v => semAcento(v).includes(busca)))));
+
+            const editorNovo = usuarioEditando === NOVO_USUARIO ? editorUsuarioHtml(null) : '';
+            document.getElementById('usersList').innerHTML = editorNovo + (visiveis.map(p =>
+                p.id === usuarioEditando ? editorUsuarioHtml(p) : cartaoUsuarioHtml(p)).join('')
+                || `<p class="text-xs text-slate-400 py-4 col-span-full">${busca ? 'Nenhum usuário encontrado.' : 'Nenhum usuário.'}</p>`);
 
             const ativos = usuariosLista.filter(p => p.ativo).length;
             document.getElementById('usuariosContagem').innerText = usuariosLista.length
@@ -9712,39 +9949,55 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        window.editarUsuario = function(id) {
-            usuarioEditando = id;
-            renderUsuarios();
-        }
-
-        window.salvarEdicaoUsuario = async function(id) {
-            const nome = document.getElementById('editUsuarioNome').value.trim();
-            const nomeCurto = document.getElementById('editUsuarioNomeCurto').value.trim();
-            const senha = document.getElementById('editUsuarioSenha').value;
+        // Cria o usuário novo ou grava as alterações (nome, função e, se informada, a nova senha)
+        window.salvarUsuario = async function() {
+            const novo = usuarioEditando === NOVO_USUARIO;
+            const p = novo ? null : usuariosLista.find(x => x.id === usuarioEditando);
+            const r = rascunhoUsuario;
             const erro = document.getElementById('editUsuarioErro');
             const btn = document.getElementById('editUsuarioBtn');
             const mostrarErro = msg => { erro.innerText = msg; erro.classList.remove('hidden'); };
+            const nome = String(r.nome || '').replace(/\s+/g, ' ').trim();
+            const nomeCurto = String(r.nome_curto || '').replace(/\s+/g, ' ').trim();
+            const senha = r.senha || '';
 
             if (!nome) return mostrarErro("Informe o nome completo.");
-            if (senha && senha.length < 6) return mostrarErro("A senha precisa ter pelo menos 6 caracteres.");
+            if (novo) {
+                if (String(r.usuario || '').length < 2) return mostrarErro("O usuário (login) precisa ter pelo menos 2 caracteres.");
+                if (usuariosLista.some(x => x.usuario === r.usuario)) return mostrarErro(`O usuário "${r.usuario}" já existe.`);
+                if (senha.length < 6) return mostrarErro("A senha precisa ter pelo menos 6 caracteres.");
+            } else if (senha && senha.length < 6) {
+                return mostrarErro("A senha precisa ter pelo menos 6 caracteres.");
+            }
 
+            const textoBtn = btn.innerHTML;
             btn.disabled = true;
-            btn.innerText = 'Salvando...';
+            btn.innerHTML = `<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Salvando...`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
             try {
-                await API.atualizarUsuario(id, { nome, nome_curto: nomeCurto || null });
-                if (senha) await API.redefinirSenha(id, senha);
+                if (novo) {
+                    await API.criarUsuario({ usuario: r.usuario, senha, nome, nome_curto: nomeCurto, papel: r.papel });
+                } else {
+                    const eu = API.usuarioAtual() || {};
+                    const valores = { nome, nome_curto: nomeCurto || null };
+                    if (p.id !== eu.id && !p.administrador && r.papel !== p.papel) valores.papel = r.papel;
+                    await API.atualizarUsuario(p.id, valores);
+                    if (senha) await API.redefinirSenha(p.id, senha);
+                }
                 usuarioEditando = null;
                 await recarregarUsuarios();
-                if (id === (API.usuarioAtual() || {}).id) aplicarUsuarioNaTela();
-                if (senha) window.showAlert("Senha alterada", "A nova senha já vale para o próximo login dessa pessoa.");
+                if (!novo && p.id === (API.usuarioAtual() || {}).id) aplicarUsuarioNaTela();
+                if (novo) window.showAlert("Usuário criado", `Login: ${r.usuario}\nSenha: ${senha}\nA pessoa já pode entrar no app.`);
+                else if (senha) window.showAlert("Senha alterada", `Nova senha de ${nomeCurto || nome}: ${senha}\nJá vale para o próximo login.`);
             } catch (err) {
                 mostrarErro(err.message);
                 btn.disabled = false;
-                btn.innerText = 'Salvar';
+                btn.innerHTML = textoBtn;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
             }
         }
 
-        // Confirmação + gravação de uma alteração de perfil (papel ou ativo)
+        // Confirmação + gravação de uma alteração de perfil (ativo/desativado)
         function confirmarAlteracaoUsuario(id, valores, titulo, texto, botao, icone) {
             pendingConfirmCallback = async () => {
                 try {
@@ -9757,19 +10010,6 @@
             window.showConfirmModal(titulo, texto, botao, icone);
         }
 
-        window.alternarPapelUsuario = function(id) {
-            const p = usuariosLista.find(x => x.id === id);
-            if (!p) return;
-            const nome = p.nome_curto || p.nome;
-            if (p.papel === 'gestor') {
-                confirmarAlteracaoUsuario(id, { papel: 'irrigador' }, "Tornar irrigador?",
-                    `${nome} deixará de editar a programação, os cadastros e os usuários.`, "CONFIRMAR", "user-minus");
-            } else {
-                confirmarAlteracaoUsuario(id, { papel: 'gestor' }, "Tornar gestor?",
-                    `${nome} poderá editar a programação, os cadastros, os usuários e ver o log de atividades.`, "CONFIRMAR", "shield-check");
-            }
-        }
-
         window.alternarAtivoUsuario = function(id) {
             const p = usuariosLista.find(x => x.id === id);
             if (!p) return;
@@ -9780,41 +10020,6 @@
             } else {
                 confirmarAlteracaoUsuario(id, { ativo: true }, "Reativar usuário?",
                     `${nome} volta a ter acesso ao app.`, "REATIVAR", "user-check");
-            }
-        }
-
-        window.criarUsuario = async function(e) {
-            e.preventDefault();
-            const erro = document.getElementById('novoUsuarioErro');
-            const btn = document.getElementById('novoUsuarioBtn');
-            const dados = {
-                usuario: document.getElementById('novoUsuarioLogin').value.trim(),
-                senha: document.getElementById('novoUsuarioSenha').value,
-                nome: document.getElementById('novoUsuarioNome').value.trim(),
-                nome_curto: document.getElementById('novoUsuarioNomeCurto').value.trim(),
-                papel: document.getElementById('novoUsuarioPapel').value
-            };
-            erro.classList.add('hidden');
-
-            if (dados.usuario.length < 2) { erro.innerText = "O usuário precisa ter pelo menos 2 caracteres."; erro.classList.remove('hidden'); return; }
-            if (usuariosLista.some(p => p.usuario === dados.usuario)) { erro.innerText = `O usuário "${dados.usuario}" já existe.`; erro.classList.remove('hidden'); return; }
-
-            btn.disabled = true;
-            btn.innerHTML = `<i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Criando...`;
-            if(typeof lucide !== 'undefined') lucide.createIcons();
-            try {
-                await API.criarUsuario(dados);
-                ['novoUsuarioLogin', 'novoUsuarioSenha', 'novoUsuarioNome', 'novoUsuarioNomeCurto'].forEach(id => document.getElementById(id).value = '');
-                document.getElementById('novoUsuarioPapel').value = 'irrigador';
-                await recarregarUsuarios();
-                window.showAlert("Usuário criado", `Login: ${dados.usuario}\nA pessoa já pode entrar no app com essa senha.`);
-            } catch (err) {
-                erro.innerText = err.message;
-                erro.classList.remove('hidden');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = `<i data-lucide="user-plus" class="w-4 h-4"></i> Criar Usuário`;
-                if(typeof lucide !== 'undefined') lucide.createIcons();
             }
         }
 
