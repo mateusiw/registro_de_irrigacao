@@ -1044,6 +1044,27 @@
         return mesclarPendentes('registros_irrigacao', lista).filter(r => r.data >= de && r.data <= ate);
     }
 
+    // Registros de irrigação de um bloco só (histórico do bloco). Com período, todos os do
+    // período; sem período, só os mais recentes (o suficiente para os últimos dias irrigados).
+    async function listarRegistrosBloco(bloco, de, ate) {
+        const nome = limparNomeBloco(bloco);
+        // "6" e "06" são o mesmo bloco
+        const nomes = [...new Set([nome, /^\d$/.test(nome) ? '0' + nome : nome])];
+        const consulta = campos => {
+            let q = sb.from('registros_irrigacao').select(campos).in('bloco', nomes).order('data', { ascending: false });
+            if (de) q = q.gte('data', de);
+            if (ate) q = q.lte('data', ate);
+            return q.limit(de ? 2000 : 60);
+        };
+        const lista = await buscarComCache(`registros_bloco_${nome}_${de || ''}_${ate || ''}`, async () => {
+            const resp = await consulta('id,data,bloco,minutos,litros_por_min');
+            // Banco ainda sem a coluna (volume_historico.sql não rodado)
+            return resp.error ? consulta('id,data,bloco,minutos') : resp;
+        }, 0).catch(() => []);
+        return mesclarPendentes('registros_irrigacao', lista)
+            .filter(r => limparNomeBloco(r.bloco) === nome && (!de || r.data >= de) && (!ate || r.data <= ate));
+    }
+
     // ------------------------------------------------------------
     // Tempo real: registros de irrigação dos outros irrigadores
     // ------------------------------------------------------------
@@ -1301,7 +1322,7 @@
         // sincronização
         sincronizar, onStatus, status, falhasSync, limparFalhasSync, reenviarFalhas,
         // irrigação e programação
-        enviar, historico, programacaoAtual, listarVersoesBloco, salvarProgramacaoItem, excluirProgramacaoItem,
+        enviar, historico, programacaoAtual, listarVersoesBloco, listarRegistrosBloco, salvarProgramacaoItem, excluirProgramacaoItem,
         salvarRegistro, excluirRegistro, atualizarRegistroEquipe, excluirRegistroEquipe, salvarMotor, registrarEnvio,
         // dados dos blocos
         limparNomeBloco, listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
