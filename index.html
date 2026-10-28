@@ -1283,6 +1283,16 @@
         <!-- RESUMO (detalhes) -->
         <div id="grafResumo" class="grid grid-cols-2 lg:grid-cols-4 gap-2"></div>
 
+        <!-- ZOOM DOS GRÁFICOS: no celular não dá para dar zoom com os dedos -->
+        <div class="flex items-center justify-end gap-1 -mb-2">
+            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1">Zoom dos gráficos</span>
+            <button type="button" id="grafZoomMenos" onclick="window.zoomGraficos('tendencias', -1)" title="Diminuir os gráficos"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+            <span id="grafZoomRotulo" class="w-12 text-center text-[11px] font-black text-slate-600">100%</span>
+            <button type="button" id="grafZoomMais" onclick="window.zoomGraficos('tendencias', 1)" title="Aumentar os gráficos"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+        </div>
+
         <!-- GRÁFICOS DIÁRIOS -->
         <div id="grafCards" class="space-y-4">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
@@ -1387,10 +1397,10 @@
                 <!-- ZOOM DOS GRÁFICOS: no celular não dá para dar zoom com os dedos -->
                 <div class="flex items-center justify-end gap-1 -mb-2">
                     <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1">Zoom</span>
-                    <button type="button" id="balancoZoomMenos" onclick="window.zoomGraficosBalanco(-1)" title="Diminuir os gráficos"
+                    <button type="button" id="balancoZoomMenos" onclick="window.zoomGraficos('balanco', -1)" title="Diminuir os gráficos"
                         class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-30"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
                     <span id="balancoZoomRotulo" class="w-12 text-center text-[11px] font-black text-slate-600">100%</span>
-                    <button type="button" id="balancoZoomMais" onclick="window.zoomGraficosBalanco(1)" title="Aumentar os gráficos"
+                    <button type="button" id="balancoZoomMais" onclick="window.zoomGraficos('balanco', 1)" title="Aumentar os gráficos"
                         class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-30"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
                 </div>
                 <div>
@@ -6838,23 +6848,27 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        // Zoom dos gráficos do balanço: "Tela" cabe inteiro na largura; os outros níveis aumentam
-        // e o gráfico rola para o lado (o meio do que estava na tela continua no meio)
-        const ZOOM_BALANCO = [0, 1, 1.5, 2, 3];
-        let zoomBalanco = 1;
-        window.zoomGraficosBalanco = function(passo) {
-            zoomBalanco = Math.max(0, Math.min(ZOOM_BALANCO.length - 1, zoomBalanco + passo));
-            const z = ZOOM_BALANCO[zoomBalanco];
-            ['graficoVolumePoco', 'graficoVazaoPoco', 'graficoVolumeBloco'].forEach(id => {
+        // Zoom dos gráficos (Balanço e Tendências): "Tela" cabe inteiro na largura; os outros níveis
+        // aumentam e o gráfico rola para o lado (o meio do que estava na tela continua no meio)
+        const ZOOM_NIVEIS = [0, 1, 1.5, 2, 3];
+        const ZOOM_GRUPOS = {
+            balanco: { prefixo: 'balancoZoom', nivel: 1, graficos: ['graficoVolumePoco', 'graficoVazaoPoco', 'graficoVolumeBloco'] },
+            tendencias: { prefixo: 'grafZoom', nivel: 1, graficos: ['grafAgua', 'grafNivel', 'grafHoras', 'grafBlocos', 'grafVazao', 'grafEficiencia'] }
+        };
+        window.zoomGraficos = function(grupo, passo) {
+            const g = ZOOM_GRUPOS[grupo];
+            g.nivel = Math.max(0, Math.min(ZOOM_NIVEIS.length - 1, g.nivel + passo));
+            const z = ZOOM_NIVEIS[g.nivel];
+            g.graficos.forEach(id => {
                 const el = document.getElementById(id), caixa = el.parentElement;
                 const meio = (caixa.scrollLeft + caixa.clientWidth / 2) / (caixa.scrollWidth || 1);
                 el.style.minWidth = z ? `${560 * z}px` : '0';
                 el.style.width = z ? `max(100%, ${560 * z}px)` : '100%';
                 caixa.scrollLeft = meio * caixa.scrollWidth - caixa.clientWidth / 2;
             });
-            document.getElementById('balancoZoomRotulo').innerText = z ? `${Math.round(z * 100)}%` : 'Tela';
-            document.getElementById('balancoZoomMenos').disabled = zoomBalanco === 0;
-            document.getElementById('balancoZoomMais').disabled = zoomBalanco === ZOOM_BALANCO.length - 1;
+            document.getElementById(g.prefixo + 'Rotulo').innerText = z ? `${Math.round(z * 100)}%` : 'Tela';
+            document.getElementById(g.prefixo + 'Menos').disabled = g.nivel === 0;
+            document.getElementById(g.prefixo + 'Mais').disabled = g.nivel === ZOOM_NIVEIS.length - 1;
         }
 
         window.alterarHorasPoco = function(pocoId, valor) {
