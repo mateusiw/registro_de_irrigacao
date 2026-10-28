@@ -6,7 +6,7 @@
     <title>Relatório de Irrigação</title>
 
     <!-- Configurações PWA -->
-    <meta name="theme-color" content="#15803d">
+    <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Irrigação">
@@ -81,6 +81,23 @@
         .reg-linha .reg-chip { font-size: clamp(9px, 2.45vw, 11px); padding: 2px clamp(5px, 1.6vw, 8px); gap: clamp(2px, 0.8vw, 4px); }
         .reg-linha .reg-chip svg { width: clamp(9px, 2.5vw, 12px); height: clamp(9px, 2.5vw, 12px); }
 
+        /* ===== CABEÇALHO: vidro claro com um fio de cor no topo ===== */
+        #navbar {
+            background: rgba(255,255,255,0.78);
+            -webkit-backdrop-filter: blur(18px) saturate(180%);
+            backdrop-filter: blur(18px) saturate(180%);
+            border-bottom: 1px solid rgba(226,232,240,0.9);
+            box-shadow: 0 6px 24px -18px rgba(15,23,42,0.35);
+        }
+        #navbar::before {
+            content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; pointer-events: none;
+            background: linear-gradient(90deg, #10b981, #14b8a6 35%, #0ea5e9 70%, #6366f1);
+        }
+        #tabBar > button { -webkit-tap-highlight-color: transparent; }
+        @media (hover: hover) and (min-width: 1024px) {
+            #tabBar > button:not(.aba-ativa):hover { color: #1e293b; background-color: rgba(255,255,255,0.6); }
+        }
+
         /* ===== BARRA DE ABAS NO CELULAR (estilo "liquid glass" do iOS) =====
            Fica flutuando no rodapé; ao rolar a página para baixo ela recolhe
            num botão redondo que leva de volta ao topo. */
@@ -124,20 +141,20 @@
             #tabBar > button svg { width: 21px; height: 21px; }
             #tabBtnCadastros span { display: inline; }
 
-            /* Aba ativa: pílula translúcida tingida com a cor da aba (switchTab marca a ativa com .text-white) */
+            /* Aba ativa: pílula translúcida tingida com a cor da aba (switchTab marca a ativa com .aba-ativa) */
             #tabBar > #tabBtnRegistro    { --cor: 22, 163, 74; }
             #tabBar > #tabBtnProgramacao { --cor: 2, 132, 199; }
             #tabBar > #tabBtnAgua        { --cor: 13, 148, 136; }
             #tabBar > #tabBtnGraficos    { --cor: 79, 70, 229; }
             #tabBar > #tabBtnCadastros   { --cor: 51, 65, 85; }
-            #tabBar > button.text-white:not(#tabBarTopo) {
+            #tabBar > button.aba-ativa:not(#tabBarTopo) {
                 color: rgb(var(--cor));
                 font-weight: 800;
                 background: rgba(var(--cor), 0.14);
                 box-shadow: inset 0 0 0 1px rgba(var(--cor), 0.22), inset 0 1px 0 rgba(255,255,255,0.7),
                             0 3px 10px rgba(var(--cor), 0.18);
             }
-            #tabBar > button.text-white:not(#tabBarTopo) svg { stroke-width: 2.4; }
+            #tabBar > button.aba-ativa:not(#tabBarTopo) svg { stroke-width: 2.4; }
 
             /* Botão "voltar ao topo" (só aparece com a barra recolhida) */
             #tabBarTopo {
@@ -245,23 +262,27 @@
 <body class="bg-slate-50 text-slate-900 min-h-screen pb-24 safe-area-bottom">
 
     <!-- Navbar -->
-    <div id="navbar" class="bg-green-700 text-white px-4 py-3 flex justify-between items-center shadow-lg sticky top-0 z-40 pt-safe-top">
-        <div class="flex items-center gap-2">
-            <div>
-                <h1 class="text-sm font-bold leading-tight tracking-tight">Registro Irrigação</h1>
-                <p class="text-[10px] text-green-100 font-medium">SPG Oásis</p>
+    <div id="navbar" class="text-slate-900 px-4 py-2.5 flex justify-between items-center sticky top-0 z-40 pt-safe-top">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <img src="./icone-app.png" alt="" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl shadow-sm ring-1 ring-black/5 shrink-0">
+            <div class="min-w-0">
+                <h1 class="text-sm sm:text-[15px] font-extrabold leading-tight tracking-tight text-slate-900 truncate">Registro Irrigação</h1>
+                <p class="text-[10px] font-semibold text-slate-400 tracking-wide">SPG Oásis</p>
             </div>
         </div>
 
         <!-- Área da Direita: Contador e Botões -->
         <div id="navbarRegistroActions" class="flex gap-2 items-center">
-            <div class="flex flex-col items-center bg-white/15 rounded-lg px-3 py-1.5 min-w-[56px]">
-                <span class="text-[8px] text-green-200 font-bold uppercase tracking-wider leading-tight text-center">Irrigações</span>
-                <span id="recordCountBadge" class="text-base font-mono font-bold text-white leading-none">0</span>
+            <div class="flex items-center gap-2 rounded-xl bg-slate-100/80 ring-1 ring-slate-200/70 px-2.5 sm:pr-3 py-1.5" title="Irrigações registradas no dia">
+                <i data-lucide="droplets" class="hidden sm:block w-4 h-4 text-emerald-600"></i>
+                <div class="flex flex-col items-center sm:items-start leading-none">
+                    <span id="recordCountBadge" class="text-sm font-extrabold text-slate-900 tabular-nums">0</span>
+                    <span class="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Irrigações</span>
+                </div>
             </div>
 
             <!-- Botão Enviar Relatório -->
-            <button type="button" id="btnSendReport" onclick="window.startReportFlow()" class="flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-green-700 rounded-xl shadow border border-green-100 transition-all active:scale-95 font-bold text-xs">
+            <button type="button" id="btnSendReport" onclick="window.startReportFlow()" class="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-b from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl shadow-md shadow-emerald-600/25 ring-1 ring-emerald-700/20 transition-all active:scale-95 font-bold text-xs">
                 <i data-lucide="send" class="w-4 h-4"></i>
                 <span class="hidden sm:inline-block">Enviar Relatório</span>
                 <span class="sm:hidden">Enviar</span>
@@ -271,7 +292,7 @@
         <!-- Área da Direita: Bloqueio da Programação (somente gestor) -->
         <div id="navbarProgAction" class="hidden">
             <button type="button" id="progLockToggleBtn" onclick="window.toggleProgLock()"
-                class="flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-sky-700 rounded-xl shadow border border-sky-100 transition-all active:scale-95 font-bold text-xs">
+                class="flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-sky-700 rounded-xl shadow-sm border border-sky-100 transition-all active:scale-95 font-bold text-xs">
                 <i data-lucide="lock" class="w-3.5 h-3.5"></i>
                 <span class="hidden sm:inline-block">Desbloquear Edição</span>
                 <span class="sm:hidden">Desbloquear</span>
@@ -281,26 +302,26 @@
 
     <!-- ABAS DE NAVEGAÇÃO -->
     <div id="navTabs" class="max-w-md mx-auto px-4 pt-4">
-        <div id="tabBar" class="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1 gap-1">
+        <div id="tabBar" class="flex bg-slate-100/80 rounded-2xl ring-1 ring-slate-200/70 p-1 gap-1">
             <button type="button" id="tabBtnRegistro" onclick="window.switchTab('registro')"
-                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all bg-green-600 text-white shadow-sm">
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all aba-ativa bg-white shadow-sm ring-1 ring-slate-200/80 text-emerald-700">
                 <i data-lucide="droplets" class="w-3.5 h-3.5"></i> Registro
             </button>
             <button type="button" id="tabBtnProgramacao" onclick="window.switchTab('programacao')"
-                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all text-slate-500">
                 <i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i> Programação
             </button>
             <button type="button" id="tabBtnAgua" onclick="window.switchTab('agua')"
-                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all text-slate-500">
                 <i data-lucide="waves" class="w-3.5 h-3.5"></i> Água
             </button>
             <button type="button" id="tabBtnGraficos" onclick="window.switchTab('graficos')"
-                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all text-slate-500">
                 <i data-lucide="chart-line" class="w-3.5 h-3.5"></i> Gráficos
             </button>
             <!-- Somente gestor; no celular mostra só o ícone para caber na barra -->
             <button type="button" id="tabBtnCadastros" data-so-gestor onclick="window.switchTab('cadastros')" title="Cadastros"
-                class="hidden flex-none sm:flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold transition-all text-slate-400">
+                class="hidden flex-none sm:flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold transition-all text-slate-500">
                 <i data-lucide="settings" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Cadastros</span>
             </button>
             <!-- Celular: com a barra recolhida, sobra só este botão para voltar ao topo -->
@@ -789,7 +810,7 @@
                     <p class="text-[10px] text-slate-400 font-medium">Consulta para o irrigador</p>
                 </div>
                 <div class="flex items-center gap-2 mb-0.5">
-                    <button type="button" id="progClearBtn" onclick="window.clearProgramacao()" class="hidden text-xs text-red-400 hover:text-red-600 font-semibold underline cursor-pointer mr-1">Limpar Tudo</button>
+                    <button type="button" id="progClearBtn" onclick="window.clearProgramacao()" class="hidden text-xs text-red-400 hover:text-red-600 font-semibold underline cursor-pointer mr-1">Limpar...</button>
                     <!-- Exporta a programação filtrada (e abre o texto para o WhatsApp) -->
                     <button type="button" id="progImagemBtn" onclick="window.baixarImagemProg()" title="Baixar imagem da programação"
                         class="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-white border-2 border-slate-200 text-slate-600 hover:border-slate-300">
@@ -1405,6 +1426,8 @@
                 </div>
                 <div>
                     <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Volume (L) por Poço</h3>
+                    <p class="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 rounded-full px-2 py-0.5">
+                        <i data-lucide="pointer" class="w-3 h-3"></i> Toque numa coluna para ver quem aferiu e a que horas</p>
                     <div class="overflow-x-auto"><div id="graficoVolumePoco" class="min-w-[560px]"></div></div>
                 </div>
                 <div>
@@ -1416,6 +1439,8 @@
                         <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Volume (L) por Bloco</h3>
                         <div id="legendaCulturas" class="flex flex-wrap gap-x-3 gap-y-1"></div>
                     </div>
+                    <p class="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 rounded-full px-2 py-0.5">
+                        <i data-lucide="pointer" class="w-3 h-3"></i> Toque numa coluna para ver quem registrou, os turnos e o sistema de aspersão</p>
                     <div class="overflow-x-auto"><div id="graficoVolumeBloco" class="min-w-[560px]"></div></div>
                 </div>
             </div>
@@ -1463,6 +1488,54 @@
     <div id="equipeToast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[55] w-[calc(100%-2rem)] max-w-sm bg-slate-800 text-white rounded-2xl shadow-2xl px-4 py-3 items-center gap-3">
         <div class="bg-sky-500 rounded-full p-1.5 shrink-0"><i data-lucide="droplets" class="w-4 h-4"></i></div>
         <p id="equipeToastText" class="text-xs font-bold leading-snug"></p>
+    </div>
+
+    <!-- MODAL: LIMPAR PROGRAMAÇÃO (um bloco, um dia ou a semana toda) -->
+    <div id="limparProgModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-5 backdrop-blur-sm"
+        onclick="if (event.target === this) window.fecharLimparProg()">
+        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl p-6">
+            <div class="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-3 mx-auto">
+                <i data-lucide="eraser" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-black text-slate-800 text-center">Limpar Programação</h3>
+            <p class="text-[13px] text-slate-500 font-medium text-center mt-1 mb-4">O que você quer apagar?</p>
+
+            <div class="space-y-2">
+                <label class="block border-2 rounded-2xl px-3 py-2.5 cursor-pointer transition-colors has-[input:checked]:border-red-300 has-[input:checked]:bg-red-50/60 border-slate-200">
+                    <span class="flex items-center gap-2 text-sm font-bold text-slate-700">
+                        <input type="radio" name="limparProgModo" value="bloco" class="accent-red-600" onchange="window.atualizarLimparProg()">
+                        <i data-lucide="layers" class="w-4 h-4 text-slate-400"></i> Apenas um bloco
+                    </span>
+                    <div id="limparProgBloco" class="mt-2 flex flex-wrap gap-1.5 max-h-36 overflow-y-auto"></div>
+                    <span class="block text-[10px] text-slate-400 mt-1">Em todos os dias da semana</span>
+                </label>
+                <label class="block border-2 rounded-2xl px-3 py-2.5 cursor-pointer transition-colors has-[input:checked]:border-red-300 has-[input:checked]:bg-red-50/60 border-slate-200">
+                    <span class="flex items-center gap-2 text-sm font-bold text-slate-700">
+                        <input type="radio" name="limparProgModo" value="dia" class="accent-red-600" onchange="window.atualizarLimparProg()">
+                        <i data-lucide="calendar-days" class="w-4 h-4 text-slate-400"></i> Apenas um dia
+                    </span>
+                    <div id="limparProgDia" class="mt-2 flex flex-wrap gap-1.5"></div>
+                    <span class="block text-[10px] text-slate-400 mt-1">Todos os blocos daquele dia</span>
+                </label>
+                <label class="block border-2 rounded-2xl px-3 py-2.5 cursor-pointer transition-colors has-[input:checked]:border-red-300 has-[input:checked]:bg-red-50/60 border-slate-200">
+                    <span class="flex items-center gap-2 text-sm font-bold text-slate-700">
+                        <input type="radio" name="limparProgModo" value="tudo" class="accent-red-600" onchange="window.atualizarLimparProg()">
+                        <i data-lucide="calendar-x" class="w-4 h-4 text-slate-400"></i> A semana toda
+                    </span>
+                </label>
+            </div>
+
+            <p id="limparProgResumo" class="text-[12px] font-bold text-red-600 text-center mt-4 min-h-[1.25rem]"></p>
+            <p class="text-[10px] text-slate-400 text-center mb-4">Esta ação não pode ser desfeita.</p>
+            <div class="flex gap-3 w-full">
+                <button type="button" onclick="window.fecharLimparProg()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl transition-colors text-sm">
+                    CANCELAR
+                </button>
+                <button type="button" id="limparProgBtn" onclick="window.executarLimparProg()" class="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:hover:bg-red-600 text-white font-bold py-3.5 rounded-2xl transition-colors shadow-md text-sm">
+                    APAGAR
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL DE CONFIRMAÇÃO (EXCLUSÃO / LIMPAR TUDO) -->
@@ -1625,6 +1698,21 @@
                     <i data-lucide="search" class="w-3 h-3"></i> Filtrar</button>
             </div>
             <div id="blocoHistCorpo" class="overflow-y-auto px-5 py-4 space-y-4" style="overscroll-behavior:contain"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: DETALHE DE UMA COLUNA DO BALANÇO (registros do bloco ou aferições do poço no período) -->
+    <div id="colunaDetalheModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-4 backdrop-blur-sm" style="overscroll-behavior:contain"
+        onclick="if (event.target === this) window.fecharDetalheColuna()">
+        <div class="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+            <div id="colunaDetalheTopo" class="bg-gradient-to-r from-orange-600 to-orange-500 px-5 py-4 flex items-center justify-between shrink-0">
+                <h3 class="text-base font-bold text-white flex items-center gap-2 min-w-0">
+                    <i data-lucide="droplets" class="w-5 h-5 shrink-0"></i>
+                    <span id="colunaDetalheTitulo" class="truncate">Detalhes</span>
+                </h3>
+                <button type="button" onclick="window.fecharDetalheColuna()" class="text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="colunaDetalheCorpo" class="overflow-y-auto px-5 py-4 space-y-4" style="overscroll-behavior:contain"></div>
         </div>
     </div>
 
@@ -2170,6 +2258,32 @@
         let progUnlocked = false;
 
         const API = window.IrrigacaoAPI;
+
+        // Congela a página de fundo enquanto qualquer janela (pop-up) estiver aberta, para ela
+        // não rolar junto. Vale para todas: observa quando a janela perde ou ganha o "hidden".
+        (function travarRolagemComJanelaAberta() {
+            const janelas = [...document.querySelectorAll('[id].fixed.inset-0')];
+            const raiz = document.documentElement, corpo = document.body;
+            let travada = false;
+            function atualizar() {
+                const aberta = janelas.some(j => !j.classList.contains('hidden') && j.style.display !== 'none');
+                if (aberta === travada) return;
+                travada = aberta;
+                if (aberta) {
+                    // Compensa a barra de rolagem que some (no computador), para a página não "pular"
+                    const barra = window.innerWidth - raiz.clientWidth;
+                    raiz.style.overflow = 'hidden';
+                    corpo.style.overflow = 'hidden';
+                    raiz.style.overscrollBehavior = 'none';
+                    if (barra > 0) corpo.style.paddingRight = barra + 'px';
+                } else {
+                    raiz.style.overflow = corpo.style.overflow = raiz.style.overscrollBehavior = corpo.style.paddingRight = '';
+                }
+            }
+            const obs = new MutationObserver(atualizar);
+            janelas.forEach(j => obs.observe(j, { attributes: true, attributeFilter: ['class', 'style'] }));
+            atualizar();
+        })();
 
         // Dados de consumo de água por bloco, usados para exibir os litros junto do tempo na lista
         let consumoBlocosData = {};
@@ -3071,13 +3185,15 @@
 
         // --- SISTEMA DE ABAS ---
 
+        // Aba ativa: cartão branco com o texto na cor da aba (.aba-ativa, usada também pela barra do celular)
         const TABS = {
-            registro:    { painel: 'tabRegistro',    botao: 'tabBtnRegistro',    cor: 'bg-green-600' },
-            programacao: { painel: 'tabProgramacao', botao: 'tabBtnProgramacao', cor: 'bg-sky-600' },
-            agua:        { painel: 'tabAgua',        botao: 'tabBtnAgua',        cor: 'bg-teal-600' },
-            graficos:    { painel: 'tabGraficos',    botao: 'tabBtnGraficos',    cor: 'bg-indigo-600' },
-            cadastros:   { painel: 'tabCadastros',   botao: 'tabBtnCadastros',   cor: 'bg-slate-700' }
+            registro:    { painel: 'tabRegistro',    botao: 'tabBtnRegistro',    cor: 'text-emerald-700' },
+            programacao: { painel: 'tabProgramacao', botao: 'tabBtnProgramacao', cor: 'text-sky-700' },
+            agua:        { painel: 'tabAgua',        botao: 'tabBtnAgua',        cor: 'text-teal-700' },
+            graficos:    { painel: 'tabGraficos',    botao: 'tabBtnGraficos',    cor: 'text-indigo-700' },
+            cadastros:   { painel: 'tabCadastros',   botao: 'tabBtnCadastros',   cor: 'text-slate-800' }
         };
+        const CLASSES_ABA_ATIVA = ['aba-ativa', 'bg-white', 'shadow-sm', 'ring-1', 'ring-slate-200/80'];
 
         window.switchTab = function(tab) {
             if (tab === 'cadastros' && !API.isGestor()) tab = 'registro';
@@ -3085,9 +3201,9 @@
                 const ativo = nome === tab;
                 document.getElementById(t.painel).classList.toggle('hidden', !ativo);
                 const btn = document.getElementById(t.botao);
-                btn.classList.remove('bg-green-600', 'bg-sky-600', 'bg-teal-600', 'bg-indigo-600', 'bg-slate-700', 'text-white', 'shadow-sm', 'text-slate-400');
-                if (ativo) btn.classList.add(t.cor, 'text-white', 'shadow-sm');
-                else btn.classList.add('text-slate-400');
+                btn.classList.remove(...CLASSES_ABA_ATIVA, ...Object.values(TABS).map(x => x.cor), 'text-slate-500');
+                if (ativo) btn.classList.add(...CLASSES_ABA_ATIVA, t.cor);
+                else btn.classList.add('text-slate-500');
             });
 
             document.getElementById('navbarRegistroActions').classList.toggle('hidden', tab !== 'registro');
@@ -3636,16 +3752,94 @@
             );
         }
 
+        // Limpar a programação: um bloco (todos os dias), um dia (todos os blocos) ou a semana toda
         window.clearProgramacao = function() {
             if (!progUnlocked) { window.showAlert("Programação Bloqueada", "Toque em Desbloquear (somente gestor) antes de apagar a programação."); return; }
             if (programacao.length === 0) return;
-            pendingDeleteProgId = null;
-            pendingClearProgramacao = true;
-            window.showConfirmModal(
-                "Limpar Programação?",
-                "Tem certeza que deseja apagar TODA a programação da semana? Esta ação não pode ser desfeita.",
-                "LIMPAR TUDO"
-            );
+            const blocos = [...new Set(programacao.map(p => API.limparNomeBloco(p.block)))]
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            const dias = ORDEM_DIAS_PROG.filter(d => programacao.some(p => p.dia === d));
+            limparProgSel = { bloco: blocos[0], dia: dias[0], blocos, dias };
+
+            document.querySelector('[name=limparProgModo][value=bloco]').checked = true;
+            window.atualizarLimparProg();
+            const modal = document.getElementById('limparProgModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Bloco e dia escolhidos nas pílulas da janela "Limpar Programação"
+        let limparProgSel = { bloco: null, dia: null, blocos: [], dias: [] };
+
+        const modoLimparProg = () => (document.querySelector('[name=limparProgModo]:checked') || {}).value;
+
+        // Itens que serão apagados pela opção escolhida
+        function itensParaLimparProg() {
+            const modo = modoLimparProg();
+            if (modo === 'bloco') {
+                const b = limparProgSel.bloco;
+                return { modo, alvo: rotuloBloco(b), itens: programacao.filter(p => API.limparNomeBloco(p.block) === b) };
+            }
+            if (modo === 'dia') {
+                const d = limparProgSel.dia;
+                return { modo, alvo: d, itens: programacao.filter(p => p.dia === d) };
+            }
+            return { modo, alvo: 'a semana toda', itens: programacao.slice() };
+        }
+
+        // Toque numa pílula: escolhe o bloco/dia e já marca aquela opção
+        window.escolherLimparProg = function(tipo, valor) {
+            limparProgSel[tipo] = valor;
+            document.querySelector(`[name=limparProgModo][value=${tipo}]`).checked = true;
+            window.atualizarLimparProg();
+        }
+
+        function pilulasLimparProg(tipo, valores, rotulo, contar) {
+            const ativa = modoLimparProg() === tipo;
+            return valores.map(v => {
+                const sel = v === limparProgSel[tipo];
+                const estilo = sel && ativa ? 'bg-red-600 border-red-600 text-white shadow-sm shadow-red-600/25'
+                    : sel ? 'bg-slate-100 border-slate-300 text-slate-700'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50';
+                const n = contar(v);
+                return `<button type="button" onclick="event.preventDefault(); window.escolherLimparProg('${tipo}', ${escapeHtml(JSON.stringify(v))})"
+                    class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full border text-xs font-bold transition-all active:scale-95 ${estilo}">
+                    ${escapeHtml(rotulo(v))}
+                    <span class="min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-[18px] text-center ${sel && ativa ? 'bg-white/25 text-white' : 'bg-slate-200/70 text-slate-500'}">${n}</span>
+                </button>`;
+            }).join('');
+        }
+
+        window.atualizarLimparProg = function() {
+            const s = limparProgSel;
+            document.getElementById('limparProgBloco').innerHTML = pilulasLimparProg('bloco', s.blocos, rotuloBloco,
+                b => programacao.filter(p => API.limparNomeBloco(p.block) === b).length);
+            document.getElementById('limparProgDia').innerHTML = pilulasLimparProg('dia', s.dias, d => d,
+                d => programacao.filter(p => p.dia === d).length);
+            const { modo, alvo, itens } = itensParaLimparProg();
+            const n = itens.length;
+            document.getElementById('limparProgResumo').innerText = n
+                ? `Vai apagar ${n} ite${n === 1 ? 'm' : 'ns'} (${modo === 'tudo' ? alvo : modo === 'bloco' ? `${alvo}, todos os dias` : `${alvo}, todos os blocos`})`
+                : 'Nada para apagar';
+            document.getElementById('limparProgBtn').disabled = n === 0;
+        }
+
+        window.fecharLimparProg = function() {
+            const modal = document.getElementById('limparProgModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        window.executarLimparProg = function() {
+            if (!progUnlocked) { window.fecharLimparProg(); return; }
+            const ids = new Set(itensParaLimparProg().itens.map(p => p.id));
+            if (!ids.size) return;
+            ids.forEach(id => API.excluirProgramacaoItem(id));
+            programacao = programacao.filter(p => !ids.has(p.id));
+            if (editingProgId !== null && ids.has(editingProgId)) window.cancelProgEdit();
+            saveProgramacao();
+            window.fecharLimparProg();
         }
 
         // --- HISTÓRICO DE PROGRAMAÇÕES ENVIADAS (PLANILHA) ---
@@ -4189,7 +4383,7 @@
         const listaBlocosTxt = blocos => blocos.length === 1 ? `Bloco ${blocos[0]}` : `Blocos ${blocos.slice(0, -1).join(', ')} e ${blocos[blocos.length - 1]}`;
 
         function textoWhatsappProg(r) {
-            const L = ['@todos', '', '🗓️ *PROGRAMAÇÃO DE IRRIGAÇÃO*', `📅 ${r.rotuloDia}${r.turno ? ` · ${r.turno}` : ''}`];
+            const L = ['@all', '', '🗓️ *PROGRAMAÇÃO DE IRRIGAÇÃO*', `📅 ${r.rotuloDia}${r.turno ? ` · ${r.turno}` : ''}`];
             if (r.responsaveis.length) L.push(`👤 Responsável: ${r.responsaveis.join(', ')}`);
             r.dias.forEach(d => {
                 L.push('', `*${diaLabel(d.dia).toUpperCase()}* · ${formatDuration(d.total)}`);
@@ -6450,6 +6644,8 @@
 
         const SVG_ESTILO = `<style>
             .col:hover .bar { opacity: .85; }
+            .col.clicavel .faixa { transition: fill .15s; }
+            .col.clicavel:hover .faixa, .col.clicavel:active .faixa { fill: rgba(100, 116, 139, .10); }
             .pt circle { transition: r .15s; } .pt:hover circle { r: 6.5px; }
         </style>`;
 
@@ -6520,7 +6716,7 @@
             return svg + `<text x="${x}" y="${y}" text-anchor="end" font-size="${f}" font-weight="600" fill="#94a3b8">Fundo = dia anterior</text>`;
         }
 
-        // Colunas: itens = [{ rotulo, valor, cor, dica, var1?, var7?, ontem? }]
+        // Colunas: itens = [{ rotulo, valor, cor, dica, var1?, var7?, ontem?, acao? }]
         function svgColunas(itens, opts) {
             opts = opts || {};
             if (!itens.length) return `<p class="text-xs text-slate-400 py-6 text-center">${opts.vazio || 'Sem dados no período.'}</p>`;
@@ -6556,8 +6752,10 @@
                 // Número sempre logo acima da coluna de hoje; só sobe se o traço de ontem passar por cima dele
                 const yValor = topoOntem != null && topoOntem < topo && topoOntem > topo - fs * 1.7 ? topoOntem - fs * 0.5 : topo - fs * 0.6;
                 const dica = (it.dica || `${it.rotulo}: ${fmtLh(it.valor)}`) + (it.ontem != null ? ` · ontem: ${fmtLh(it.ontem)}` : '');
-                return `<g class="col"><title>${escapeHtml(dica)}</title>
-                    <rect x="${m.l + banda * i}" y="${m.t}" width="${banda}" height="${H - m.t}" fill="transparent"/>
+                // acao = JS ao tocar na coluna (só no app; na imagem não tem efeito)
+                const clique = it.acao ? ` onclick="${escapeHtml(it.acao)}" style="cursor:pointer"` : '';
+                return `<g class="col${it.acao ? ' clicavel' : ''}"${clique}><title>${escapeHtml(dica)}</title>
+                    <rect class="faixa" x="${m.l + banda * i + 2}" y="${m.t}" width="${banda - 4}" height="${H - m.t}" rx="8" fill="transparent"/>
                     ${sombra}
                     ${coluna}
                     <text x="${cx}" y="${yValor}" text-anchor="middle" font-size="${fs * 0.95}" font-weight="700" fill="#1e293b">${fmtLh(it.valor)}</text>
@@ -6620,12 +6818,14 @@
         function dadosGraficos(b, fs, largura) {
             const pocos = b.comDados.map(l => ({ rotulo: `Poço ${l.poco.numero}`, valor: l.volume, cor: COR_ENTRADA,
                 var1: l.varVolume1, var7: l.varVolume7, ontem: l.volOntem,
-                dica: `Poço ${l.poco.numero}: ${fmtLh(l.volume)} L (${fmtLh(l.media)} L/h)` }));
+                dica: `Poço ${l.poco.numero}: ${fmtLh(l.volume)} L (${fmtLh(l.media)} L/h) · toque para ver as aferições`,
+                acao: `window.abrirDetalhePoco(${JSON.stringify(String(l.poco.id))})` }));
             // Sem variação aqui: repetiria a do volume (mesmas horas ligado)
             const vazoes = b.comDados.map(l => ({ rotulo: `Poço ${l.poco.numero}`, valor: l.media }));
             const blocos = b.blocos.filter(x => x.litros != null).map(x => ({ rotulo: apelidosBloco[x.bloco] || `Bloco ${x.bloco}`, valor: x.litros, cor: x.cor,
                 var1: x.var1, var7: x.var7, ontem: x.litrosOntem,
-                dica: `${rotuloBloco(x.bloco)}${x.cultura ? ' · ' + x.cultura : ''}: ${fmtLh(x.litros)} L` }));
+                dica: `${rotuloBloco(x.bloco)}${x.cultura ? ' · ' + x.cultura : ''}: ${fmtLh(x.litros)} L · toque para ver os registros`,
+                acao: `window.abrirIrrigacaoBloco(${JSON.stringify(x.bloco)})` }));
             return {
                 volumePoco: svgColunas(pocos, { fonte: fs, largura, titulo: 'Volume (L) por Poço', vazio: 'Nenhuma aferição de poço no período.' }),
                 vazaoPoco: svgLinha(vazoes, COR_ENTRADA, { fonte: fs, largura, titulo: 'Vazão média por poço', vazio: 'Nenhuma aferição de poço no período.' }),
@@ -6787,7 +6987,7 @@
                 nivel: comparar(nivel ? Number(nivel.nivel_m) : null, nivelAnt)
             };
 
-            ultimoBalanco = { de, ate, umDia, entrada, saida, somaVazao, comDados, semDados, blocos, legenda, nivel, pctNivel, varTotais };
+            ultimoBalanco = { de, ate, umDia, entrada, saida, somaVazao, comDados, semDados, blocos, legenda, nivel, pctNivel, varTotais, registros, taxas, leituras, horasRegs };
 
             // ----- Resumo -----
             document.getElementById('balancoResumo').innerHTML = cartoesResumoBalanco(ultimoBalanco, 1).join('');
@@ -6964,7 +7164,7 @@
             const diferenca = b.entrada - b.saida;
             const linhas = [];
 
-            linhas.push('@todos');
+            linhas.push('@all');
             linhas.push('');
             linhas.push(`💧 *BALANÇO DE ÁGUA*`);
             linhas.push(`📅 ${rotuloPeriodo(b.de, b.ate)}`);
@@ -7048,9 +7248,6 @@
             const modal = document.getElementById('balancoTextoModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            // Congela a página de fundo enquanto a janela está aberta
-            document.documentElement.style.overflow = 'hidden';
-            document.body.style.overflow = 'hidden';
             if(typeof lucide !== 'undefined') lucide.createIcons();
             statusTextoBalanco(await copiarTexto(texto));
         }
@@ -7063,8 +7260,6 @@
             const modal = document.getElementById('balancoTextoModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
-            document.documentElement.style.overflow = '';
-            document.body.style.overflow = '';
         }
 
         // ----- Imagem do balanço (no formato do relatório em PDF) -----
@@ -7738,6 +7933,203 @@
             const modal = document.getElementById('blocoHistModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+        }
+
+        // ----- Toque numa coluna do Balanço: detalhe do bloco (registros e sistema) ou do poço (aferições) -----
+        let colunaAberta = null;
+
+        // Abre a janela de detalhe; devolve o objeto que identifica esta abertura
+        // (se mudar, o usuário fechou ou abriu outra coluna enquanto carregava)
+        function abrirDetalheColuna(titulo, cor) {
+            const aberto = colunaAberta = {};
+            document.getElementById('colunaDetalheTitulo').innerText = titulo;
+            document.getElementById('colunaDetalheTopo').className =
+                `bg-gradient-to-r ${cor === 'poco' ? 'from-blue-600 to-blue-700' : 'from-orange-600 to-orange-500'} px-5 py-4 flex items-center justify-between shrink-0`;
+            document.getElementById('colunaDetalheCorpo').innerHTML =
+                `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-6"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
+            const modal = document.getElementById('colunaDetalheModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            return aberto;
+        }
+
+        function textoPeriodoBalanco(b) { return b.umDia ? formatDate(b.de) : `${formatDate(b.de)} a ${formatDate(b.ate)}`; }
+
+        // Hora do registro: só a hora se foi no próprio dia; senão data e hora
+        function quandoRegistrado(iso, dia) {
+            return dataLocalIso(new Date(iso)) === dia ? `às ${fmtHora(iso)}` : `em ${fmtDataHora(iso)}`;
+        }
+
+        window.fecharDetalheColuna = function() {
+            colunaAberta = null;
+            const modal = document.getElementById('colunaDetalheModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        window.abrirDetalhePoco = function(pocoId) {
+            const b = ultimoBalanco;
+            if (!b || !b.leituras) return;
+            const linha = b.comDados.find(l => String(l.poco.id) === String(pocoId));
+            if (!linha) return;
+            const p = linha.poco;
+            const aberto = abrirDetalheColuna(`Poço ${p.numero} · ${textoPeriodoBalanco(b)}`, 'poco');
+            if (colunaAberta !== aberto) return;
+
+            const leituras = b.leituras.filter(l => String(l.poco_id) === String(p.id))
+                .sort((x, y) => String(x.data_hora).localeCompare(String(y.data_hora)));
+            const diaDe = l => dataLocalIso(new Date(l.data_hora));
+            const dias = [...new Set(leituras.map(diaDe))];
+
+            // Horas usadas no volume de cada dia, e de onde vieram (mesma regra do calcularEntradaPocos)
+            const horasDoDia = d => {
+                const reg = b.horasRegs.find(h => h.poco_id === p.id && h.data === d);
+                if (reg) return { horas: Number(reg.horas), origem: 'ajustada no Balanço' };
+                const comHoras = leituras.filter(l => diaDe(l) === d && l.status !== 'desligado' && l.horas_ligado != null).pop();
+                if (comHoras) return { horas: Number(comHoras.horas_ligado), origem: `informada por ${comHoras.responsavel || 'quem aferiu'}` };
+                return { horas: horasPadraoDoPoco(p), origem: 'padrão da ficha do poço' };
+            };
+
+            const linhaLeitura = l => {
+                const desligado = l.status === 'desligado';
+                const medida = [
+                    Number(l.segundos_15l) > 0 ? `15 L em ${fmtNum(Number(l.segundos_15l), Number(l.segundos_15l) % 1 ? 1 : 0)} s` : '',
+                    l.leitura_hidrometro_m3 != null ? `hidrômetro ${fmtNum(Number(l.leitura_hidrometro_m3), 3)} m³` : '',
+                    l.horas_ligado != null ? `${fmtNum(Number(l.horas_ligado), Number(l.horas_ligado) % 1 ? 1 : 0)} h ligado/dia` : ''
+                ].filter(Boolean).join(' · ');
+                return `
+                    <div class="py-2 flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs font-black text-slate-700 flex items-center gap-1.5">${seloStatusPoco(l)} ${fmtHora(l.data_hora)}</p>
+                            <p class="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5"><i data-lucide="user" class="w-3 h-3 shrink-0"></i>${escapeHtml(l.responsavel || 'Sem responsável')}${l.created_at && Math.abs(new Date(l.created_at) - new Date(l.data_hora)) > 10 * 60000 ? ` · enviado ${quandoRegistrado(l.created_at, diaDe(l))}` : ''}</p>
+                            ${medida ? `<p class="text-[10px] text-slate-400">${medida}</p>` : ''}
+                            ${desligado && motivoParada(l) ? `<p class="text-[10px] text-red-600">${escapeHtml(motivoParada(l))}</p>` : ''}
+                            ${l.observacao ? `<p class="mt-0.5 text-[10px] text-slate-400 italic">${escapeHtml(l.observacao)}</p>` : ''}
+                        </div>
+                        <p class="text-sm font-black shrink-0 ${desligado ? 'text-slate-300' : 'text-slate-800'}">${fmtLh(vazaoLeitura(l))} <span class="text-[10px] text-slate-400">L/h</span></p>
+                    </div>`;
+            };
+
+            const porDia = dias.map(d => {
+                const h = horasDoDia(d);
+                return `
+                <div>
+                    <div class="flex items-center justify-between gap-2 mt-1">
+                        ${dias.length > 1 ? `<h5 class="text-[10px] font-black text-blue-700 uppercase tracking-wider">${formatDate(d)}</h5>` : '<span></span>'}
+                        <span class="text-[10px] font-bold text-slate-500">${fmtNum(h.horas, h.horas % 1 ? 1 : 0)} h ligado · ${escapeHtml(h.origem)}</span>
+                    </div>
+                    <div class="divide-y divide-slate-100">${leituras.filter(l => diaDe(l) === d).map(linhaLeitura).join('')}</div>
+                </div>`;
+            }).join('');
+
+            document.getElementById('colunaDetalheCorpo').innerHTML = `
+                <div class="flex items-center justify-between gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
+                    <span class="text-[11px] font-bold text-blue-800">${linha.afericoes} aferiç${linha.afericoes === 1 ? 'ão' : 'ões'} · média ${fmtLh(linha.media)} L/h</span>
+                    <span class="text-sm font-black text-blue-900">${fmtLh(linha.volume)} <span class="text-[10px] font-bold">L</span></span>
+                </div>
+                <div>
+                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Aferições</h4>
+                    ${leituras.length ? porDia : '<p class="text-xs text-slate-400 py-3">Nenhuma aferição deste poço no período.</p>'}
+                </div>
+                <p class="text-[10px] text-slate-400">Volume = vazão média do dia × horas ligado. Aferições com o poço desligado não entram na média.</p>`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Versão do sistema que valia num instante (null = sem cópia do sistema)
+        function versaoNoMomento(versoes, iso) {
+            const t = new Date(iso).getTime();
+            return versoes.filter(v => v.valido_desde == null || new Date(v.valido_desde).getTime() <= t).pop() || null;
+        }
+
+        function cartaoSistemaBloco(v, titulo) {
+            const r = resumoVersaoBloco(v);
+            return `
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                    <div class="bg-slate-50 px-3 py-2 border-b border-slate-100 flex items-center justify-between gap-2">
+                        <span class="text-[11px] font-black text-slate-700">${titulo}</span>
+                        <span class="text-[10px] font-bold text-slate-500 shrink-0">${fmtNum(r.asp, 0)} asp. · ${r.valv} válv. · ${fmtLh(r.lh)} L/h</span>
+                    </div>
+                    <div class="px-3 py-1.5 divide-y divide-slate-100">
+                        ${r.linhas.length ? r.linhas.map(d => `<p class="py-1 text-[11px] text-slate-600"><b>${escapeHtml(d.tipo)} ${fmtNum(d.vazao, d.vazao % 1 ? 1 : 0)} L/H</b> · ${fmtNum(d.qtd, 0)} aspersores · ${d.valvulas} válvula${d.valvulas > 1 ? 's' : ''}</p>`).join('')
+                            : '<p class="py-1 text-[11px] text-slate-400">Bloco sem sistemas cadastrados</p>'}
+                    </div>
+                </div>`;
+        }
+
+        window.abrirIrrigacaoBloco = async function(bloco) {
+            const b = ultimoBalanco;
+            if (!b || !b.registros) return;
+            bloco = API.limparNomeBloco(bloco);
+            const aberto = abrirDetalheColuna(`${rotuloBloco(bloco)} · ${textoPeriodoBalanco(b)}`, 'bloco');
+            const corpo = document.getElementById('colunaDetalheCorpo');
+
+            const versoes = await API.listarVersoesBloco(bloco);
+            if (colunaAberta !== aberto) return; // fechou ou abriu outra coluna enquanto carregava
+
+            const ordemTurno = t => { const i = ORDEM_TURNOS.indexOf(t || ''); return i < 0 ? ORDEM_TURNOS.length : i; };
+            const registros = b.registros.filter(r => API.limparNomeBloco(r.bloco) === bloco)
+                .sort((x, y) => x.data.localeCompare(y.data) || ordemTurno(x.turno) - ordemTurno(y.turno)
+                    || String(x.registrado_em || '').localeCompare(String(y.registrado_em || '')));
+            // Versão que vale para o volume do dia (alteração vale para o dia inteiro em que foi feita)
+            const versaoDoDia = dia => versoes.filter(v => v.valido_desde == null || dataLocalIso(new Date(v.valido_desde)) <= dia).pop() || null;
+            const dias = [...new Set(registros.map(r => r.data))];
+            const totalMin = registros.reduce((s, r) => s + (Number(r.minutos) || 0), 0);
+            const litros = registros.map(r => litrosDoRegistro(r, b.taxas));
+            const totalL = litros.some(l => l == null) ? null : litros.reduce((s, l) => s + l, 0);
+
+            const linhaRegistro = (r, i) => {
+                const doDia = versaoDoDia(r.data);
+                const noMomento = r.registrado_em ? versaoNoMomento(versoes, r.registrado_em) : doDia;
+                // Sistema mudou no mesmo dia, depois do registro: o volume usa o sistema novo
+                const mudouDepois = doDia && noMomento && doDia.id !== noMomento.id
+                    ? `<p class="mt-1 text-[10px] text-amber-700">Registrado com o sistema de ${quandoVersaoBloco(noMomento)} (${mudancasVersaoBloco(noMomento, doDia)} depois)</p>` : '';
+                const l = litros[registros.indexOf(r)];
+                const quando = r.registrado_em ? ` · registrado ${quandoRegistrado(r.registrado_em, r.data)}` : '';
+                return `
+                    <div class="py-2 flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs font-black text-slate-700">${escapeHtml(r.turno || 'Sem turno')} · ${formatDuration(Number(r.minutos) || 0)}</p>
+                            <p class="text-[10px] text-slate-500 flex items-center gap-1"><i data-lucide="user" class="w-3 h-3 shrink-0"></i>${escapeHtml(r.responsavel || 'Sem responsável')}${quando}</p>
+                            ${r.observacao ? `<p class="mt-0.5 text-[10px] text-slate-400 italic">${escapeHtml(r.observacao)}</p>` : ''}
+                            ${mudouDepois}
+                        </div>
+                        <p class="text-sm font-black shrink-0 ${l == null ? 'text-slate-300' : 'text-slate-800'}">${l == null ? 'sem dados' : fmtLh(l) + ' <span class="text-[10px] text-slate-400">L</span>'}</p>
+                    </div>`;
+            };
+
+            const blocosDias = dias.map(d => `
+                <div>
+                    ${dias.length > 1 ? `<h5 class="text-[10px] font-black text-orange-700 uppercase tracking-wider mt-1">${formatDate(d)}</h5>` : ''}
+                    <div class="divide-y divide-slate-100">${registros.filter(r => r.data === d).map(linhaRegistro).join('')}</div>
+                </div>`).join('');
+
+            // Sistema que valeu em cada dia (um cartão por versão diferente)
+            const usadas = [];
+            dias.forEach(d => { const v = versaoDoDia(d); if (v && !usadas.some(u => u.v.id === v.id)) usadas.push({ v, dias: [] }); if (v) usadas.find(u => u.v.id === v.id).dias.push(d); });
+            const sistemas = usadas.map(({ v, dias: ds }) => {
+                const desde = v.valido_desde ? `Alterado em ${quandoVersaoBloco(v)}${v.alterado_por_nome ? ` por ${escapeHtml(v.alterado_por_nome)}` : ''}` : 'Sistema desde o início do histórico';
+                const titulo = usadas.length > 1 ? `${ds.map(formatDate).join(', ')}` : 'Sistema no dia do registro';
+                return `${cartaoSistemaBloco(v, titulo)}<p class="text-[10px] text-slate-400 -mt-1">${desde}</p>`;
+            }).join('');
+
+            corpo.innerHTML = `
+                <div class="flex items-center justify-between gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2">
+                    <span class="text-[11px] font-bold text-orange-800">${registros.length} registro${registros.length === 1 ? '' : 's'} · ${formatDuration(totalMin)}</span>
+                    <span class="text-sm font-black text-orange-900">${totalL == null ? '' : fmtLh(totalL) + ' <span class="text-[10px] font-bold">L</span>'}</span>
+                </div>
+                <div>
+                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Registros</h4>
+                    ${registros.length ? blocosDias : '<p class="text-xs text-slate-400 py-3">Nenhum registro deste bloco no período.</p>'}
+                </div>
+                <div class="space-y-2">
+                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Sistema de aspersão</h4>
+                    ${sistemas || '<p class="text-xs text-slate-400">Sem cópia do sistema para este período (rode o volume_historico.sql no Supabase).</p>'}
+                </div>
+                <button type="button" onclick="window.fecharDetalheColuna(); window.abrirHistoricoBloco(${escapeHtml(JSON.stringify(bloco))})"
+                    class="w-full flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-lg bg-white border-2 border-orange-200 text-orange-700 hover:bg-orange-50">
+                    <i data-lucide="history" class="w-3.5 h-3.5"></i> Histórico completo do bloco</button>`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         // Litros por minuto de cada bloco pelos dados atuais (mesma conta do relatório: vazão de uma válvula × tempo)
