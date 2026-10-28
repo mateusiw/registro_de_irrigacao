@@ -474,6 +474,16 @@
         localStorage.removeItem(K.cache('dados_bloco'));
     }
 
+    // Versões do sistema de um bloco (cópia gravada pelo banco a cada alteração), da mais antiga à mais nova.
+    // A versão inicial (valido_desde null) é como o bloco estava quando o histórico começou.
+    async function listarVersoesBloco(bloco) {
+        const nome = limparNomeBloco(bloco);
+        const lista = await buscarComCache(`dados_bloco_versoes_${nome}`,
+            () => sb.from('dados_bloco_versoes').select('*').eq('bloco', nome).limit(500), 0).catch(() => []);
+        return lista.sort((a, b) => (a.valido_desde == null ? 0 : 1) - (b.valido_desde == null ? 0 : 1)
+            || String(a.valido_desde || '').localeCompare(String(b.valido_desde || '')) || a.id - b.id);
+    }
+
     // ------------------------------------------------------------
     // Cálculo de consumo (antigo calcularConsumo do Code.gs)
     // ------------------------------------------------------------
@@ -1022,10 +1032,15 @@
         enfileirar('horas_poco_dia', 'upsert', { id: pocoId + '_' + data, poco_id: pocoId, data, horas });
     }
 
-    // Registros de irrigação do período, de todos os irrigadores (saída de água)
+    // Registros de irrigação do período, de todos os irrigadores (saída de água).
+    // litros_por_min é a vazão do bloco no dia do registro (congelada no banco).
     async function listarRegistrosPeriodo(de, ate) {
-        const lista = await buscarComCache(`registros_${de}_${ate}`,
-            () => sb.from('registros_irrigacao').select('id,data,bloco,minutos').gte('data', de).lte('data', ate).limit(10000), 0).catch(() => []);
+        const consulta = campos => sb.from('registros_irrigacao').select(campos).gte('data', de).lte('data', ate).limit(10000);
+        const lista = await buscarComCache(`registros_${de}_${ate}`, async () => {
+            const resp = await consulta('id,data,bloco,minutos,litros_por_min');
+            // Banco ainda sem a coluna (volume_historico.sql não rodado): usa a vazão atual
+            return resp.error ? consulta('id,data,bloco,minutos') : resp;
+        }, 0).catch(() => []);
         return mesclarPendentes('registros_irrigacao', lista).filter(r => r.data >= de && r.data <= ate);
     }
 
@@ -1286,7 +1301,7 @@
         // sincronização
         sincronizar, onStatus, status, falhasSync, limparFalhasSync, reenviarFalhas,
         // irrigação e programação
-        enviar, historico, programacaoAtual, salvarProgramacaoItem, excluirProgramacaoItem,
+        enviar, historico, programacaoAtual, listarVersoesBloco, salvarProgramacaoItem, excluirProgramacaoItem,
         salvarRegistro, excluirRegistro, atualizarRegistroEquipe, excluirRegistroEquipe, salvarMotor, registrarEnvio,
         // dados dos blocos
         limparNomeBloco, listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
