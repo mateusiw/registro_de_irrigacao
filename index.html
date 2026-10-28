@@ -1384,6 +1384,15 @@
 
             <!-- GRÁFICOS (mesmos do relatório em PDF) -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-5">
+                <!-- ZOOM DOS GRÁFICOS: no celular não dá para dar zoom com os dedos -->
+                <div class="flex items-center justify-end gap-1 -mb-2">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1">Zoom</span>
+                    <button type="button" id="balancoZoomMenos" onclick="window.zoomGraficosBalanco(-1)" title="Diminuir os gráficos"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-30"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+                    <span id="balancoZoomRotulo" class="w-12 text-center text-[11px] font-black text-slate-600">100%</span>
+                    <button type="button" id="balancoZoomMais" onclick="window.zoomGraficosBalanco(1)" title="Aumentar os gráficos"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-30"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+                </div>
                 <div>
                     <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Volume (L) por Poço</h3>
                     <div class="overflow-x-auto"><div id="graficoVolumePoco" class="min-w-[560px]"></div></div>
@@ -1591,6 +1600,19 @@
                     <span id="blocoHistTitulo" class="truncate">Histórico do bloco</span>
                 </h3>
                 <button type="button" onclick="window.fecharHistoricoBloco()" class="text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <!-- FILTRO: últimas 5 irrigações (padrão) ou um período -->
+            <div class="shrink-0 px-5 py-2.5 border-b border-slate-100 bg-orange-50/60 flex flex-wrap items-center gap-1.5">
+                <button type="button" id="blocoHistUltimosBtn" onclick="window.historicoBlocoUltimos()"
+                    class="text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg">Últimas 5</button>
+                <input type="date" id="blocoHistDe" aria-label="De"
+                    class="bg-white border-2 border-orange-200 rounded-lg py-1 px-1.5 text-xs font-bold text-slate-700">
+                <span class="text-[10px] font-bold text-slate-400">até</span>
+                <input type="date" id="blocoHistAte" aria-label="Até"
+                    class="bg-white border-2 border-orange-200 rounded-lg py-1 px-1.5 text-xs font-bold text-slate-700">
+                <button type="button" onclick="window.filtrarHistoricoBloco()"
+                    class="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-white">
+                    <i data-lucide="search" class="w-3 h-3"></i> Filtrar</button>
             </div>
             <div id="blocoHistCorpo" class="overflow-y-auto px-5 py-4 space-y-4" style="overscroll-behavior:contain"></div>
         </div>
@@ -6805,7 +6827,7 @@
                         </div>
                         <div class="flex items-center gap-1 shrink-0">
                             <p class="text-sm font-black ${b.litros == null ? 'text-slate-300' : 'text-slate-800'}">${b.litros == null ? 'sem dados do bloco' : fmtLh(b.litros) + ' <span class="text-[10px] text-slate-400">L</span>'}</p>
-                            <button type="button" onclick="window.abrirHistoricoBloco('${escapeHtml(b.bloco)}', '${ate}')" title="Como era o sistema do bloco em cada dia"
+                            <button type="button" onclick="window.abrirHistoricoBloco('${escapeHtml(b.bloco)}')" title="Como era o sistema do bloco em cada dia"
                                 class="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg"><i data-lucide="history" class="w-3.5 h-3.5"></i></button>
                         </div>
                     </div>`).join('') +
@@ -6814,6 +6836,25 @@
                    </div>`;
 
             if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Zoom dos gráficos do balanço: "Tela" cabe inteiro na largura; os outros níveis aumentam
+        // e o gráfico rola para o lado (o meio do que estava na tela continua no meio)
+        const ZOOM_BALANCO = [0, 1, 1.5, 2, 3];
+        let zoomBalanco = 1;
+        window.zoomGraficosBalanco = function(passo) {
+            zoomBalanco = Math.max(0, Math.min(ZOOM_BALANCO.length - 1, zoomBalanco + passo));
+            const z = ZOOM_BALANCO[zoomBalanco];
+            ['graficoVolumePoco', 'graficoVazaoPoco', 'graficoVolumeBloco'].forEach(id => {
+                const el = document.getElementById(id), caixa = el.parentElement;
+                const meio = (caixa.scrollLeft + caixa.clientWidth / 2) / (caixa.scrollWidth || 1);
+                el.style.minWidth = z ? `${560 * z}px` : '0';
+                el.style.width = z ? `max(100%, ${560 * z}px)` : '100%';
+                caixa.scrollLeft = meio * caixa.scrollWidth - caixa.clientWidth / 2;
+            });
+            document.getElementById('balancoZoomRotulo').innerText = z ? `${Math.round(z * 100)}%` : 'Tela';
+            document.getElementById('balancoZoomMenos').disabled = zoomBalanco === 0;
+            document.getElementById('balancoZoomMais').disabled = zoomBalanco === ZOOM_BALANCO.length - 1;
         }
 
         window.alterarHorasPoco = function(pocoId, valor) {
@@ -7531,7 +7572,8 @@
         }
 
         // ----- Histórico do bloco: como era o sistema em cada dia irrigado e quanto saiu -----
-        const DIAS_HIST_BLOCO = 30;
+        const DIAS_HIST_BLOCO = 30;      // período sugerido no filtro
+        const ULTIMAS_HIST_BLOCO = 5;    // sem filtro: só as últimas irrigações
 
         // Totais de uma versão do sistema (mesma conta do relatório: vazão do bloco / válvulas = L/h)
         function resumoVersaoBloco(v) {
@@ -7556,31 +7598,67 @@
             return m.length ? m.join(' · ') : 'Tipo de aspersor alterado';
         }
 
-        window.abrirHistoricoBloco = async function(bloco, ate) {
+        // Bloco aberto no histórico; periodo = null mostra só as últimas irrigações
+        let histBloco = null;
+
+        window.abrirHistoricoBloco = async function(bloco) {
             bloco = API.limparNomeBloco(bloco);
-            ate = ate || dataLocalIso();
-            const de = dataLocalIso(new Date(new Date(ate + 'T12:00:00').getTime() - (DIAS_HIST_BLOCO - 1) * 86400000));
-            const corpo = document.getElementById('blocoHistCorpo');
+            histBloco = { bloco, periodo: null, versoes: null, taxas: null };
             document.getElementById('blocoHistTitulo').innerText = `Histórico · ${rotuloBloco(bloco)}`;
-            corpo.innerHTML = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-6"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
+            const hoje = dataLocalIso();
+            ['blocoHistDe', 'blocoHistAte'].forEach(id => document.getElementById(id).max = hoje);
+            document.getElementById('blocoHistAte').value = hoje;
+            document.getElementById('blocoHistDe').value = dataLocalIso(new Date(Date.now() - (DIAS_HIST_BLOCO - 1) * 86400000));
             const modal = document.getElementById('blocoHistModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+            carregarHistoricoBloco();
+        }
+
+        window.historicoBlocoUltimos = function() {
+            if (!histBloco) return;
+            histBloco.periodo = null;
+            carregarHistoricoBloco();
+        }
+
+        window.filtrarHistoricoBloco = function() {
+            if (!histBloco) return;
+            const de = document.getElementById('blocoHistDe'), ate = document.getElementById('blocoHistAte');
+            if (!de.value || !ate.value) { window.showAlert("Período", "Informe as duas datas do período."); return; }
+            if (de.value > ate.value) [de.value, ate.value] = [ate.value, de.value];
+            histBloco.periodo = { de: de.value, ate: ate.value };
+            carregarHistoricoBloco();
+        }
+
+        async function carregarHistoricoBloco() {
+            const h = histBloco;
+            const { bloco, periodo } = h;
+            const btnUltimos = document.getElementById('blocoHistUltimosBtn');
+            btnUltimos.className = `text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg ${periodo
+                ? 'bg-white border-2 border-orange-200 text-orange-700 hover:bg-orange-50' : 'bg-orange-600 text-white'}`;
+            const corpo = document.getElementById('blocoHistCorpo');
+            corpo.innerHTML = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-6"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
             if(typeof lucide !== 'undefined') lucide.createIcons();
 
-            const [versoes, registros, taxas] = await Promise.all([
-                API.listarVersoesBloco(bloco), API.listarRegistrosPeriodo(de, ate), litrosPorMinutoBlocos([bloco])
+            // Versões e vazão atual só uma vez por abertura; os registros são só deste bloco
+            const [versoes, taxas, registros] = await Promise.all([
+                h.versoes || API.listarVersoesBloco(bloco), h.taxas || litrosPorMinutoBlocos([bloco]),
+                API.listarRegistrosBloco(bloco, periodo && periodo.de, periodo && periodo.ate)
             ]);
+            if (histBloco !== h || h.periodo !== periodo) return; // fechou ou trocou o filtro enquanto carregava
+            h.versoes = versoes;
+            h.taxas = taxas;
 
             // Irrigações do bloco por dia (litros pela vazão gravada em cada registro)
             const porDia = {};
-            registros.filter(r => API.limparNomeBloco(r.bloco) === bloco).forEach(r => {
+            registros.forEach(r => {
                 const d = porDia[r.data] = porDia[r.data] || { dia: r.data, minutos: 0, litros: 0, semDados: false };
                 d.minutos += Number(r.minutos) || 0;
                 const l = litrosDoRegistro(r, taxas);
                 if (l == null) d.semDados = true; else d.litros += l;
             });
-            const dias = Object.values(porDia).sort((a, b) => b.dia.localeCompare(a.dia));
+            let dias = Object.values(porDia).sort((a, b) => b.dia.localeCompare(a.dia));
+            if (!periodo) dias = dias.slice(0, ULTIMAS_HIST_BLOCO);
             // Versão do sistema que valia no dia (alteração vale para o dia inteiro em que foi feita)
             const versaoDoDia = dia => versoes.filter(v => v.valido_desde == null || dataLocalIso(new Date(v.valido_desde)) <= dia).pop() || null;
             const rotuloVersao = v => v ? `Sistema de ${quandoVersaoBloco(v)}` : 'Sem cópia do sistema';
@@ -7627,9 +7705,11 @@
 
             corpo.innerHTML = `
                 <div>
-                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Irrigações · ${formatDate(de)} a ${formatDate(ate)}</h4>
+                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">${periodo
+                        ? `Irrigações · ${formatDate(periodo.de)} a ${formatDate(periodo.ate)} · ${dias.length} dia${dias.length === 1 ? '' : 's'}`
+                        : `Últimas ${ULTIMAS_HIST_BLOCO} irrigações`}</h4>
                     ${dias.length ? `<div class="divide-y divide-slate-100">${linhasDias}</div>`
-                        : '<p class="text-xs text-slate-400 py-3">Nenhuma irrigação deste bloco no período.</p>'}
+                        : `<p class="text-xs text-slate-400 py-3">Nenhuma irrigação deste bloco${periodo ? ' no período' : ''}.</p>`}
                 </div>
                 <div>
                     <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Versões do sistema</h4>
@@ -7640,6 +7720,7 @@
         }
 
         window.fecharHistoricoBloco = function() {
+            histBloco = null;
             const modal = document.getElementById('blocoHistModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
@@ -8612,6 +8693,17 @@
             if (campo === 'vazao') rascunhoBloco[i].vazaoAuto = false;
         }
 
+        // Quantidade de aspersores com ponto de milhar enquanto digita (30000 -> 30.000), sem perder o cursor
+        window.digitarQtdSistema = function(i, campo) {
+            const digitosAntes = campo.value.slice(0, campo.selectionStart).replace(/\D/g, '').length;
+            const digitos = campo.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+            rascunhoBloco[i].qtd = digitos;
+            campo.value = digitos ? fmtNum(Number(digitos), 0) : '';
+            let pos = 0;
+            for (let vistos = 0; pos < campo.value.length && vistos < digitosAntes; pos++) if (/\d/.test(campo.value[pos])) vistos++;
+            campo.setSelectionRange(pos, pos);
+        }
+
         const nomeTipoSistema = s => s.tipo === 'Outro' ? String(s.tipoOutro || '').trim() : s.tipo;
 
         // Tipos com nome próprio já cadastrados em algum bloco (ex.: "Canhão"), viram atalho no editor
@@ -8721,7 +8813,7 @@
                             <input type="number" value="${s.vazao}" min="0.1" step="0.1" inputmode="decimal" oninput="window.alterarSistemaBloco(${i}, 'vazao', this.value)"
                                 class="${campo} ${s.vazaoAuto ? 'bg-amber-50 border-amber-200' : ''}" ${s.vazaoAuto ? 'title="Sugerida pela vazão mais usada desse tipo"' : ''}></label>
                         <label class="block">${rotulo('Aspersores')}
-                            <input type="number" value="${s.qtd}" min="1" step="1" inputmode="numeric" oninput="window.alterarSistemaBloco(${i}, 'qtd', this.value)" class="${campo}"></label>
+                            <input type="text" value="${s.qtd === '' || s.qtd == null ? '' : fmtNum(s.qtd, 0)}" inputmode="numeric" autocomplete="off" oninput="window.digitarQtdSistema(${i}, this)" class="${campo}"></label>
                         <label class="block">${rotulo('Válvulas')}
                             <input type="number" value="${s.valvulas}" min="1" step="1" inputmode="numeric" oninput="window.alterarSistemaBloco(${i}, 'valvulas', this.value)" class="${campo}"></label>
                     </div>
@@ -8901,14 +8993,15 @@
                         <div class="flex items-center justify-between gap-2">
                             <span class="text-xs font-black text-green-800 uppercase tracking-wide">Bloco ${escapeHtml(bloco)}${apelidosBloco[bloco]
                                 ? ` <span class="normal-case font-bold text-green-700">· ${escapeHtml(apelidosBloco[bloco])}</span>` : ''}</span>
-                            <div class="flex items-center gap-1 min-w-0">
-                                <span class="text-[10px] font-bold text-green-700 truncate">${fmtNum(aspTotal, 0)} asp. · ${valvTotal} válv. · ≈ ${fmtNum(milLitrosHora, 3)} mil L/h</span>
+                            <div class="flex items-center gap-1 shrink-0">
                                 <button type="button" onclick="window.abrirHistoricoBloco('${escapeHtml(bloco)}')" title="Histórico do sistema do bloco"
                                     class="p-1.5 text-green-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg shrink-0"><i data-lucide="history" class="w-3.5 h-3.5"></i></button>
                                 <button type="button" onclick="window.editarBloco('${escapeHtml(bloco)}')" title="Editar os sistemas de aspersão do bloco"
                                     class="p-1.5 text-green-700 hover:text-amber-600 hover:bg-amber-50 rounded-lg shrink-0"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
                             </div>
                         </div>
+                        <!-- Resumo numa linha própria: com vários sistemas o número não cabe ao lado do título -->
+                        <p class="text-[11px] font-bold text-green-700 leading-snug">${fmtNum(aspTotal, 0)} asp. · ${valvTotal} válv. · ≈ ${fmtNum(milLitrosHora, 3)} mil L/h</p>
                         <div class="mt-1.5">
                             ${culturaAtual
                                 ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-green-200 text-[11px] font-bold text-green-800">
