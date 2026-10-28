@@ -1583,6 +1583,19 @@
     </div>
 
     <!-- MODAL: FICHA DO POÇO (dados técnicos + manutenções) -->
+    <div id="blocoHistModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-4 backdrop-blur-sm" style="overscroll-behavior:contain">
+        <div class="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+            <div class="bg-gradient-to-r from-orange-600 to-orange-500 px-5 py-4 flex items-center justify-between shrink-0">
+                <h3 class="text-base font-bold text-white flex items-center gap-2 min-w-0">
+                    <i data-lucide="history" class="w-5 h-5 shrink-0"></i>
+                    <span id="blocoHistTitulo" class="truncate">Histórico do bloco</span>
+                </h3>
+                <button type="button" onclick="window.fecharHistoricoBloco()" class="text-white/80 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="blocoHistCorpo" class="overflow-y-auto px-5 py-4 space-y-4" style="overscroll-behavior:contain"></div>
+        </div>
+    </div>
+
     <div id="pocoModal" class="fixed inset-0 bg-slate-900/60 z-[45] hidden items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
             <div class="bg-gradient-to-r from-teal-700 to-teal-600 px-5 py-4 flex items-center justify-between shrink-0">
@@ -6643,40 +6656,43 @@
             // ----- Saída (blocos), pelos registros de irrigação do período -----
             const nomesCultura = [...new Set((culturas || []).map(c => (c.cultura || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
             const corDaCultura = nome => nome ? CORES_CULTURA[nomesCultura.indexOf(nome) % CORES_CULTURA.length] : COR_SEM_CULTURA;
-            let saida = 0;
-            let blocos = [];
-            if (registros.length) {
-                const minutosPorBloco = {};
-                registros.forEach(r => {
-                    const b = API.limparNomeBloco(r.bloco);
-                    minutosPorBloco[b] = (minutosPorBloco[b] || 0) + (Number(r.minutos) || 0);
+            // Litros pela vazão gravada em cada registro (o histórico não muda se os Dados dos Blocos mudarem)
+            const taxas = await litrosPorMinutoBlocos([...new Set(registros.concat(registrosAnt).map(r => API.limparNomeBloco(r.bloco)).filter(Boolean))]);
+            if (deInput.value !== de || ateInput.value !== ate) return;
+            const litrosPorBloco = lista => {
+                const porBloco = {};
+                lista.forEach(r => {
+                    const l = litrosDoRegistro(r, taxas);
+                    if (l != null) { const b = API.limparNomeBloco(r.bloco); porBloco[b] = (porBloco[b] || 0) + l; }
                 });
-                const resultado = await API.enviar({
-                    registros: Object.entries(minutosPorBloco).map(([block, minutes]) => ({ block, minutes })),
-                    responsavel: ''
-                });
-                if (resultado.sucesso) {
-                    saida = parseFloat(resultado.totalLitrosMil.replace(',', '.')) * 1000;
-                    blocos = Object.entries(resultado.blocos).map(([bloco, info]) => {
-                        const c = (culturas || []).find(x => String(x.id) === bloco);
-                        const cultura = c && c.cultura ? c.cultura.trim() : '';
-                        return { bloco, cultura, cor: corDaCultura(cultura), minutos: minutosPorBloco[bloco] || 0,
-                                 litros: info ? parseFloat(info.litrosMil.replace(',', '.')) * 1000 : null };
-                    }).sort((a, b) => a.bloco.localeCompare(b.bloco, undefined, { numeric: true }));
-                }
-            }
+                return porBloco;
+            };
+            const minutosPorBloco = {};
+            registros.forEach(r => {
+                const b = API.limparNomeBloco(r.bloco);
+                minutosPorBloco[b] = (minutosPorBloco[b] || 0) + (Number(r.minutos) || 0);
+            });
+            const litrosBloco = litrosPorBloco(registros);
+            const blocos = Object.keys(minutosPorBloco).map(bloco => {
+                const c = (culturas || []).find(x => String(x.id) === bloco);
+                const cultura = c && c.cultura ? c.cultura.trim() : '';
+                return { bloco, cultura, cor: corDaCultura(cultura), minutos: minutosPorBloco[bloco],
+                         litros: litrosBloco[bloco] ?? null };
+            }).sort((a, b) => a.bloco.localeCompare(b.bloco, undefined, { numeric: true }));
+            const saida = Object.values(litrosBloco).reduce((s, l) => s + l, 0);
 
             // Variação por bloco: minutos médios por dia irrigado (litros = vazão do bloco × tempo,
             // então a variação do volume é a mesma do tempo), vs ontem e vs os 7 dias anteriores
             const atualDia = minutosDiaPorBloco(registros);
             const ontemDia = minutosDiaPorBloco(registrosAnt.filter(r => r.data === ontem));
             const seteDia = minutosDiaPorBloco(registrosAnt);
+            const litrosOntem = litrosPorBloco(registrosAnt.filter(r => r.data === ontem));
             blocos.forEach(b => {
                 const atual = atualDia[b.bloco];
                 b.var1 = atual && ontemDia[b.bloco] ? variacao(atual, ontemDia[b.bloco]) : null;
                 b.var7 = atual && seteDia[b.bloco] ? variacao(atual, seteDia[b.bloco]) : null;
-                // Litros de ontem (minutos de ontem × litros por minuto do bloco), para a sombra no gráfico
-                b.litrosOntem = umDia && ontemDia[b.bloco] && b.litros != null && b.minutos ? ontemDia[b.bloco] * b.litros / b.minutos : null;
+                // Litros de ontem (pela vazão gravada nos registros de ontem), para a sombra no gráfico
+                b.litrosOntem = umDia && litrosOntem[b.bloco] != null ? litrosOntem[b.bloco] : null;
             });
 
             const legenda = [];
@@ -6703,13 +6719,11 @@
                 });
                 return porDia;
             };
-            const taxas = await litrosPorMinutoBlocos([...new Set(registros.concat(registrosAnt).map(r => API.limparNomeBloco(r.bloco)).filter(Boolean))]);
-            if (deInput.value !== de || ateInput.value !== ate) return;
             const saidaPorDia = lista => {
                 const porDia = {};
                 lista.forEach(r => {
-                    const t = taxas[API.limparNomeBloco(r.bloco)];
-                    if (t != null) porDia[r.data] = (porDia[r.data] || 0) + t * (Number(r.minutos) || 0);
+                    const l = litrosDoRegistro(r, taxas);
+                    if (l != null) porDia[r.data] = (porDia[r.data] || 0) + l;
                 });
                 return porDia;
             };
@@ -6789,7 +6803,11 @@
                                 <span class="w-2 h-2 rounded-sm inline-block" style="background:${b.cor}"></span>${escapeHtml(b.cultura || 'Sem cultura')} · ${formatDuration(b.minutos)} de irrigação
                             </p>
                         </div>
-                        <p class="text-sm font-black shrink-0 ${b.litros == null ? 'text-slate-300' : 'text-slate-800'}">${b.litros == null ? 'sem dados do bloco' : fmtLh(b.litros) + ' <span class="text-[10px] text-slate-400">L</span>'}</p>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <p class="text-sm font-black ${b.litros == null ? 'text-slate-300' : 'text-slate-800'}">${b.litros == null ? 'sem dados do bloco' : fmtLh(b.litros) + ' <span class="text-[10px] text-slate-400">L</span>'}</p>
+                            <button type="button" onclick="window.abrirHistoricoBloco('${escapeHtml(b.bloco)}', '${ate}')" title="Como era o sistema do bloco em cada dia"
+                                class="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg"><i data-lucide="history" class="w-3.5 h-3.5"></i></button>
+                        </div>
                     </div>`).join('') +
                   `<div class="py-2.5 flex justify-between text-xs font-black text-slate-700">
                         <span>Total · ${blocos.length} bloco${blocos.length > 1 ? 's' : ''}</span><span>${fmtLh(saida)} L</span>
@@ -7504,7 +7522,130 @@
                 <circle cx="${x(ult[1])}" cy="${y(ult[0])}" r="3.5" fill="${cor}" stroke="#ffffff" stroke-width="1.5"/></svg>`;
         }
 
-        // Litros por minuto de cada bloco (mesma conta do relatório: vazão de uma válvula × tempo)
+        // Litros de um registro de irrigação pela vazão do bloco gravada nele (a do dia em que foi
+        // lançado), para o histórico não mudar quando os Dados dos Blocos forem alterados. Sem ela
+        // (registro ainda na fila), usa a vazão atual. null = bloco sem dados.
+        function litrosDoRegistro(r, taxasAtuais) {
+            const t = r.litros_por_min != null ? Number(r.litros_por_min) : taxasAtuais[API.limparNomeBloco(r.bloco)];
+            return t != null ? t * (Number(r.minutos) || 0) : null;
+        }
+
+        // ----- Histórico do bloco: como era o sistema em cada dia irrigado e quanto saiu -----
+        const DIAS_HIST_BLOCO = 30;
+
+        // Totais de uma versão do sistema (mesma conta do relatório: vazão do bloco / válvulas = L/h)
+        function resumoVersaoBloco(v) {
+            const linhas = (v.linhas || []).map(lerDadoBloco);
+            const valv = linhas.reduce((s, d) => s + d.valvulas, 0);
+            const asp = linhas.reduce((s, d) => s + d.qtd, 0);
+            const vazao = linhas.reduce((s, d) => s + d.qtd * d.vazao, 0);
+            return { linhas, valv, asp, lh: valv > 0 ? vazao / valv : 0 };
+        }
+
+        function quandoVersaoBloco(v) {
+            return v.valido_desde ? `${formatDate(dataLocalIso(new Date(v.valido_desde)))} ${fmtHora(v.valido_desde)}` : 'início do histórico';
+        }
+
+        // O que mudou de uma versão para a outra (ex.: "Aspersores 1.000 → 1.200")
+        function mudancasVersaoBloco(antes, depois) {
+            const a = resumoVersaoBloco(antes), d = resumoVersaoBloco(depois);
+            const m = [];
+            if (a.asp !== d.asp) m.push(`Aspersores ${fmtNum(a.asp, 0)} → ${fmtNum(d.asp, 0)}`);
+            if (a.valv !== d.valv) m.push(`Válvulas ${a.valv} → ${d.valv}`);
+            if (Math.round(a.lh) !== Math.round(d.lh)) m.push(`Vazão ${fmtLh(a.lh)} → ${fmtLh(d.lh)} L/h`);
+            return m.length ? m.join(' · ') : 'Tipo de aspersor alterado';
+        }
+
+        window.abrirHistoricoBloco = async function(bloco, ate) {
+            bloco = API.limparNomeBloco(bloco);
+            ate = ate || dataLocalIso();
+            const de = dataLocalIso(new Date(new Date(ate + 'T12:00:00').getTime() - (DIAS_HIST_BLOCO - 1) * 86400000));
+            const corpo = document.getElementById('blocoHistCorpo');
+            document.getElementById('blocoHistTitulo').innerText = `Histórico · ${rotuloBloco(bloco)}`;
+            corpo.innerHTML = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-6"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
+            const modal = document.getElementById('blocoHistModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            const [versoes, registros, taxas] = await Promise.all([
+                API.listarVersoesBloco(bloco), API.listarRegistrosPeriodo(de, ate), litrosPorMinutoBlocos([bloco])
+            ]);
+
+            // Irrigações do bloco por dia (litros pela vazão gravada em cada registro)
+            const porDia = {};
+            registros.filter(r => API.limparNomeBloco(r.bloco) === bloco).forEach(r => {
+                const d = porDia[r.data] = porDia[r.data] || { dia: r.data, minutos: 0, litros: 0, semDados: false };
+                d.minutos += Number(r.minutos) || 0;
+                const l = litrosDoRegistro(r, taxas);
+                if (l == null) d.semDados = true; else d.litros += l;
+            });
+            const dias = Object.values(porDia).sort((a, b) => b.dia.localeCompare(a.dia));
+            // Versão do sistema que valia no dia (alteração vale para o dia inteiro em que foi feita)
+            const versaoDoDia = dia => versoes.filter(v => v.valido_desde == null || dataLocalIso(new Date(v.valido_desde)) <= dia).pop() || null;
+            const rotuloVersao = v => v ? `Sistema de ${quandoVersaoBloco(v)}` : 'Sem cópia do sistema';
+
+            const linhasDias = dias.map((d, i) => {
+                const v = versaoDoDia(d.dia);
+                const anterior = dias[i + 1] ? versaoDoDia(dias[i + 1].dia) : null;
+                const r = v ? resumoVersaoBloco(v) : null;
+                const lh = !d.semDados && d.minutos > 0 ? d.litros / d.minutos * 60 : null;
+                // Faixa de aviso entre o dia em que o sistema mudou e o dia anterior a ele
+                const mudou = v && anterior && v.id !== anterior.id
+                    ? `<div class="my-1 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
+                           <b>Sistema alterado em ${quandoVersaoBloco(v)}</b>${v.alterado_por_nome ? ` por ${escapeHtml(v.alterado_por_nome)}` : ''}<br>${mudancasVersaoBloco(anterior, v)}
+                       </div>` : '';
+                return `
+                    <div class="py-2 flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs font-black text-slate-700">${formatDate(d.dia)} · ${formatDuration(d.minutos)}</p>
+                            <p class="text-[10px] text-slate-400">${rotuloVersao(v)}${r ? ` · ${fmtNum(r.asp, 0)} asp. · ${r.valv} válv.` : ''}</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-sm font-black ${d.semDados ? 'text-slate-300' : 'text-slate-800'}">${d.semDados ? 'sem dados' : fmtLh(d.litros) + ' <span class="text-[10px] text-slate-400">L</span>'}</p>
+                            ${lh != null ? `<p class="text-[10px] text-slate-400">${fmtLh(lh)} L/h</p>` : ''}
+                        </div>
+                    </div>${mudou}`;
+            }).join('');
+
+            const linhasVersoes = versoes.slice().reverse().map((v, i, lista) => {
+                const r = resumoVersaoBloco(v);
+                const anterior = lista[i + 1];
+                return `
+                    <div class="border border-slate-200 rounded-xl overflow-hidden">
+                        <div class="bg-slate-50 px-3 py-2 border-b border-slate-100 flex items-center justify-between gap-2">
+                            <span class="text-[11px] font-black text-slate-700">${v.valido_desde ? 'Desde ' : ''}${quandoVersaoBloco(v)}${i === 0 ? ' <span class="text-green-700">· atual</span>' : ''}</span>
+                            <span class="text-[10px] font-bold text-slate-500 shrink-0">${fmtNum(r.asp, 0)} asp. · ${r.valv} válv. · ${fmtLh(r.lh)} L/h</span>
+                        </div>
+                        <div class="px-3 py-1.5 divide-y divide-slate-100">
+                            ${r.linhas.length ? r.linhas.map(d => `<p class="py-1 text-[11px] text-slate-600"><b>${escapeHtml(d.tipo)} ${fmtNum(d.vazao, d.vazao % 1 ? 1 : 0)} L/H</b> · ${fmtNum(d.qtd, 0)} aspersores · ${d.valvulas} válvula${d.valvulas > 1 ? 's' : ''}</p>`).join('')
+                                : '<p class="py-1 text-[11px] text-slate-400">Bloco sem sistemas cadastrados</p>'}
+                            ${anterior ? `<p class="py-1 text-[10px] text-amber-700">${mudancasVersaoBloco(anterior, v)}${v.alterado_por_nome ? ` · por ${escapeHtml(v.alterado_por_nome)}` : ''}</p>` : ''}
+                        </div>
+                    </div>`;
+            }).join('');
+
+            corpo.innerHTML = `
+                <div>
+                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Irrigações · ${formatDate(de)} a ${formatDate(ate)}</h4>
+                    ${dias.length ? `<div class="divide-y divide-slate-100">${linhasDias}</div>`
+                        : '<p class="text-xs text-slate-400 py-3">Nenhuma irrigação deste bloco no período.</p>'}
+                </div>
+                <div>
+                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Versões do sistema</h4>
+                    ${versoes.length ? `<div class="space-y-2">${linhasVersoes}</div>`
+                        : '<p class="text-xs text-slate-400">Nenhuma versão gravada ainda (rode o volume_historico.sql no Supabase).</p>'}
+                </div>`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.fecharHistoricoBloco = function() {
+            const modal = document.getElementById('blocoHistModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // Litros por minuto de cada bloco pelos dados atuais (mesma conta do relatório: vazão de uma válvula × tempo)
         async function litrosPorMinutoBlocos(blocos) {
             const taxas = {};
             if (!blocos.length) return taxas;
@@ -7535,7 +7676,16 @@
                 if (i == null || !b) return;
                 minDiaBloco[i][b] = (minDiaBloco[i][b] || 0) + (Number(r.minutos) || 0);
             });
+            // Litros por bloco em cada dia, pela vazão gravada em cada registro (sem a chave = bloco sem dados)
             const taxas = await litrosPorMinutoBlocos([...new Set(minDiaBloco.flatMap(o => Object.keys(o)))]);
+            const litDiaBloco = dias.map(() => ({}));
+            registros.forEach(r => {
+                const i = idx[r.data];
+                const b = API.limparNomeBloco(r.bloco);
+                const l = litrosDoRegistro(r, taxas);
+                if (i == null || !b || l == null) return;
+                litDiaBloco[i][b] = (litDiaBloco[i][b] || 0) + l;
+            });
 
             // ----- Poços: vazão média do dia × horas ligado (mesma regra do Balanço) -----
             const listaPocos = pocos.filter(p => p.ativo !== false).map(p => {
@@ -7583,7 +7733,7 @@
                 };
             }).filter(n => n.valores.some(v => v != null));
 
-            return { de, ate, dias, minDiaBloco, taxas, listaPocos, niveis, emPct };
+            return { de, ate, dias, minDiaBloco, litDiaBloco, listaPocos, niveis, emPct };
         }
 
         // Totais por dia considerando os filtros de poços e blocos (lista vazia = todos)
@@ -7597,11 +7747,12 @@
                 if (!nomes.length) return;
                 let minutos = 0, litros = 0;
                 nomes.forEach(b => {
-                    const l = g.taxas[b] != null ? g.taxas[b] * o[b] : 0;
+                    const l = g.litDiaBloco[i][b] ?? 0;
                     minutos += o[b];
                     litros += l;
-                    const pb = porBloco[b] = porBloco[b] || { bloco: b, minutos: 0, litros: 0, dias: 0, semDados: g.taxas[b] == null };
+                    const pb = porBloco[b] = porBloco[b] || { bloco: b, minutos: 0, litros: 0, dias: 0, semDados: true };
                     pb.minutos += o[b]; pb.litros += l; pb.dias++;
+                    if (g.litDiaBloco[i][b] != null) pb.semDados = false;
                 });
                 horas[i] = minutos / 60;
                 qtdBlocos[i] = nomes.length;
@@ -8752,6 +8903,8 @@
                                 ? ` <span class="normal-case font-bold text-green-700">· ${escapeHtml(apelidosBloco[bloco])}</span>` : ''}</span>
                             <div class="flex items-center gap-1 min-w-0">
                                 <span class="text-[10px] font-bold text-green-700 truncate">${fmtNum(aspTotal, 0)} asp. · ${valvTotal} válv. · ≈ ${fmtNum(milLitrosHora, 3)} mil L/h</span>
+                                <button type="button" onclick="window.abrirHistoricoBloco('${escapeHtml(bloco)}')" title="Histórico do sistema do bloco"
+                                    class="p-1.5 text-green-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg shrink-0"><i data-lucide="history" class="w-3.5 h-3.5"></i></button>
                                 <button type="button" onclick="window.editarBloco('${escapeHtml(bloco)}')" title="Editar os sistemas de aspersão do bloco"
                                     class="p-1.5 text-green-700 hover:text-amber-600 hover:bg-amber-50 rounded-lg shrink-0"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
                             </div>
@@ -9133,7 +9286,7 @@
             papel: 'Papel', nome_curto: 'Nome curto', excluido_em: 'Excluído em'
         };
         // Campos internos que não interessam no antes/depois
-        const CAMPOS_OCULTOS = ['id', 'created_at', 'updated_at', 'criado_por', 'atualizado_por', 'vazao_lh', 'data_envio', 'registrado_em', 'itens'];
+        const CAMPOS_OCULTOS = ['id', 'created_at', 'updated_at', 'criado_por', 'atualizado_por', 'vazao_lh', 'litros_por_min', 'data_envio', 'registrado_em', 'itens'];
         // Itens que o gestor pode restaurar pelo log (mesma lista do banco)
         const TABELAS_RESTAURAVEIS = ['registros_irrigacao', 'programacoes', 'motor_diario', 'pocos', 'leituras_poco', 'reservatorios',
             'leituras_reservatorio', 'manutencoes_poco', 'horas_poco_dia', 'culturas_bloco', 'dados_bloco'];
