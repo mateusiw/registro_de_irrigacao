@@ -1034,12 +1034,14 @@
 
     // Registros de irrigação do período, de todos os irrigadores (saída de água).
     // litros_por_min é a vazão do bloco no dia do registro (congelada no banco).
+    // Turno, responsável e hora vão junto para o detalhe ao tocar na coluna do bloco.
     async function listarRegistrosPeriodo(de, ate) {
         const consulta = campos => sb.from('registros_irrigacao').select(campos).gte('data', de).lte('data', ate).limit(10000);
+        const campos = 'id,data,bloco,minutos,turno,observacao,responsavel,registrado_em';
         const lista = await buscarComCache(`registros_${de}_${ate}`, async () => {
-            const resp = await consulta('id,data,bloco,minutos,litros_por_min');
+            const resp = await consulta(campos + ',litros_por_min');
             // Banco ainda sem a coluna (volume_historico.sql não rodado): usa a vazão atual
-            return resp.error ? consulta('id,data,bloco,minutos') : resp;
+            return resp.error ? consulta(campos) : resp;
         }, 0).catch(() => []);
         return mesclarPendentes('registros_irrigacao', lista).filter(r => r.data >= de && r.data <= ate);
     }
