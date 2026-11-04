@@ -267,7 +267,21 @@
             <img src="./icone-app.png" alt="" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl shadow-sm ring-1 ring-black/5 shrink-0">
             <div class="min-w-0">
                 <h1 class="text-sm sm:text-[15px] font-extrabold leading-tight tracking-tight text-slate-900 truncate">Registro Irrigação</h1>
-                <p class="text-[10px] font-semibold text-slate-400 tracking-wide">SPG Oásis</p>
+                <p id="localLabel" class="nome-local text-[10px] font-semibold text-slate-400 tracking-wide">SPG Oásis</p>
+                <!-- Quem acessa mais de um local (gestor) troca por aqui -->
+                <div id="localSeletor" class="hidden relative">
+                    <button type="button" id="localSeletorBtn" onclick="window.alternarMenuLocal()" aria-haspopup="menu" aria-expanded="false" title="Trocar de local"
+                        class="mt-0.5 inline-flex items-center gap-1 max-w-full pl-1.5 pr-1 py-0.5 rounded-full bg-emerald-50 ring-1 ring-emerald-200/80 text-[10px] font-bold text-emerald-700 tracking-wide hover:bg-emerald-100 transition-colors">
+                        <i data-lucide="map-pin" class="w-3 h-3 shrink-0"></i>
+                        <span class="nome-local truncate">SPG Oásis</span>
+                        <i id="localSeletorSeta" data-lucide="chevron-down" class="w-3 h-3 shrink-0 transition-transform"></i>
+                    </button>
+                    <div id="localMenu" role="menu"
+                        class="hidden absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl shadow-slate-900/10 ring-1 ring-slate-200 p-1.5 z-50 origin-top-left">
+                        <p class="px-2.5 pt-1.5 pb-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">Trocar de local</p>
+                        <div id="localMenuLista" class="space-y-0.5"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1644,7 +1658,7 @@
             <div class="flex flex-col items-center mb-6">
                 <img id="loginLogo" src="" alt="Logo" class="h-14 w-auto mb-3">
                 <h1 class="text-lg font-black text-slate-800">Registro Irrigação</h1>
-                <p class="text-xs font-medium text-slate-400">SPG Oásis</p>
+                <p class="nome-local text-xs font-medium text-slate-400">SPG Oásis</p>
             </div>
             <form onsubmit="window.fazerLogin(event)" class="space-y-3">
                 <div>
@@ -2126,7 +2140,7 @@
 
             <!-- RODAPÉ -->
             <div style="padding:10px 20px; background:#ffffff; display:flex; justify-content:center; align-items:center; border-top:1px solid #e5e7eb;">
-                <div style="font-size:8px; color:#16a34a; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
+                <div class="nome-local" style="font-size:8px; color:#16a34a; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
             </div>
 
         </div>
@@ -2178,7 +2192,7 @@
 
             <!-- RODAPÉ -->
             <div style="padding:10px 20px; background:#ffffff; display:flex; justify-content:center; align-items:center; border-top:1px solid #e5e7eb;">
-                <div style="font-size:8px; color:#0284c7; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
+                <div class="nome-local" style="font-size:8px; color:#0284c7; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
             </div>
 
         </div>
@@ -2199,7 +2213,7 @@
             </div>
             <div id="imgBalancoCorpo" style="padding:18px 20px;"></div>
             <div style="padding:10px 20px; display:flex; justify-content:center; border-top:1px solid #e5e7eb;">
-                <div style="font-size:8px; color:#1c5cab; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
+                <div class="nome-local" style="font-size:8px; color:#1c5cab; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
             </div>
         </div>
 
@@ -2219,7 +2233,7 @@
             </div>
             <div id="imgProgCorpo" style="padding:18px 20px;"></div>
             <div style="padding:10px 20px; display:flex; justify-content:center; border-top:1px solid #e5e7eb;">
-                <div style="font-size:8px; color:#0369a1; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
+                <div class="nome-local" style="font-size:8px; color:#0369a1; letter-spacing:3px; font-weight:700; text-transform:uppercase;">SPG OÁSIS</div>
             </div>
         </div>
     </div>
@@ -2235,11 +2249,16 @@
         // Ordem de exibição dos turnos em todas as listas e relatórios
         const TURNO_ORDER = { 'Madrugada': 0, 'Manhã': 1, 'Tarde': 2, 'Noite': 3 };
 
-        let records = JSON.parse(localStorage.getItem('irrigation_records')) || [];
+        // Local (fazenda) em uso nesta página. Cada local tem a sua lista do dia, programação etc.
+        // no aparelho; trocar de local recarrega a página.
+        const LOCAL_EM_USO = window.IrrigacaoAPI.localAtual();
+        function API_chaveLocal(chave) { return window.IrrigacaoAPI.chaveLocal(chave); }
+
+        let records =JSON.parse(localStorage.getItem(API_chaveLocal('irrigation_records'))) || [];
         // Registros de hoje feitos pelos outros irrigadores (recebidos em tempo real, somente leitura)
         let registrosEquipe = [];
         let diaEquipe = null;
-        let expirationTime = localStorage.getItem('irrigation_expiration');
+        let expirationTime = localStorage.getItem(API_chaveLocal('irrigation_expiration'));
         let editingId = null;
         // Gestor editando o registro de outro irrigador (id do banco)
         let editingEquipeId = null;
@@ -2248,10 +2267,10 @@
         // Hora Motor desativada por enquanto: troque para true para voltar a exibir
         // os botões e a exigir os horários antes de registrar/enviar o relatório.
         const HORA_MOTOR_ATIVA = false;
-        let motorLigadoHora = HORA_MOTOR_ATIVA ? (localStorage.getItem('irrigation_motorLigado') || null) : null;
-        let motorDesligadoHora = HORA_MOTOR_ATIVA ? (localStorage.getItem('irrigation_motorDesligado') || null) : null;
+        let motorLigadoHora = HORA_MOTOR_ATIVA ? (localStorage.getItem(API_chaveLocal('irrigation_motorLigado')) || null) : null;
+        let motorDesligadoHora = HORA_MOTOR_ATIVA ? (localStorage.getItem(API_chaveLocal('irrigation_motorDesligado')) || null) : null;
 
-        let programacao = JSON.parse(localStorage.getItem('irrigation_programacao')) || [];
+        let programacao = JSON.parse(localStorage.getItem(API_chaveLocal('irrigation_programacao'))) || [];
         let editingProgId = null;
 
         // Modo edição da Programação (somente usuários com papel "gestor")
@@ -2330,13 +2349,13 @@
         }
 
         window.saveProgResponsavel = function() {
-            localStorage.setItem('irrigation_prog_responsavel', document.getElementById('progResponsavel').value);
+            localStorage.setItem(API_chaveLocal('irrigation_prog_responsavel'), document.getElementById('progResponsavel').value);
         }
 
         function saveData() {
-            localStorage.setItem('irrigation_records', JSON.stringify(records));
+            localStorage.setItem(API_chaveLocal('irrigation_records'), JSON.stringify(records));
             if (records.length === 0) {
-                localStorage.removeItem('irrigation_expiration');
+                localStorage.removeItem(API_chaveLocal('irrigation_expiration'));
                 expirationTime = null;
                 window.resetHoraMotor();
                 updateTimerDisplay();
@@ -2396,12 +2415,12 @@
         window.registrarHoraMotorValor = function(tipo, hora) {
             if (tipo === 'ligar') {
                 motorLigadoHora = hora;
-                localStorage.setItem('irrigation_motorLigado', hora);
+                localStorage.setItem(API_chaveLocal('irrigation_motorLigado'), hora);
                 document.getElementById('motorLigarHoraText').innerText = hora;
                 document.getElementById('btnMotorLigar').className = MOTOR_BTN_BASE_CLASS + " border-green-400 bg-green-50 text-green-700";
             } else {
                 motorDesligadoHora = hora;
-                localStorage.setItem('irrigation_motorDesligado', hora);
+                localStorage.setItem(API_chaveLocal('irrigation_motorDesligado'), hora);
                 document.getElementById('motorDesligarHoraText').innerText = hora;
                 document.getElementById('btnMotorDesligar').className = MOTOR_BTN_BASE_CLASS + " border-red-400 bg-red-50 text-red-700";
             }
@@ -2418,8 +2437,8 @@
         window.resetHoraMotor = function() {
             motorLigadoHora = null;
             motorDesligadoHora = null;
-            localStorage.removeItem('irrigation_motorLigado');
-            localStorage.removeItem('irrigation_motorDesligado');
+            localStorage.removeItem(API_chaveLocal('irrigation_motorLigado'));
+            localStorage.removeItem(API_chaveLocal('irrigation_motorDesligado'));
             const ligarText = document.getElementById('motorLigarHoraText');
             const desligarText = document.getElementById('motorDesligarHoraText');
             if (ligarText) ligarText.innerText = '--:--';
@@ -2469,7 +2488,7 @@
                 records = records.filter(r => r.date === dataLocalIso());
                 if (records.length) {
                     expirationTime = now + (24 * 60 * 60 * 1000);
-                    localStorage.setItem('irrigation_expiration', expirationTime);
+                    localStorage.setItem(API_chaveLocal('irrigation_expiration'), expirationTime);
                 }
                 saveData();
                 updateTimerDisplay();
@@ -2569,7 +2588,7 @@
 
                 if (records.length === 0) {
                     expirationTime = Date.now() + (24 * 60 * 60 * 1000);
-                    localStorage.setItem('irrigation_expiration', expirationTime);
+                    localStorage.setItem(API_chaveLocal('irrigation_expiration'), expirationTime);
                 }
 
                 const newRecord = {
@@ -3010,7 +3029,7 @@
             if (!faltando.length) return;
             if (records.length === 0) {
                 expirationTime = Date.now() + (24 * 60 * 60 * 1000);
-                localStorage.setItem('irrigation_expiration', expirationTime);
+                localStorage.setItem(API_chaveLocal('irrigation_expiration'), expirationTime);
             }
             faltando.forEach(r => records.push({
                 id: r.idLocal, date: r.data, block: String(r.bloco || '').toUpperCase(), minutes: Number(r.minutos) || 0,
@@ -3042,7 +3061,7 @@
             } else if (r.data === dataLocalIso()) {
                 if (records.length === 0) {
                     expirationTime = Date.now() + (24 * 60 * 60 * 1000);
-                    localStorage.setItem('irrigation_expiration', expirationTime);
+                    localStorage.setItem(API_chaveLocal('irrigation_expiration'), expirationTime);
                 }
                 records.push(rec);
             } else {
@@ -3363,7 +3382,7 @@
         }
 
         function saveProgramacao() {
-            localStorage.setItem('irrigation_programacao', JSON.stringify(programacao));
+            localStorage.setItem(API_chaveLocal('irrigation_programacao'), JSON.stringify(programacao));
             renderProgramacao();
             window.calcularConsumoProgramacao();
         }
@@ -3407,7 +3426,7 @@
 
                 if (data.sucesso) {
                     programacao = data.programacao || [];
-                    localStorage.setItem('irrigation_programacao', JSON.stringify(programacao));
+                    localStorage.setItem(API_chaveLocal('irrigation_programacao'), JSON.stringify(programacao));
                 }
             } catch (err) {
                 console.error("Erro ao sincronizar programação com a planilha:", err);
@@ -6030,7 +6049,7 @@
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(30, 41, 59);
                 doc.text(`Ficha do Poço ${p.numero}`, M + 22, 17);
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
-                doc.text(p.nome ? String(p.nome) : 'SPG Oásis', M + 22, 22.5);
+                doc.text(p.nome ? String(p.nome) : API.nomeLocal(), M + 22, 22.5);
                 doc.text(`Emitido em ${dataHoraCompleta(new Date().toISOString())} por ${API.nomeUsuario()}`, M + 22, 27);
                 doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
                 doc.setTextColor(...(p.ativo === false ? [220, 38, 38] : TEAL));
@@ -6128,7 +6147,7 @@
                 for (let i = 1; i <= paginas; i++) {
                     doc.setPage(i);
                     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
-                    doc.text(`SPG Oásis · Ficha do Poço ${p.numero}`, M, H - 8);
+                    doc.text(`${API.nomeLocal()} · Ficha do Poço ${p.numero}`, M, H - 8);
                     doc.text(`Página ${i} de ${paginas}`, W - M, H - 8, { align: 'right' });
                 }
 
@@ -7521,7 +7540,7 @@
                 for (let i = 1; i <= paginas; i++) {
                     doc.setPage(i);
                     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
-                    doc.text(`SPG Oásis · Balanço de Água ${b.de === b.ate ? formatDate(b.de) : formatDate(b.de) + ' a ' + formatDate(b.ate)}`, M, H - 7);
+                    doc.text(`${API.nomeLocal()} · Balanço de Água ${b.de === b.ate ? formatDate(b.de) : formatDate(b.de) + ' a ' + formatDate(b.ate)}`, M, H - 7);
                     doc.text(`Página ${i} de ${paginas}`, W - M, H - 7, { align: 'right' });
                 }
 
@@ -8981,7 +9000,7 @@
                 for (let i = 1; i <= paginas; i++) {
                     doc.setPage(i);
                     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
-                    doc.text(`SPG Oásis · Gráficos ${formatDate(g.de)} a ${formatDate(g.ate)}`, M, H - 7);
+                    doc.text(`${API.nomeLocal()} · Gráficos ${formatDate(g.de)} a ${formatDate(g.ate)}`, M, H - 7);
                     doc.text(`Página ${i} de ${paginas}`, W - M, H - 7, { align: 'right' });
                 }
 
@@ -9585,7 +9604,7 @@
                 for (let i = 1; i <= paginas; i++) {
                     doc.setPage(i);
                     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
-                    doc.text(`SPG Oásis · Vazão dos Poços ${formatDate(dia)}`, M, H - 8);
+                    doc.text(`${API.nomeLocal()} · Vazão dos Poços ${formatDate(dia)}`, M, H - 8);
                     doc.text(`Página ${i} de ${paginas}`, W - M, H - 8, { align: 'right' });
                 }
 
@@ -9712,7 +9731,7 @@
                 for (let i = 1; i <= paginas; i++) {
                     doc.setPage(i);
                     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(148, 163, 184);
-                    doc.text('SPG Oásis · Dados dos Blocos', M, H - 8);
+                    doc.text(`${API.nomeLocal()} · Dados dos Blocos`, M, H - 8);
                     doc.text(`Página ${i} de ${paginas}`, W - M, H - 8, { align: 'right' });
                 }
 
@@ -10398,8 +10417,10 @@
             usuarioEditando = id;
             const p = usuariosLista.find(x => x.id === id);
             rascunhoUsuario = p
-                ? { nome: p.nome || '', nome_curto: p.nome_curto || '', papel: p.papel, senha: '', mostrarSenha: false, curtoAuto: false }
-                : { usuario: '', nome: '', nome_curto: '', papel: 'irrigador', senha: '', mostrarSenha: false, curtoAuto: true, loginAuto: true };
+                ? { nome: p.nome || '', nome_curto: p.nome_curto || '', papel: p.papel, senha: '', mostrarSenha: false, curtoAuto: false,
+                    locais: Array.isArray(p.locais) ? p.locais.slice() : ['oasis'] }
+                : { usuario: '', nome: '', nome_curto: '', papel: 'irrigador', senha: '', mostrarSenha: false, curtoAuto: true, loginAuto: true,
+                    locais: [LOCAL_EM_USO] };
             renderUsuarios();
         }
 
@@ -10427,6 +10448,12 @@
 
         window.escolherPapelUsuario = function(papel) {
             rascunhoUsuario.papel = papel;
+            renderUsuarios();
+        }
+
+        window.alternarLocalUsuario = function(id) {
+            const atual = rascunhoUsuario.locais || [];
+            rascunhoUsuario.locais = atual.includes(id) ? atual.filter(l => l !== id) : atual.concat(id);
             renderUsuarios();
         }
 
@@ -10498,6 +10525,20 @@
                     </div>
 
                     <div class="mt-3">
+                        ${rotulo('Locais de acesso' + (r.papel === 'gestor' ? '' : ' <span class="text-red-400">*</span>'))}
+                        ${r.papel === 'gestor'
+                            ? '<p class="text-[11px] text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-sky-600"></i>O gestor acessa todos os locais.</p>'
+                            : `<div class="flex flex-wrap gap-1.5 mt-1">${API.todosLocais().filter(l => l.ativo !== false).map(l => {
+                                const marcado = (r.locais || []).includes(l.id);
+                                return `<button type="button" onclick="window.alternarLocalUsuario('${escapeHtml(l.id)}')"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-[11px] font-bold transition-all ${marcado
+                                        ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'}">
+                                    <i data-lucide="${marcado ? 'check' : 'map-pin'}" class="w-3.5 h-3.5"></i>${escapeHtml(l.nome)}</button>`;
+                            }).join('')}</div>
+                            <p class="text-[10px] text-slate-400 mt-1">O irrigador só vê e registra nos locais marcados.</p>`}
+                    </div>
+
+                    <div class="mt-3">
                         ${rotulo(novo ? 'Senha <span class="text-red-400">*</span>' : 'Nova senha')}
                         <div class="flex gap-1.5 mt-0.5 max-w-sm">
                             <div class="relative flex-1">
@@ -10543,6 +10584,8 @@
                             <div class="flex flex-wrap gap-1 mt-1">
                                 ${gestor ? selo('bg-sky-50 text-sky-700 border border-sky-200', 'shield-check', 'Gestor') : selo('bg-green-50 text-green-700 border border-green-200', 'droplets', 'Irrigador')}
                                 ${p.administrador ? selo('bg-slate-800 text-white', 'crown', 'Administrador') : ''}
+                                ${gestor ? '' : (Array.isArray(p.locais) ? p.locais : ['oasis']).map(l =>
+                                    selo('bg-slate-50 text-slate-600 border border-slate-200', 'map-pin', escapeHtml(API.nomeLocal(l)))).join('')}
                                 ${p.ativo ? '' : selo('bg-red-50 text-red-600 border border-red-200', 'user-x', 'Desativado')}
                             </div>
                         </div>
@@ -10614,6 +10657,8 @@
             const senha = r.senha || '';
 
             if (!nome) return mostrarErro("Informe o nome completo.");
+            const locais = (r.locais || []).filter(l => API.todosLocais().some(x => x.id === l));
+            if (r.papel !== 'gestor' && !locais.length) return mostrarErro("Marque pelo menos um local de acesso.");
             if (novo) {
                 if (String(r.usuario || '').length < 2) return mostrarErro("O usuário (login) precisa ter pelo menos 2 caracteres.");
                 if (usuariosLista.some(x => x.usuario === r.usuario)) return mostrarErro(`O usuário "${r.usuario}" já existe.`);
@@ -10628,11 +10673,12 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
             try {
                 if (novo) {
-                    await API.criarUsuario({ usuario: r.usuario, senha, nome, nome_curto: nomeCurto, papel: r.papel });
+                    await API.criarUsuario({ usuario: r.usuario, senha, nome, nome_curto: nomeCurto, papel: r.papel, locais: locais.length ? locais : ['oasis'] });
                 } else {
                     const eu = API.usuarioAtual() || {};
                     const valores = { nome, nome_curto: nomeCurto || null };
                     if (p.id !== eu.id && !p.administrador && r.papel !== p.papel) valores.papel = r.papel;
+                    if (locais.length && JSON.stringify(locais.slice().sort()) !== JSON.stringify((p.locais || []).slice().sort())) valores.locais = locais;
                     await API.atualizarUsuario(p.id, valores);
                     if (senha) await API.redefinirSenha(p.id, senha);
                 }
@@ -10732,6 +10778,8 @@
                     saveData();
                 }
                 esconderLogin();
+                // O app já carregou as listas do aparelho de outro local: recarrega no local certo
+                if (API.localAtual() !== LOCAL_EM_USO) { location.reload(); return; }
                 iniciarApp();
             } catch (err) {
                 erro.innerText = err.message;
@@ -10947,9 +10995,67 @@
             atualizarBotaoInstalar();
         });
 
+        // Nome do local no topo, no login e nos relatórios; seletor para quem acessa mais de um
+        function aplicarLocalNaTela() {
+            const nome = API.nomeLocal(LOCAL_EM_USO);
+            document.querySelectorAll('.nome-local').forEach(el => { el.textContent = nome; });
+            const locais = API.usuarioAtual() ? API.locaisPermitidos() : [];
+            const varios = locais.length > 1;
+            document.getElementById('localLabel').classList.toggle('hidden', varios);
+            const seletor = document.getElementById('localSeletor');
+            seletor.classList.toggle('hidden', !varios);
+            const cores = ['bg-emerald-100 text-emerald-700', 'bg-sky-100 text-sky-700', 'bg-amber-100 text-amber-700', 'bg-violet-100 text-violet-700'];
+            document.getElementById('localMenuLista').innerHTML = locais.map((l, i) => {
+                const atual = l.id === LOCAL_EM_USO;
+                const inicial = escapeHtml((l.nome.replace(/^SPG\s+/i, '')[0] || '?').toUpperCase());
+                return `<button type="button" role="menuitem" onclick="window.trocarLocal('${escapeHtml(l.id)}')"
+                    class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-colors ${atual ? 'bg-emerald-50' : 'hover:bg-slate-50'}">
+                    <span class="w-8 h-8 rounded-lg ${cores[i % cores.length]} flex items-center justify-center text-xs font-black shrink-0">${inicial}</span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-xs font-bold ${atual ? 'text-emerald-800' : 'text-slate-700'} truncate">${escapeHtml(l.nome)}</span>
+                        <span class="block text-[10px] ${atual ? 'text-emerald-600' : 'text-slate-400'}">${atual ? 'Local atual' : 'Toque para abrir'}</span>
+                    </span>
+                    ${atual ? '<i data-lucide="check" class="w-4 h-4 text-emerald-600 shrink-0"></i>' : '<i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 shrink-0"></i>'}
+                </button>`;
+            }).join('');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.alternarMenuLocal = function(abrir) {
+            const menu = document.getElementById('localMenu');
+            const mostrar = typeof abrir === 'boolean' ? abrir : menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !mostrar);
+            document.getElementById('localSeletorBtn').setAttribute('aria-expanded', String(mostrar));
+            document.getElementById('localSeletorSeta').classList.toggle('rotate-180', mostrar);
+        }
+
+        // Fecha o menu ao tocar fora ou apertar Esc
+        document.addEventListener('click', e => {
+            const seletor = document.getElementById('localSeletor');
+            if (seletor && !seletor.contains(e.target)) window.alternarMenuLocal(false);
+        });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') window.alternarMenuLocal(false); });
+
+        window.trocarLocal = function(id) {
+            window.alternarMenuLocal(false);
+            if (id === LOCAL_EM_USO) return;
+            const destino = API.nomeLocal(id);
+            const s = API.status();
+            pendingConfirmCallback = () => {
+                try { API.trocarLocal(id); } catch (err) { window.showAlert("Não foi possível trocar", err.message); return; }
+                document.getElementById('syncOverlayTexto').innerText = `Abrindo ${destino}...`;
+                window.showSyncOverlay();
+                location.reload();
+            };
+            window.showConfirmModal(`Ir para ${destino}?`,
+                `Você vai ver e registrar os dados de ${destino}: blocos, programação, poços, tanques e registros.${s.pendentes > 0 ? `\n\nOs ${s.pendentes} dado(s) ainda não enviados continuam na fila e vão para o local onde foram registrados.` : ''}`,
+                "TROCAR", "map-pin");
+        }
+
         function aplicarUsuarioNaTela() {
             const u = API.usuarioAtual();
             if (!u) return;
+            aplicarLocalNaTela();
             const gestor = API.isGestor();
             document.getElementById('userNameLabel').innerText = u.nome_curto || u.nome;
             const badge = document.getElementById('userRoleBadge');
@@ -10969,9 +11075,13 @@
             }
         }
 
+        function temAcessoAoLocal(p, local) {
+            return p.papel === 'gestor' || (Array.isArray(p.locais) ? p.locais : ['oasis']).includes(local);
+        }
+
         function preencherSelectsResponsaveis() {
             const u = API.usuarioAtual();
-            let ativos = perfisCache.filter(p => p.ativo !== false);
+            let ativos = perfisCache.filter(p => p.ativo !== false && temAcessoAoLocal(p, LOCAL_EM_USO));
             if (ativos.length === 0 && u) ativos = [u];
 
             // Responsável pela programação: só gestores (padrão = o gestor logado)
@@ -10979,7 +11089,7 @@
             let gestores = ativos.filter(p => p.papel === 'gestor');
             if (gestores.length === 0 && u && u.papel === 'gestor') gestores = [u];
             progSelect.innerHTML = gestores.map(p => `<option value="${escapeHtml(p.nome)}">${escapeHtml(p.nome)}</option>`).join('');
-            const salvo = localStorage.getItem('irrigation_prog_responsavel');
+            const salvo = localStorage.getItem(API_chaveLocal('irrigation_prog_responsavel'));
             const padrao = gestores.find(p => p.nome === salvo) || gestores.find(p => u && p.id === u.id) || gestores[0];
             if (padrao) progSelect.value = padrao.nome;
             renderChipsResponsavelProg(gestores);
@@ -11044,7 +11154,11 @@
             setTimeout(sugerirInstalacao, 1500);
             // Papel/nome podem ter sido alterados pelo gestor desde o último acesso
             API.atualizarPerfil().then(perfil => {
-                if (perfil) { aplicarUsuarioNaTela(); return; }
+                if (perfil) {
+                    if (API.localAtual() !== LOCAL_EM_USO) { location.reload(); return; }
+                    aplicarUsuarioNaTela();
+                    return;
+                }
                 // Acesso desativado pelo gestor
                 progUnlocked = false;
                 window.updateProgLockUI();
@@ -11143,6 +11257,7 @@
             atualizarTravaRolagem();
 
             API.onStatus(renderStatusSync);
+            aplicarLocalNaTela();
 
             // Usuário já logado neste aparelho entra direto (funciona offline)
             if (API.usuarioAtual()) iniciarApp();
