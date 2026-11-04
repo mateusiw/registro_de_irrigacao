@@ -34,7 +34,10 @@
         ultimoUsuario: 'irrigacao_ultimo_usuario',
         fila: 'irrigacao_fila_sync',
         falhas: 'irrigacao_falhas_sync',
-        cache: nome => 'irrigacao_cache_' + nome
+        local: 'irrigacao_local',
+        locais: 'irrigacao_locais',
+        // Cada local tem as suas cópias (a Oásis mantém os nomes antigos)
+        cache: nome => 'irrigacao_cache_' + nome + (nome === 'perfis' ? '' : sufixoLocal())
     };
 
     // ------------------------------------------------------------
@@ -45,6 +48,67 @@
     }
     // Cópias que o app usa para funcionar offline: só são apagadas em último caso
     const CACHES_ESSENCIAIS = ['perfis', 'dados_bloco', 'configuracoes', 'pocos', 'reservatorios', 'programacoes', 'culturas_bloco'];
+
+    // ------------------------------------------------------------
+    // Locais (Fazenda Oásis, Estufa, ...). Todo dado pertence a um local.
+    // Gestor acessa todos; irrigador só os do seu perfil (perfis.locais).
+    // ------------------------------------------------------------
+    const LOCAL_PADRAO = 'oasis';
+    const LOCAIS_RESERVA = [{ id: LOCAL_PADRAO, nome: 'SPG Oásis', ordem: 1, ativo: true }];
+    // Tabelas que têm a coluna "local"
+    const TABELAS_LOCAL = ['dados_bloco', 'programacoes', 'registros_irrigacao', 'motor_diario', 'envios_relatorio',
+        'pocos', 'leituras_poco', 'reservatorios', 'leituras_reservatorio', 'horas_poco_dia', 'configuracoes',
+        'culturas_bloco', 'manutencoes_poco'];
+
+    function todosLocais() {
+        const lista = ler(K.locais, null);
+        return Array.isArray(lista) && lista.length ? lista : LOCAIS_RESERVA;
+    }
+
+    // Locais que o usuário logado pode acessar, na ordem de exibição
+    function locaisPermitidos() {
+        const u = ler(K.usuario, null);
+        const ativos = todosLocais().filter(l => l.ativo !== false);
+        if (!u) return ativos;
+        if (u.papel === 'gestor') return ativos;
+        const meus = Array.isArray(u.locais) ? u.locais : [LOCAL_PADRAO];
+        return ativos.filter(l => meus.includes(l.id));
+    }
+
+    function localAtual() {
+        const escolhido = localStorage.getItem(K.local);
+        const permitidos = locaisPermitidos();
+        if (permitidos.some(l => l.id === escolhido)) return escolhido;
+        return permitidos.length ? permitidos[0].id : (escolhido || LOCAL_PADRAO);
+    }
+
+    function nomeLocal(id) {
+        id = id || localAtual();
+        const l = todosLocais().find(x => x.id === id);
+        return l ? l.nome : id;
+    }
+
+    // Troca o local em uso. O app recarrega a página em seguida.
+    function trocarLocal(id) {
+        if (!locaisPermitidos().some(l => l.id === id)) throw new Error("Você não tem acesso a este local.");
+        localStorage.setItem(K.local, id);
+    }
+
+    // "" para a Oásis (mantém as chaves e ids antigos); "@estufa" para os outros
+    function sufixoLocal() { const l = localAtual(); return l === LOCAL_PADRAO ? '' : '@' + l; }
+
+    // Chave do aparelho separada por local (ex.: lista de registros do dia)
+    function chaveLocal(chave) { const l = localAtual(); return l === LOCAL_PADRAO ? chave : chave + '@' + l; }
+
+    // Ids que precisam ser únicos por local (ex.: sub nome do bloco "E")
+    function idComLocal(id) { const l = localAtual(); return l === LOCAL_PADRAO ? String(id) : l + '/' + id; }
+    function idSemLocal(id) { const l = localAtual(); const p = l + '/'; return l !== LOCAL_PADRAO && String(id).startsWith(p) ? String(id).slice(p.length) : String(id); }
+
+    async function carregarLocais() {
+        const resp = await sb.from('locais').select('*').order('ordem').order('nome');
+        if (!resp.error && resp.data && resp.data.length) gravar(K.locais, resp.data);
+        return todosLocais();
+    }
 
     function chavesDeCache() {
         const chaves = [];
@@ -58,7 +122,7 @@
     // Apaga cópias de consultas (podem ser baixadas de novo). "antesDe" limita às mais antigas.
     function limparCaches(incluirEssenciais, antesDe) {
         chavesDeCache().forEach(k => {
-            if (!incluirEssenciais && CACHES_ESSENCIAIS.includes(k.slice('irrigacao_cache_'.length))) return;
+            if (!incluirEssenciais && CACHES_ESSENCIAIS.includes(k.slice('irrigacao_cache_'.length).split('@')[0])) return;
             if (antesDe) {
                 const c = ler(k, null);
                 if (c && c.em >= antesDe) return;
@@ -153,6 +217,12 @@
                 : "Usuário sem perfil cadastrado. Fale com o gestor.");
         }
 
+        await carregarLocais();
+        if (resp.data.papel !== 'gestor' && !(resp.data.locais || []).length) {
+            await sb.auth.signOut({ scope: 'local' });
+            throw new Error("Nenhum local liberado para o seu usuário. Fale com o gestor.");
+        }
+
         const trocouDeUsuario = localStorage.getItem(K.ultimoUsuario) !== resp.data.id;
         localStorage.setItem(K.ultimoUsuario, resp.data.id);
         gravar(K.usuario, resp.data);
@@ -183,6 +253,7 @@
             await logout();
             return null;
         }
+        await carregarLocais().catch(() => {});
         gravar(K.usuario, resp.data);
         emitir();
         return resp.data;
@@ -216,6 +287,11 @@
         if (!u) throw new Error("Faça login para salvar.");
         const fila = ler(K.fila, []);
 
+        // Novo item / gravação completa: fica no local em uso
+        if (tipo === 'upsert' && TABELAS_LOCAL.includes(tabela) && !dados.local) {
+            dados = Object.assign({}, dados, { local: localAtual() });
+        }
+
         // Junta alterações seguidas do mesmo item que ainda não foram enviadas
         if (tipo === 'upsert') {
             const existente = fila.find(op => op.tabela === tabela && op.tipo === 'upsert' && op.usuarioId === u.id
@@ -246,10 +322,13 @@
     }
 
     // Aplica as gravações ainda não enviadas sobre uma lista vinda do servidor/cache
+    // (só as do local em uso; a lista já vem filtrada pelo local)
     function mesclarPendentes(tabela, lista) {
         const porId = new Map((lista || []).map(item => [String(item.id), Object.assign({}, item)]));
+        const local = localAtual();
         pendentesDe(tabela).forEach(op => {
             const id = String(op.dados.id);
+            if (op.tipo === 'upsert' && TABELAS_LOCAL.includes(tabela) && (op.dados.local || LOCAL_PADRAO) !== local) return;
             if (op.tipo === 'upsert') porId.set(id, Object.assign({}, porId.get(id) || {}, op.dados, { _pendente: true }));
             else if (op.tipo === 'update' && porId.has(id)) porId.set(id, Object.assign({}, porId.get(id), op.dados.valores, { _pendente: true }));
             else if (op.tipo === 'delete') porId.delete(id);
@@ -398,7 +477,7 @@
 
     async function listarPerfis(forcarAtualizacao) {
         return buscarComCache('perfis',
-            () => sb.from('perfis').select('id,usuario,nome,nome_curto,papel,ativo,administrador').order('nome'),
+            () => sb.from('perfis').select('id,usuario,nome,nome_curto,papel,ativo,administrador,locais').order('nome'),
             forcarAtualizacao ? 0 : 10 * 60 * 1000);
     }
 
@@ -437,7 +516,9 @@
             senha: dados.senha,
             dominio: cfg.emailDominio || 'spgoasis.local'
         });
-        await atualizarUsuario(r.id, { nome: dados.nome, nome_curto: dados.nome_curto || null, papel: dados.papel });
+        const valores = { nome: dados.nome, nome_curto: dados.nome_curto || null, papel: dados.papel };
+        if (Array.isArray(dados.locais) && dados.locais.length) valores.locais = dados.locais;
+        await atualizarUsuario(r.id, valores);
         return r.id;
     }
 
@@ -450,7 +531,7 @@
     // ------------------------------------------------------------
     function listarDadosBlocos(forcarAtualizacao) {
         return buscarComCache('dados_bloco',
-            () => sb.from('dados_bloco').select('*').order('id'),
+            () => sb.from('dados_bloco').select('*').eq('local', localAtual()).order('id'),
             forcarAtualizacao ? 0 : 5 * 60 * 1000);
     }
 
@@ -459,7 +540,7 @@
         const { id, ...valores } = linha;
         const resp = id
             ? await sb.from('dados_bloco').update(valores).eq('id', id).select().maybeSingle()
-            : await sb.from('dados_bloco').insert(valores).select().maybeSingle();
+            : await sb.from('dados_bloco').insert(Object.assign({ local: localAtual() }, valores)).select().maybeSingle();
         if (resp.error) throw erroSupabase(resp);
         if (!resp.data) throw new Error("Sem permissão para alterar os dados dos blocos.");
         localStorage.removeItem(K.cache('dados_bloco'));
@@ -479,7 +560,7 @@
     async function listarVersoesBloco(bloco) {
         const nome = limparNomeBloco(bloco);
         const lista = await buscarComCache(`dados_bloco_versoes_${nome}`,
-            () => sb.from('dados_bloco_versoes').select('*').eq('bloco', nome).limit(500), 0).catch(() => []);
+            () => sb.from('dados_bloco_versoes').select('*').eq('local', localAtual()).eq('bloco', nome).limit(500), 0).catch(() => []);
         return lista.sort((a, b) => (a.valido_desde == null ? 0 : 1) - (b.valido_desde == null ? 0 : 1)
             || String(a.valido_desde || '').localeCompare(String(b.valido_desde || '')) || a.id - b.id);
     }
@@ -619,7 +700,9 @@
             (mTotalFormat > 0 || hTotalFormat === 0 ? mTotalFormat + "min" : "")).trim() +
             " - (" + totalGeralMinutos + " minutos)";
 
-        let textoFinal = "`Relatório de Irrigação (" + hojeGmt3().br + ")`\n\n";
+        // Fora da Oásis, o relatório diz de qual local é
+        const doLocal = localAtual() === LOCAL_PADRAO ? "" : " - " + nomeLocal();
+        let textoFinal = "`Relatório de Irrigação" + doLocal + " (" + hojeGmt3().br + ")`\n\n";
         textoFinal += textosResumo.join("\n\n");
         textoFinal += "\n\n\n *RESUMO GERAL*\n";
         textoFinal += "• Volume Total: " + totalEmMilhares + " mil Litros\n";
@@ -719,7 +802,7 @@
         try {
             if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
             await sincronizar();
-            const resp = await sb.from('programacoes').select('*').order('created_at', { ascending: false }).limit(2000);
+            const resp = await sb.from('programacoes').select('*').eq('local', localAtual()).order('created_at', { ascending: false }).limit(2000);
             if (resp.error) throw erroSupabase(resp);
             const dados = resp.data.reverse(); // ordem de inserção
 
@@ -763,7 +846,7 @@
             await sincronizar();
             // Ignora excluídos e linhas antigas migradas da planilha sem ID ("legado-")
             const linhas = await buscarComCache('programacoes', () => sb.from('programacoes')
-                .select('id,dia,bloco,minutos,turno,observacao,responsavel,excluido_em,created_at')
+                .select('id,dia,bloco,minutos,turno,observacao,responsavel,excluido_em,created_at').eq('local', localAtual())
                 .is('excluido_em', null)
                 .not('id', 'like', 'legado-%')
                 .order('created_at', { ascending: true }), 0);
@@ -832,7 +915,7 @@
         const u = usuarioAtual();
         if (!u || !data) return;
         enfileirar('motor_diario', 'upsert', {
-            id: u.id + '_' + data,
+            id: u.id + '_' + data + sufixoLocal().replace('@', '_'),
             data: data,
             responsavel: nomeUsuario(),
             motor_ligado: ligado || null,
@@ -857,7 +940,7 @@
     }
 
     async function listarPocos() {
-        const lista = await buscarComCache('pocos', () => sb.from('pocos').select('*'), 0).catch(() => []);
+        const lista = await buscarComCache('pocos', () => sb.from('pocos').select('*').eq('local', localAtual()), 0).catch(() => []);
         return mesclarPendentes('pocos', lista).sort(ordenarPorNumero);
     }
 
@@ -869,14 +952,14 @@
 
     async function listarLeiturasPocos() {
         const lista = await buscarComCache('leituras_poco', () => sb.from('leituras_poco')
-            .select('*').order('data_hora', { ascending: false }).limit(500), 0).catch(() => []);
+            .select('*').eq('local', localAtual()).order('data_hora', { ascending: false }).limit(500), 0).catch(() => []);
         return mesclarPendentes('leituras_poco', lista).sort((a, b) => String(b.data_hora).localeCompare(String(a.data_hora)));
     }
 
     // Histórico completo de um poço (para o PDF da ficha), da leitura mais recente para a mais antiga
     async function listarLeiturasDoPoco(pocoId) {
         const lista = await buscarComCache(`leituras_poco_${pocoId}`, () => sb.from('leituras_poco')
-            .select('*').eq('poco_id', pocoId).order('data_hora', { ascending: false }).limit(5000), 0).catch(() => []);
+            .select('*').eq('local', localAtual()).eq('poco_id', pocoId).order('data_hora', { ascending: false }).limit(5000), 0).catch(() => []);
         return mesclarPendentes('leituras_poco', lista).filter(l => l.poco_id === pocoId)
             .sort((a, b) => String(b.data_hora).localeCompare(String(a.data_hora)));
     }
@@ -895,7 +978,7 @@
     }
 
     async function listarReservatorios() {
-        const lista = await buscarComCache('reservatorios', () => sb.from('reservatorios').select('*'), 0).catch(() => []);
+        const lista = await buscarComCache('reservatorios', () => sb.from('reservatorios').select('*').eq('local', localAtual()), 0).catch(() => []);
         return mesclarPendentes('reservatorios', lista).sort(ordenarPorNumero);
     }
 
@@ -908,7 +991,7 @@
     // Manutenções dos poços (qualquer usuário registra; funciona offline)
     async function listarManutencoes() {
         const lista = await buscarComCache('manutencoes_poco', () => sb.from('manutencoes_poco')
-            .select('*').order('data', { ascending: false }).limit(1000), 0).catch(() => []);
+            .select('*').eq('local', localAtual()).order('data', { ascending: false }).limit(1000), 0).catch(() => []);
         return mesclarPendentes('manutencoes_poco', lista)
             .sort((a, b) => String(b.data).localeCompare(String(a.data)) || String(b.created_at || '').localeCompare(String(a.created_at || '')));
     }
@@ -938,7 +1021,7 @@
 
     async function listarLeiturasReservatorios() {
         const lista = await buscarComCache('leituras_reservatorio', () => sb.from('leituras_reservatorio')
-            .select('*').order('data_hora', { ascending: false }).limit(500), 0).catch(() => []);
+            .select('*').eq('local', localAtual()).order('data_hora', { ascending: false }).limit(500), 0).catch(() => []);
         return mesclarPendentes('leituras_reservatorio', lista).sort((a, b) => String(b.data_hora).localeCompare(String(a.data_hora)));
     }
 
@@ -946,7 +1029,7 @@
     async function listarLeiturasReservPeriodo(de, ate) {
         const inicio = new Date(de + 'T00:00:00');
         const fim = new Date(new Date(ate + 'T00:00:00').getTime() + 24 * 3600 * 1000);
-        const lista = await buscarComCache(`leituras_reserv_${de}_${ate}`, () => sb.from('leituras_reservatorio').select('*')
+        const lista = await buscarComCache(`leituras_reserv_${de}_${ate}`, () => sb.from('leituras_reservatorio').select('*').eq('local', localAtual())
             .gte('data_hora', inicio.toISOString()).lt('data_hora', fim.toISOString()).limit(5000), 0).catch(() => []);
         return mesclarPendentes('leituras_reservatorio', lista)
             .filter(l => { const t = new Date(l.data_hora); return t >= inicio && t < fim; })
@@ -971,8 +1054,8 @@
     // ------------------------------------------------------------
     async function lerConfiguracao(chave, padrao) {
         try {
-            const lista = await buscarComCache('configuracoes', () => sb.from('configuracoes').select('chave,valor'), 10 * 60 * 1000);
-            const item = (lista || []).find(c => c.chave === chave);
+            const lista = await buscarComCache('configuracoes', () => sb.from('configuracoes').select('chave,valor').eq('local', localAtual()), 10 * 60 * 1000);
+            const item = (lista || []).find(c => c.chave === idComLocal(chave));
             return item ? item.valor : padrao;
         } catch (e) {
             return padrao;
@@ -982,7 +1065,7 @@
     // Somente gestor, precisa de internet
     async function salvarConfiguracao(chave, valor) {
         if (!navigator.onLine) throw new Error("Sem conexão. Alterar configurações precisa de internet.");
-        const resp = await sb.from('configuracoes').upsert({ chave, valor }, { onConflict: 'chave' }).select().maybeSingle();
+        const resp = await sb.from('configuracoes').upsert({ chave: idComLocal(chave), valor, local: localAtual() }, { onConflict: 'chave' }).select().maybeSingle();
         if (resp.error) throw erroSupabase(resp);
         if (!resp.data) throw new Error("Sem permissão para alterar configurações.");
         localStorage.removeItem(K.cache('configuracoes'));
@@ -991,7 +1074,7 @@
     // Horas ligado por poço/dia no período (datas yyyy-MM-dd, inclusivas)
     async function listarHorasPocoPeriodo(de, ate) {
         const lista = await buscarComCache(`horas_poco_${de}_${ate}`,
-            () => sb.from('horas_poco_dia').select('*').gte('data', de).lte('data', ate), 0).catch(() => []);
+            () => sb.from('horas_poco_dia').select('*').eq('local', localAtual()).gte('data', de).lte('data', ate), 0).catch(() => []);
         return mesclarPendentes('horas_poco_dia', lista).filter(h => h.data >= de && h.data <= ate);
     }
 
@@ -999,7 +1082,7 @@
     async function listarLeiturasPocoPeriodo(de, ate) {
         const inicio = new Date(de + 'T00:00:00');
         const fim = new Date(new Date(ate + 'T00:00:00').getTime() + 24 * 3600 * 1000);
-        const lista = await buscarComCache(`leituras_poco_${de}_${ate}`, () => sb.from('leituras_poco').select('*')
+        const lista = await buscarComCache(`leituras_poco_${de}_${ate}`, () => sb.from('leituras_poco').select('*').eq('local', localAtual())
             .gte('data_hora', inicio.toISOString()).lt('data_hora', fim.toISOString()).limit(5000), 0).catch(() => []);
         return mesclarPendentes('leituras_poco', lista)
             .filter(l => { const t = new Date(l.data_hora); return t >= inicio && t < fim; });
@@ -1007,13 +1090,14 @@
 
     // Cultura e sub nome de cada bloco (legenda do gráfico de saída, nomes dos blocos)
     async function listarCulturas() {
-        return buscarComCache('culturas_bloco', () => sb.from('culturas_bloco').select('*'), 10 * 60 * 1000).catch(() => []);
+        const lista = await buscarComCache('culturas_bloco', () => sb.from('culturas_bloco').select('*').eq('local', localAtual()), 10 * 60 * 1000).catch(() => []);
+        return lista.map(c => Object.assign({}, c, { id: idSemLocal(c.id) }));
     }
 
     // Sub nome do bloco (ex.: Tâmaras). Somente gestor, precisa de internet
     async function salvarApelidoBloco(bloco, apelido) {
         if (!navigator.onLine) throw new Error("Sem conexão. Alterar o sub nome precisa de internet.");
-        const resp = await sb.from('culturas_bloco').upsert({ id: String(bloco), apelido: apelido || null }, { onConflict: 'id' }).select().maybeSingle();
+        const resp = await sb.from('culturas_bloco').upsert({ id: idComLocal(bloco), apelido: apelido || null, local: localAtual() }, { onConflict: 'id' }).select().maybeSingle();
         if (resp.error) throw erroSupabase(resp);
         if (!resp.data) throw new Error("Sem permissão para alterar o sub nome.");
         localStorage.removeItem(K.cache('culturas_bloco'));
@@ -1022,7 +1106,7 @@
     // Somente gestor, precisa de internet
     async function salvarCultura(bloco, cultura) {
         if (!navigator.onLine) throw new Error("Sem conexão. Alterar a cultura precisa de internet.");
-        const resp = await sb.from('culturas_bloco').upsert({ id: String(bloco), cultura: cultura || null }, { onConflict: 'id' }).select().maybeSingle();
+        const resp = await sb.from('culturas_bloco').upsert({ id: idComLocal(bloco), cultura: cultura || null, local: localAtual() }, { onConflict: 'id' }).select().maybeSingle();
         if (resp.error) throw erroSupabase(resp);
         if (!resp.data) throw new Error("Sem permissão para alterar a cultura.");
         localStorage.removeItem(K.cache('culturas_bloco'));
@@ -1036,7 +1120,7 @@
     // litros_por_min é a vazão do bloco no dia do registro (congelada no banco).
     // Turno, responsável e hora vão junto para o detalhe ao tocar na coluna do bloco.
     async function listarRegistrosPeriodo(de, ate) {
-        const consulta = campos => sb.from('registros_irrigacao').select(campos).gte('data', de).lte('data', ate).limit(10000);
+        const consulta = campos => sb.from('registros_irrigacao').select(campos).eq('local', localAtual()).gte('data', de).lte('data', ate).limit(10000);
         const campos = 'id,data,bloco,minutos,turno,observacao,responsavel,registrado_em';
         const lista = await buscarComCache(`registros_${de}_${ate}`, async () => {
             const resp = await consulta(campos + ',litros_por_min');
@@ -1053,7 +1137,7 @@
         // "6" e "06" são o mesmo bloco
         const nomes = [...new Set([nome, /^\d$/.test(nome) ? '0' + nome : nome])];
         const consulta = campos => {
-            let q = sb.from('registros_irrigacao').select(campos).in('bloco', nomes).order('data', { ascending: false });
+            let q = sb.from('registros_irrigacao').select(campos).eq('local', localAtual()).in('bloco', nomes).order('data', { ascending: false });
             if (de) q = q.gte('data', de);
             if (ate) q = q.lte('data', ate);
             return q.limit(de ? 2000 : 60);
@@ -1077,7 +1161,7 @@
         const u = usuarioAtual();
         const prefixo = u ? u.id.slice(0, 8) + '-' : null;
         const lista = await buscarComCache(`registros_equipe_${data}`,
-            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('data', data).limit(2000), 0).catch(() => []);
+            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('local', localAtual()).eq('data', data).limit(2000), 0).catch(() => []);
         // Aplica as correções do gestor ainda na fila; tira os do próprio usuário
         return mesclarPendentes('registros_irrigacao', lista)
             .filter(r => r.data === data && (!u || (r.criado_por !== u.id && !String(r.id).startsWith(prefixo))));
@@ -1090,7 +1174,7 @@
         if (!u) return [];
         const prefixo = u.id.slice(0, 8) + '-';
         const lista = await buscarComCache(`registros_meus_${data}`,
-            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('data', data).like('id', prefixo + '%').limit(500), 0).catch(() => []);
+            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('local', localAtual()).eq('data', data).like('id', prefixo + '%').limit(500), 0).catch(() => []);
         // Aplica a fila: exclusões ainda não enviadas não voltam para a lista
         return mesclarPendentes('registros_irrigacao', lista)
             .filter(r => r.data === data && String(r.id).startsWith(prefixo) && /^\d+$/.test(String(r.id).slice(prefixo.length)))
@@ -1101,7 +1185,7 @@
     // usuário), com as alterações ainda na fila já aplicadas. Usado ao consultar dias anteriores.
     async function listarRegistrosDia(data) {
         const lista = await buscarComCache(`registros_dia_${data}`,
-            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('data', data).limit(2000), 0).catch(() => []);
+            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('local', localAtual()).eq('data', data).limit(2000), 0).catch(() => []);
         return mesclarPendentes('registros_irrigacao', lista).filter(r => r.data === data);
     }
 
@@ -1117,6 +1201,7 @@
             .on('postgres_changes', { event: '*', schema: 'public', table: 'registros_irrigacao' }, payload => {
                 const u = usuarioAtual();
                 const registro = payload.new && payload.new.id ? payload.new : null;
+                if (registro && (registro.local || LOCAL_PADRAO) !== localAtual()) return;
                 const id = String((registro || payload.old || {}).id || '');
                 const prefixo = u ? u.id.slice(0, 8) + '-' : null;
                 const proprio = !!prefixo && id.startsWith(prefixo);
@@ -1145,6 +1230,7 @@
             canal = canal.on('postgres_changes', { event: '*', schema: 'public', table: tabela }, payload => {
                 const u = usuarioAtual();
                 const registro = payload.new && payload.new.id ? payload.new : null;
+                if (registro && (registro.local || LOCAL_PADRAO) !== localAtual()) return;
                 cb({ tabela, tipo: payload.eventType, registro, proprio: !!(registro && u && registro.criado_por === u.id) });
             });
         });
@@ -1161,7 +1247,7 @@
     // ------------------------------------------------------------
     async function listarAuditoria(limite) {
         if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
-        const resp = await sb.from('auditoria').select('*').order('criado_em', { ascending: false }).limit(limite || 100);
+        const resp = await sb.from('auditoria').select('*').or('local.is.null,local.eq.' + localAtual()).order('criado_em', { ascending: false }).limit(limite || 100);
         if (resp.error) throw erroSupabase(resp);
         return resp.data;
     }
@@ -1169,7 +1255,7 @@
     // Log de um período (ex.: um dia), mais novo primeiro. Somente gestor, precisa de internet.
     async function listarAuditoriaPeriodo(inicioIso, fimIso) {
         if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
-        const resp = await sb.from('auditoria').select('*').gte('criado_em', inicioIso).lt('criado_em', fimIso)
+        const resp = await sb.from('auditoria').select('*').or('local.is.null,local.eq.' + localAtual()).gte('criado_em', inicioIso).lt('criado_em', fimIso)
             .order('criado_em', { ascending: false }).limit(2000);
         if (resp.error) throw erroSupabase(resp);
         return resp.data;
@@ -1188,7 +1274,7 @@
             throw erroSupabase(resp);
         }
         // Os dados mudaram no banco: descarta as cópias salvas no aparelho
-        Object.keys(localStorage).filter(k => k.startsWith('irrigacao_cache_') && !k.endsWith('perfis'))
+        Object.keys(localStorage).filter(k => k.startsWith('irrigacao_cache_') && k !== 'irrigacao_cache_perfis')
             .forEach(k => localStorage.removeItem(k));
         return resp.data;
     }
@@ -1281,7 +1367,7 @@
     // Quem registrou/alterou algo no período, com a quantidade: [{ id, nome, qtd }] (somente gestor)
     async function autoresAuditoriaPeriodo(inicioIso, fimIso) {
         if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
-        const resp = await sb.from('auditoria').select('usuario_id,usuario_nome')
+        const resp = await sb.from('auditoria').select('usuario_id,usuario_nome').or('local.is.null,local.eq.' + localAtual())
             .gte('criado_em', inicioIso).lt('criado_em', fimIso).not('usuario_id', 'is', null).limit(5000);
         if (resp.error) throw erroSupabase(resp);
         const porUsuario = {};
@@ -1296,7 +1382,7 @@
     // Tudo o que o usuário registrou/alterou entre o início e o fim da sessão
     async function atividadesDaSessao(usuarioId, inicioIso, fimIso) {
         if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
-        const resp = await sb.from('auditoria').select('*').eq('usuario_id', usuarioId)
+        const resp = await sb.from('auditoria').select('*').or('local.is.null,local.eq.' + localAtual()).eq('usuario_id', usuarioId)
             .gte('criado_em', inicioIso).lte('criado_em', fimIso)
             .order('criado_em', { ascending: false }).limit(300);
         if (resp.error) throw erroSupabase(resp);
@@ -1319,6 +1405,8 @@
     window.IrrigacaoAPI = {
         // login
         login, logout, usuarioAtual, isGestor, isAdmin, nomeUsuario, atualizarPerfil, listarPerfis,
+        // locais (fazendas)
+        localAtual, nomeLocal, locaisPermitidos, todosLocais, trocarLocal, chaveLocal, carregarLocais,
         // gestão de usuários
         criarUsuario, atualizarUsuario, redefinirSenha,
         // sincronização
