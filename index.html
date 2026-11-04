@@ -1149,6 +1149,10 @@
                 class="hidden flex-1 min-w-[40%] sm:min-w-0 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
                 <i data-lucide="users" class="w-3.5 h-3.5"></i> Usuários
             </button>
+            <button type="button" data-cad-sec="locais" data-so-admin onclick="window.switchCadastro('locais')"
+                class="hidden flex-1 min-w-[40%] sm:min-w-0 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Locais
+            </button>
         </div>
 
         <!-- ===== CADASTRO DE POÇOS ===== -->
@@ -1255,6 +1259,26 @@
                 </div>
                 <div id="usersList" class="cad-lista px-5 py-4 grid sm:grid-cols-2 gap-2"></div>
                 <p class="px-5 pb-4 text-[10px] text-slate-400 leading-relaxed">A pessoa entra no app com o usuário e a senha definidos aqui. Criar, editar e trocar senha precisam de internet.</p>
+            </div>
+        </div>
+
+        <!-- ===== LOCAIS (SOMENTE ADMINISTRADOR) ===== -->
+        <div id="cadSecLocais" class="cad-sec cad-estreita hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center gap-2">
+                    <i data-lucide="map-pin" class="w-5 h-5 text-white opacity-90"></i>
+                    <div>
+                        <h2 class="text-base font-bold text-white leading-tight">Locais</h2>
+                        <p id="locaisContagem" class="text-[10px] text-slate-300 font-medium"></p>
+                    </div>
+                    <button type="button" onclick="window.novoLocal()"
+                        class="ml-auto flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-white text-slate-800 hover:bg-slate-100 shadow-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Novo local
+                    </button>
+                    <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-white">Admin</span>
+                </div>
+                <div id="locaisLista" class="px-5 py-4 space-y-2"></div>
+                <p class="px-5 pb-4 text-[10px] text-slate-400 leading-relaxed">Cada local tem os seus próprios blocos, poços, reservatórios, programação e registros. Só o administrador acessa todos; gestores e irrigadores acessam os marcados no cadastro de cada um (aba Usuários). Precisa de internet.</p>
             </div>
         </div>
     </div>
@@ -5216,7 +5240,7 @@
             document.querySelectorAll('[data-so-admin]').forEach(el => el.classList.toggle('hidden', !admin));
             const naAbaCadastros = !document.getElementById('tabCadastros').classList.contains('hidden');
             if (!gestor && naAbaCadastros) window.switchTab('registro');
-            else if (!admin && cadSecaoAtual === 'usuarios') window.switchCadastro('pocos');
+            else if (!admin && CAD_SECOES[cadSecaoAtual] && CAD_SECOES[cadSecaoAtual].soAdmin) window.switchCadastro('pocos');
         }
 
         // ----- Aba Cadastros: uma sub-aba por vez (a última escolhida fica salva no aparelho) -----
@@ -5224,7 +5248,8 @@
             pocos:    { painel: 'cadSecPocos' },
             reserv:   { painel: 'cadSecReserv' },
             blocos:   { painel: 'cadSecBlocos' },
-            usuarios: { painel: 'cadSecUsuarios', soAdmin: true }
+            usuarios: { painel: 'cadSecUsuarios', soAdmin: true },
+            locais:   { painel: 'cadSecLocais', soAdmin: true }
         };
         let cadSecaoAtual = (() => { try { return localStorage.getItem('irrigacao_cad_secao') || 'pocos'; } catch (e) { return 'pocos'; } })();
 
@@ -5245,6 +5270,10 @@
             if (secao === 'usuarios') {
                 usuarioEditando = null;
                 recarregarUsuarios();
+            }
+            if (secao === 'locais') {
+                localEditando = null;
+                recarregarLocais();
             }
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -10247,6 +10276,16 @@
             });
         }
 
+        // Selo com o local da sessão (Oásis, Estufa...); sessões de versões antigas do app não têm local
+        const CORES_LOCAL = ['bg-emerald-50 text-emerald-700 border-emerald-200', 'bg-sky-50 text-sky-700 border-sky-200',
+            'bg-amber-50 text-amber-700 border-amber-200', 'bg-violet-50 text-violet-700 border-violet-200'];
+        function seloLocalSessao(local) {
+            if (!local) return '';
+            const i = Math.max(0, API.todosLocais().findIndex(l => l.id === local));
+            return `<span class="inline-flex items-center gap-0.5 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${CORES_LOCAL[i % CORES_LOCAL.length]}">
+                <i data-lucide="map-pin" class="w-2.5 h-2.5"></i>${escapeHtml(API.nomeLocal(local).replace(/^SPG\s+/i, ''))}</span>`;
+        }
+
         function linhaSessaoCompacta(s) {
             const online = estaOnline(s);
             const duracao = fmtDuracao(new Date(fimDaSessao(s)) - new Date(s.inicio));
@@ -10255,7 +10294,7 @@
                 <div class="py-2 flex items-start gap-2">
                     <span class="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${online ? 'bg-green-500' : 'bg-slate-300'}"></span>
                     <div class="min-w-0 flex-1">
-                        <p class="text-[11px] font-bold text-slate-700">${fmtHora(s.inicio)} – ${online ? 'agora' : fmtHora(fimDaSessao(s))} <span class="font-medium text-slate-400">· ${duracao} · ${status}</span></p>
+                        <p class="text-[11px] font-bold text-slate-700">${seloLocalSessao(s.local)} ${fmtHora(s.inicio)} – ${online ? 'agora' : fmtHora(fimDaSessao(s))} <span class="font-medium text-slate-400">· ${duracao} · ${status}</span></p>
                         <p class="text-[10px] text-slate-400">${escapeHtml(s.dispositivo || '')}${s.aba ? ` · aba ${escapeHtml(NOMES_ABAS[s.aba] || s.aba)}` : ''}</p>
                     </div>
                 </div>`;
@@ -10269,6 +10308,9 @@
                 ? `${fmtHora(g.inicio)} – ${g.online ? 'agora' : fmtHora(g.fim)} · ${fmtDuracao(g.totalMs)} no app`
                 : 'sem sessão registrada no dia';
             const alteracoes = g.alteracoes ? ` · <span class="font-bold text-slate-500">${g.alteracoes} alteraç${g.alteracoes === 1 ? 'ão' : 'ões'}</span>` : '';
+            // Local atual (da sessão online ou da última) primeiro, depois os outros usados no dia
+            const sessaoAtual = g.sessoes.find(estaOnline) || g.ultima;
+            const locais = [...new Set([sessaoAtual && sessaoAtual.local].concat(g.sessoes.map(s => s.local)).filter(Boolean))];
             return `
             <div class="border ${g.online ? 'border-green-200' : 'border-slate-200'} rounded-xl overflow-hidden">
                 <button type="button" onclick="window.abrirPessoaOnline('${id}')"
@@ -10279,6 +10321,7 @@
                             <span class="truncate">${escapeHtml(g.nome)}</span>
                             ${g.online ? '<span class="text-[9px] font-black uppercase tracking-wider text-green-700">online</span>' : ''}
                         </p>
+                        ${locais.length ? `<div class="flex flex-wrap gap-1 mt-1">${locais.map(seloLocalSessao).join('')}</div>` : ''}
                         <p class="text-[10px] text-slate-400 mt-0.5">${g.papel ? `<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 mr-1">${g.papel}</span>` : ''}${n} sess${n === 1 ? 'ão' : 'ões'}${alteracoes}${g.ultima && g.ultima.dispositivo ? ' · ' + escapeHtml(g.ultima.dispositivo) : ''}</p>
                         <p class="text-[10px] font-bold ${g.online ? 'text-green-700' : 'text-slate-500'} mt-0.5">${periodo}</p>
                     </div>
@@ -10311,7 +10354,10 @@
                     ${titulo(`Online agora · ${online.length} pessoa${online.length === 1 ? '' : 's'}`)}
                     ${online.length
                         ? `<div class="flex flex-wrap gap-1.5">${online.map(g => `<span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-green-800 bg-green-50 border border-green-200 rounded-full px-2.5 py-1">
-                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>${escapeHtml(g.nome)}</span>`).join('')}</div>`
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>${escapeHtml(g.nome)}${(() => {
+                                const s = g.sessoes.find(estaOnline);
+                                return s && s.local ? `<span class="font-medium text-green-700/80">· ${escapeHtml(API.nomeLocal(s.local).replace(/^SPG\s+/i, ''))}</span>` : '';
+                            })()}</span>`).join('')}</div>`
                         : '<p class="text-xs text-slate-400 py-1">Ninguém online no momento.</p>'}
                 </div>`;
             const rotuloDia = ehHoje ? 'hoje' : formatDate(dia);
@@ -10525,9 +10571,9 @@
                     </div>
 
                     <div class="mt-3">
-                        ${rotulo('Locais de acesso' + (r.papel === 'gestor' ? '' : ' <span class="text-red-400">*</span>'))}
-                        ${r.papel === 'gestor'
-                            ? '<p class="text-[11px] text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-sky-600"></i>O gestor acessa todos os locais.</p>'
+                        ${rotulo('Locais de acesso' + (p && p.administrador ? '' : ' <span class="text-red-400">*</span>'))}
+                        ${p && p.administrador
+                            ? '<p class="text-[11px] text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="crown" class="w-3.5 h-3.5 text-amber-500"></i>O administrador acessa todos os locais.</p>'
                             : `<div class="flex flex-wrap gap-1.5 mt-1">${API.todosLocais().filter(l => l.ativo !== false).map(l => {
                                 const marcado = (r.locais || []).includes(l.id);
                                 return `<button type="button" onclick="window.alternarLocalUsuario('${escapeHtml(l.id)}')"
@@ -10535,7 +10581,7 @@
                                         ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'}">
                                     <i data-lucide="${marcado ? 'check' : 'map-pin'}" class="w-3.5 h-3.5"></i>${escapeHtml(l.nome)}</button>`;
                             }).join('')}</div>
-                            <p class="text-[10px] text-slate-400 mt-1">O irrigador só vê e registra nos locais marcados.</p>`}
+                            <p class="text-[10px] text-slate-400 mt-1">${r.papel === 'gestor' ? 'O gestor' : 'O irrigador'} só vê e ${r.papel === 'gestor' ? 'gerencia' : 'registra'} os locais marcados.</p>`}
                     </div>
 
                     <div class="mt-3">
@@ -10584,7 +10630,7 @@
                             <div class="flex flex-wrap gap-1 mt-1">
                                 ${gestor ? selo('bg-sky-50 text-sky-700 border border-sky-200', 'shield-check', 'Gestor') : selo('bg-green-50 text-green-700 border border-green-200', 'droplets', 'Irrigador')}
                                 ${p.administrador ? selo('bg-slate-800 text-white', 'crown', 'Administrador') : ''}
-                                ${gestor ? '' : (Array.isArray(p.locais) ? p.locais : ['oasis']).map(l =>
+                                ${p.administrador ? selo('bg-amber-50 text-amber-700 border border-amber-200', 'map-pin', 'Todos os locais') : (Array.isArray(p.locais) ? p.locais : ['oasis']).map(l =>
                                     selo('bg-slate-50 text-slate-600 border border-slate-200', 'map-pin', escapeHtml(API.nomeLocal(l)))).join('')}
                                 ${p.ativo ? '' : selo('bg-red-50 text-red-600 border border-red-200', 'user-x', 'Desativado')}
                             </div>
@@ -10658,7 +10704,7 @@
 
             if (!nome) return mostrarErro("Informe o nome completo.");
             const locais = (r.locais || []).filter(l => API.todosLocais().some(x => x.id === l));
-            if (r.papel !== 'gestor' && !locais.length) return mostrarErro("Marque pelo menos um local de acesso.");
+            if (!(p && p.administrador) && !locais.length) return mostrarErro("Marque pelo menos um local de acesso.");
             if (novo) {
                 if (String(r.usuario || '').length < 2) return mostrarErro("O usuário (login) precisa ter pelo menos 2 caracteres.");
                 if (usuariosLista.some(x => x.usuario === r.usuario)) return mostrarErro(`O usuário "${r.usuario}" já existe.`);
@@ -10719,6 +10765,182 @@
                 confirmarAlteracaoUsuario(id, { ativo: true }, "Reativar usuário?",
                     `${nome} volta a ter acesso ao app.`, "REATIVAR", "user-check");
             }
+        }
+
+        // --- LOCAIS (ADMINISTRADOR, aba Cadastros) ---
+
+        var localEditando = null;   // id do local em edição, NOVO_LOCAL ou null
+        var rascunhoLocal = {};
+        const NOVO_LOCAL = '__novo__';
+
+        async function recarregarLocais() {
+            const lista = document.getElementById('locaisLista');
+            if (!navigator.onLine) {
+                lista.innerHTML = `<p class="text-xs font-medium text-red-500 text-center py-6">Sem conexão. A gestão de locais precisa de internet.</p>`;
+                return;
+            }
+            try { await API.carregarLocais(); } catch (e) {}
+            renderLocais();
+        }
+
+        // "Fazenda Nova" -> "fazenda-nova" (código interno do local)
+        function sugerirCodigoLocal(nome) {
+            return String(nome || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .replace(/^spg\s+/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+        }
+
+        window.novoLocal = function() {
+            const ordens = API.todosLocais().map(l => Number(l.ordem) || 0);
+            localEditando = NOVO_LOCAL;
+            rascunhoLocal = { id: '', nome: '', ordem: (ordens.length ? Math.max(...ordens) : 0) + 1, codigoAuto: true };
+            renderLocais();
+            const campo = document.getElementById('editLocalNome');
+            if (campo) campo.focus();
+        }
+
+        window.editarLocal = function(id) {
+            const l = API.todosLocais().find(x => x.id === id);
+            localEditando = l ? id : null;
+            rascunhoLocal = l ? { id: l.id, nome: l.nome, ordem: l.ordem ?? 0 } : {};
+            renderLocais();
+        }
+
+        window.digitarNomeLocal = function(campo) {
+            rascunhoLocal.nome = campo.value;
+            if (localEditando === NOVO_LOCAL && rascunhoLocal.codigoAuto) {
+                rascunhoLocal.id = sugerirCodigoLocal(campo.value);
+                const c = document.getElementById('editLocalCodigo');
+                if (c) c.value = rascunhoLocal.id;
+            }
+        }
+
+        window.digitarCodigoLocal = function(campo) {
+            campo.value = campo.value.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30);
+            rascunhoLocal.id = campo.value;
+            rascunhoLocal.codigoAuto = false;
+        }
+
+        function editorLocalHtml(l) {
+            const novo = !l;
+            const r = rascunhoLocal;
+            const campo = 'w-full bg-white border-2 border-slate-200 rounded-lg py-1.5 px-2 text-xs text-slate-800';
+            const rotulo = t => `<span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">${t}</span>`;
+            return `
+            <div class="border-2 border-amber-300 rounded-xl overflow-hidden bg-white">
+                <div class="bg-amber-50 px-3 py-2 border-b border-amber-200">
+                    <span class="text-xs font-black text-amber-800 uppercase tracking-wide">${novo ? 'Novo local' : 'Editando ' + escapeHtml(l.nome)}</span>
+                </div>
+                <div class="px-3 pt-2.5">
+                    <label class="block">${rotulo('Nome <span class="text-red-400">*</span>')}
+                        <input type="text" id="editLocalNome" value="${escapeHtml(r.nome)}" maxlength="40" placeholder="ex: Fazenda Nova"
+                            oninput="window.digitarNomeLocal(this)" class="${campo} font-bold"></label>
+                    <p class="text-[10px] text-slate-400 mt-1">Aparece no topo do app, no seletor de local e nos relatórios.</p>
+                    <div class="grid grid-cols-[1.4fr_0.6fr] gap-1.5 mt-2">
+                        <label class="block">${rotulo('Código' + (novo ? ' <span class="text-red-400">*</span>' : ''))}
+                            <input type="text" id="editLocalCodigo" value="${escapeHtml(r.id)}" maxlength="30" ${novo ? '' : 'disabled'} autocapitalize="none" spellcheck="false"
+                                oninput="window.digitarCodigoLocal(this)" class="${campo} font-mono ${novo ? '' : 'bg-slate-100 text-slate-500'}"></label>
+                        <label class="block">${rotulo('Ordem')}
+                            <input type="number" value="${escapeHtml(r.ordem)}" min="0" step="1" inputmode="numeric"
+                                oninput="rascunhoLocal.ordem = this.value" class="${campo}"></label>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">${novo
+                        ? 'Código interno: só letras minúsculas, números, "-" ou "_". <b>Não pode ser trocado depois.</b>'
+                        : 'O código não muda (os dados do local ficam ligados a ele).'}</p>
+                    <p id="editLocalErro" class="hidden text-xs font-bold text-red-500 mt-2"></p>
+                    <div class="flex gap-2 py-3">
+                        <button type="button" onclick="window.editarLocal(null)" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
+                        <button type="button" id="editLocalBtn" onclick="window.salvarLocal()"
+                            class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                            <i data-lucide="${novo ? 'plus' : 'save'}" class="w-4 h-4"></i> ${novo ? 'Criar Local' : 'Salvar'}</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function cartaoLocalHtml(l) {
+            const ativo = l.ativo !== false;
+            const atual = l.id === LOCAL_EM_USO;
+            const id = escapeHtml(l.id);
+            const comAcesso = perfisCache.filter(p => p.ativo !== false && !p.administrador
+                && (Array.isArray(p.locais) ? p.locais : ['oasis']).includes(l.id));
+            const gestores = comAcesso.filter(p => p.papel === 'gestor').length;
+            const irrigadores = comAcesso.length - gestores;
+            return `
+            <div class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white ${ativo ? '' : 'opacity-60'}">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0"><i data-lucide="map-pin" class="w-5 h-5"></i></div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-black text-slate-800 truncate ${ativo ? '' : 'line-through'}">${escapeHtml(l.nome)}${atual ? ' <span class="text-[10px] font-medium text-emerald-600">(aberto agora)</span>' : ''}</p>
+                    <p class="text-[11px] text-slate-500 truncate"><span class="font-mono">${id}</span> · ordem ${escapeHtml(l.ordem ?? 0)} · ${gestores} gestor${gestores === 1 ? '' : 'es'} e ${irrigadores} irrigador${irrigadores === 1 ? '' : 'es'} com acesso</p>
+                    ${ativo ? '' : '<p class="text-[10px] font-bold text-red-500">Desativado: não aparece no seletor de local</p>'}
+                </div>
+                <div class="flex items-center gap-0.5 shrink-0">
+                    <button type="button" onclick="window.editarLocal('${id}')" title="Editar nome e ordem"
+                        class="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
+                    ${atual ? '' : `<button type="button" role="switch" aria-checked="${ativo}" onclick="window.alternarAtivoLocal('${id}')" title="${ativo ? 'Ativo (toque para desativar)' : 'Desativado (toque para reativar)'}"
+                        class="relative inline-block w-9 h-5 ml-1 rounded-full transition-colors ${ativo ? 'bg-emerald-500' : 'bg-slate-300'}">
+                        <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${ativo ? 'translate-x-4' : ''}"></span>
+                    </button>`}
+                </div>
+            </div>`;
+        }
+
+        function renderLocais() {
+            const locais = API.todosLocais().slice().sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0) || a.nome.localeCompare(b.nome));
+            const ativos = locais.filter(l => l.ativo !== false).length;
+            document.getElementById('locaisContagem').innerText =
+                `${ativos} ativo${ativos === 1 ? '' : 's'}${locais.length > ativos ? ` · ${locais.length - ativos} desativado${locais.length - ativos === 1 ? '' : 's'}` : ''}`;
+            document.getElementById('locaisLista').innerHTML =
+                (localEditando === NOVO_LOCAL ? editorLocalHtml(null) : '') +
+                locais.map(l => l.id === localEditando ? editorLocalHtml(l) : cartaoLocalHtml(l)).join('');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.salvarLocal = async function() {
+            if (!API.isAdmin() || !localEditando) return;
+            const novo = localEditando === NOVO_LOCAL;
+            const r = rascunhoLocal;
+            const erro = document.getElementById('editLocalErro');
+            const mostrarErro = msg => { erro.innerText = msg; erro.classList.remove('hidden'); };
+            const nome = String(r.nome || '').replace(/\s+/g, ' ').trim();
+            const ordem = parseInt(r.ordem) || 0;
+            if (!nome) return mostrarErro("Informe o nome do local.");
+            if (novo && !/^[a-z0-9_-]{2,30}$/.test(r.id || '')) return mostrarErro("O código precisa ter de 2 a 30 caracteres: letras minúsculas, números, \"-\" ou \"_\".");
+            const outros = API.todosLocais().filter(l => l.id !== (novo ? null : localEditando));
+            if (novo && outros.some(l => l.id === r.id)) return mostrarErro(`Já existe um local com o código "${r.id}".`);
+            if (outros.some(l => l.nome.toLowerCase() === nome.toLowerCase())) return mostrarErro(`Já existe um local chamado "${nome}".`);
+
+            const btn = document.getElementById('editLocalBtn');
+            btn.disabled = true;
+            try {
+                await API.salvarLocal(novo ? { id: r.id, nome, ordem, ativo: true } : { id: localEditando, nome, ordem }, novo);
+                localEditando = null;
+                renderLocais();
+                aplicarLocalNaTela();
+                if (novo) window.showAlert("Local criado",
+                    `${nome} já aparece no seu seletor de local. Para um gestor ou irrigador acessar, marque o local no cadastro dele (aba Usuários). Os blocos, poços e reservatórios de ${nome} são cadastrados depois de abrir o local.`);
+            } catch (err) {
+                mostrarErro(err.message);
+                btn.disabled = false;
+            }
+        }
+
+        window.alternarAtivoLocal = function(id) {
+            const l = API.todosLocais().find(x => x.id === id);
+            if (!l || id === LOCAL_EM_USO) return;
+            const ativo = l.ativo !== false;
+            pendingConfirmCallback = async () => {
+                try {
+                    await API.salvarLocal({ id, ativo: !ativo }, false);
+                    renderLocais();
+                    aplicarLocalNaTela();
+                } catch (err) {
+                    window.showAlert("Não foi possível alterar", err.message);
+                }
+            };
+            window.showConfirmModal(ativo ? "Desativar local?" : "Reativar local?", ativo
+                ? `${l.nome} sai do seletor de local e ninguém consegue abrir. Os dados continuam salvos no banco e voltam se o local for reativado.`
+                : `${l.nome} volta a aparecer no seletor de local.`,
+                ativo ? "DESATIVAR" : "REATIVAR", ativo ? "map-pin-off" : "map-pin");
         }
 
         // --- LOGIN E SINCRONIZAÇÃO ---
@@ -11076,7 +11298,7 @@
         }
 
         function temAcessoAoLocal(p, local) {
-            return p.papel === 'gestor' || (Array.isArray(p.locais) ? p.locais : ['oasis']).includes(local);
+            return (p.papel === 'gestor' && p.administrador) || (Array.isArray(p.locais) ? p.locais : ['oasis']).includes(local);
         }
 
         function preencherSelectsResponsaveis() {
