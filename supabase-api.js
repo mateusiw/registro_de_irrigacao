@@ -51,7 +51,7 @@
 
     // ------------------------------------------------------------
     // Locais (Fazenda Oásis, Estufa, ...). Todo dado pertence a um local.
-    // Gestor acessa todos; irrigador só os do seu perfil (perfis.locais).
+    // Administrador acessa todos; gestores e irrigadores só os do seu perfil (perfis.locais).
     // ------------------------------------------------------------
     const LOCAL_PADRAO = 'oasis';
     const LOCAIS_RESERVA = [{ id: LOCAL_PADRAO, nome: 'SPG Oásis', ordem: 1, ativo: true }];
@@ -70,7 +70,8 @@
         const u = ler(K.usuario, null);
         const ativos = todosLocais().filter(l => l.ativo !== false);
         if (!u) return ativos;
-        if (u.papel === 'gestor') return ativos;
+        // Só o administrador (gestor master) acessa todos; os demais, os locais do seu perfil
+        if (u.papel === 'gestor' && u.administrador === true) return ativos;
         const meus = Array.isArray(u.locais) ? u.locais : [LOCAL_PADRAO];
         return ativos.filter(l => meus.includes(l.id));
     }
@@ -108,6 +109,21 @@
         const resp = await sb.from('locais').select('*').order('ordem').order('nome');
         if (!resp.error && resp.data && resp.data.length) gravar(K.locais, resp.data);
         return todosLocais();
+    }
+
+    // Cadastra ou altera um local (somente administrador, precisa de internet)
+    async function salvarLocal(local, novo) {
+        if (!navigator.onLine) throw new Error("Sem conexão com a internet.");
+        const resp = novo
+            ? await sb.from('locais').insert(local).select().maybeSingle()
+            : await sb.from('locais').update(local).eq('id', local.id).select().maybeSingle();
+        if (resp.error) {
+            if (resp.error.code === '23505') throw new Error(`Já existe um local com o código "${local.id}".`);
+            throw erroSupabase(resp);
+        }
+        if (!resp.data) throw new Error("Sem permissão para alterar locais (somente o administrador).");
+        await carregarLocais();
+        return resp.data;
     }
 
     function chavesDeCache() {
@@ -218,9 +234,11 @@
         }
 
         await carregarLocais();
-        if (resp.data.papel !== 'gestor' && !(resp.data.locais || []).length) {
+        const ehAdmin = resp.data.papel === 'gestor' && resp.data.administrador === true;
+        const liberados = (resp.data.locais || []).filter(id => todosLocais().some(l => l.id === id && l.ativo !== false));
+        if (!ehAdmin && !liberados.length) {
             await sb.auth.signOut({ scope: 'local' });
-            throw new Error("Nenhum local liberado para o seu usuário. Fale com o gestor.");
+            throw new Error("Nenhum local liberado para o seu usuário. Fale com o administrador.");
         }
 
         const trocouDeUsuario = localStorage.getItem(K.ultimoUsuario) !== resp.data.id;
@@ -1304,10 +1322,18 @@
         try {
             const { data } = await sb.auth.getSession();
             if (!data.session) return;
-            await sb.from('sessoes').upsert({
+            const linha = {
                 id: sessaoId, usuario_id: u.id, usuario_nome: nomeUsuario(u),
                 ultimo_sinal: new Date().toISOString(), dispositivo: descreverDispositivo(), aba: sessaoAba, fim: null
-            }, { onConflict: 'id' });
+            };
+            if (sessaoComLocal) linha.local = localAtual();
+            const resp = await sb.from('sessoes').upsert(linha, { onConflict: 'id' });
+            // Banco ainda sem a coluna "local" (schema.sql não rodado): continua mandando o sinal sem ela
+            if (resp.error && sessaoComLocal && /local/i.test(resp.error.message || '')) {
+                sessaoComLocal = false;
+                delete linha.local;
+                await sb.from('sessoes').upsert(linha, { onConflict: 'id' });
+            }
         } catch (e) { /* sinal é opcional: nunca atrapalha o uso do app */ }
     }
 
@@ -1315,17 +1341,20 @@
     // seguida) continua a mesma sessão, em vez de aparecer como uma conexão nova
     const SESSAO_REUSO_MS = 5 * 60 * 1000;
     const K_SESSAO = 'irrigacao_sessao_atual';
+    let sessaoComLocal = true;
 
     function lembrarSessao() {
         const u = usuarioAtual();
-        if (u && sessaoId) gravar(K_SESSAO, { id: sessaoId, usuarioId: u.id, em: Date.now() });
+        if (u && sessaoId) gravar(K_SESSAO, { id: sessaoId, usuarioId: u.id, local: localAtual(), em: Date.now() });
     }
 
     // Abre uma sessão (ao entrar no app ou fazer login), reaproveitando a anterior se ainda estiver valendo
+    // (trocar de local abre uma sessão nova, para cada local ter o seu tempo de uso)
     function iniciarSessao(aba) {
         const u = usuarioAtual();
         const anterior = ler(K_SESSAO, null);
-        sessaoId = anterior && u && anterior.usuarioId === u.id && Date.now() - anterior.em < SESSAO_REUSO_MS
+        sessaoId = anterior && u && anterior.usuarioId === u.id && (anterior.local || LOCAL_PADRAO) === localAtual()
+            && Date.now() - anterior.em < SESSAO_REUSO_MS
             ? anterior.id : novoId();
         lembrarSessao();
         sessaoAba = aba || '';
@@ -1406,7 +1435,7 @@
         // login
         login, logout, usuarioAtual, isGestor, isAdmin, nomeUsuario, atualizarPerfil, listarPerfis,
         // locais (fazendas)
-        localAtual, nomeLocal, locaisPermitidos, todosLocais, trocarLocal, chaveLocal, carregarLocais,
+        localAtual, nomeLocal, locaisPermitidos, todosLocais, trocarLocal, chaveLocal, carregarLocais, salvarLocal,
         // gestão de usuários
         criarUsuario, atualizarUsuario, redefinirSenha,
         // sincronização
