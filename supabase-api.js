@@ -598,6 +598,22 @@
         localStorage.removeItem(K.cache('dados_bloco'));
     }
 
+    // Sistema atualizado com atraso: os registros do bloco desde "desde" passam a usar
+    // o sistema atual (só gestor, precisa de internet). Devolve quantos registros mudaram.
+    async function recalcularVolumeBloco(bloco, desde) {
+        if (!navigator.onLine) throw new Error("Sem conexão. Corrigir o volume precisa de internet.");
+        const resp = await sb.rpc('recalcular_volume_bloco', { p_local: localAtual(), p_bloco: limparNomeBloco(bloco), p_desde: desde });
+        if (resp.error) {
+            if (/recalcular_volume_bloco|could not find/i.test(resp.error.message)) {
+                throw new Error("Rode o arquivo supabase/minutos_por_sistema.sql no SQL Editor do Supabase para ativar a correção.");
+            }
+            throw erroSupabase(resp);
+        }
+        // Gráficos e históricos buscam de novo com o volume corrigido
+        Object.keys(localStorage).filter(k => /^irrigacao_cache_(registros_|dados_bloco_versoes_)/.test(k)).forEach(k => localStorage.removeItem(k));
+        return Number(resp.data) || 0;
+    }
+
     // Versões do sistema de um bloco (cópia gravada pelo banco a cada alteração), da mais antiga à mais nova.
     // A versão inicial (valido_desde null) é como o bloco estava quando o histórico começou.
     async function listarVersoesBloco(bloco) {
@@ -1182,8 +1198,9 @@
         const consulta = campos => sb.from('registros_irrigacao').select(campos).eq('local', localAtual()).gte('data', de).lte('data', ate).limit(10000);
         const campos = 'id,data,bloco,minutos,turno,observacao,responsavel,registrado_em';
         const lista = await buscarComCache(`registros_${de}_${ate}`, async () => {
-            const resp = await consulta(campos + ',litros_por_min');
-            // Banco ainda sem a coluna (volume_historico.sql não rodado): usa a vazão atual
+            let resp = await consulta(campos + ',litros_por_min,minutos_sistema');
+            // Banco ainda sem as colunas (minutos_por_sistema.sql / volume_historico.sql não rodados)
+            if (resp.error) resp = await consulta(campos + ',litros_por_min');
             return resp.error ? consulta(campos) : resp;
         }, 0).catch(() => []);
         return mesclarPendentes('registros_irrigacao', lista).filter(r => r.data >= de && r.data <= ate);
@@ -1491,7 +1508,7 @@
         enviar, historico, programacaoAtual, listarVersoesBloco, listarRegistrosBloco, salvarProgramacaoItem, excluirProgramacaoItem,
         salvarRegistro, excluirRegistro, atualizarRegistroEquipe, excluirRegistroEquipe, salvarMotor, registrarEnvio,
         // dados dos blocos
-        limparNomeBloco, tipoSistema, listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
+        limparNomeBloco, tipoSistema, listarDadosBlocos, salvarDadoBloco, excluirDadoBloco, recalcularVolumeBloco,
         // água
         listarPocos, salvarPoco, listarLeiturasPocos, listarLeiturasDoPoco, salvarLeituraPoco, atualizarLeituraPoco, excluirLeituraPoco,
         listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, listarLeiturasReservPeriodo, salvarLeituraReservatorio, atualizarLeituraReservatorio, excluirLeituraReservatorio,
