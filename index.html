@@ -1645,10 +1645,42 @@
         </div>
     </div>
 
+    <!-- ATUALIZAR APLICATIVO (gestor escolhe: só este aparelho ou todos) -->
+    <div id="atualizarModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-5 backdrop-blur-sm" onclick="if (event.target === this) window.fecharAtualizarModal()">
+        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl p-6 text-center">
+            <div class="w-16 h-16 bg-sky-50 text-sky-600 rounded-full flex items-center justify-center mb-4 mx-auto">
+                <i data-lucide="refresh-cw" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-xl font-black text-slate-800 mb-1">Atualizar aplicativo</h3>
+            <p id="atualizarModalVersao" class="text-[11px] text-slate-400 font-semibold mb-5"></p>
+            <div class="space-y-2.5 text-left">
+                <button type="button" onclick="window.fecharAtualizarModal(); window.atualizarEsteAparelho()"
+                    class="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-slate-200 hover:border-sky-300 hover:bg-sky-50 transition-colors">
+                    <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0"><i data-lucide="smartphone" class="w-5 h-5"></i></span>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-black text-slate-700">Só neste aparelho</span>
+                        <span class="block text-[11px] text-slate-500 leading-snug">Baixa a versão mais nova aqui e limpa o cache.</span>
+                    </span>
+                </button>
+                <button type="button" onclick="window.fecharAtualizarModal(); window.atualizarParaTodos()"
+                    class="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-sky-200 bg-sky-50 hover:bg-sky-100 transition-colors">
+                    <span class="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0"><i data-lucide="radio-tower" class="w-5 h-5"></i></span>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-black text-sky-800">Para todos os aparelhos</span>
+                        <span class="block text-[11px] text-sky-700/80 leading-snug">Todos que estão com o app aberto recarregam na hora; quem está sem internet atualiza ao conectar.</span>
+                    </span>
+                </button>
+            </div>
+            <button type="button" onclick="window.fecharAtualizarModal()" class="w-full mt-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-2xl transition-colors text-sm">
+                CANCELAR
+            </button>
+        </div>
+    </div>
+
     <!-- OVERLAY DE SINCRONIZAÇÃO (pré-carrega o histórico ao entrar no modo edição) -->
     <div id="syncOverlay" class="hidden fixed inset-0 bg-white/70 backdrop-blur-sm z-[60] flex-col items-center justify-center gap-3">
         <i data-lucide="loader-circle" class="w-9 h-9 text-sky-600 animate-spin"></i>
-        <p id="syncOverlayTexto" class="text-sm font-bold text-slate-600">Sincronizando dados...</p>
+        <p id="syncOverlayTexto" class="text-sm font-bold text-slate-600 text-center px-6 whitespace-pre-line">Sincronizando dados...</p>
     </div>
 
     <!-- MODAL DE ALERTA GERAL -->
@@ -8063,8 +8095,17 @@
             return { linhas, valv, asp, lh: valv > 0 ? vazao / valv : 0 };
         }
 
+        // Quando a versão do sistema passou a valer. Correção de dias anteriores recua o início para
+        // a meia-noite do dia: aí mostra só o dia e, ao lado, quando o gestor realmente alterou.
         function quandoVersaoBloco(v) {
-            return v.valido_desde ? `${formatDate(dataLocalIso(new Date(v.valido_desde)))} ${fmtHora(v.valido_desde)}` : 'início do histórico';
+            if (!v.valido_desde) return 'início do histórico';
+            const dia = dataLocalIso(new Date(v.valido_desde));
+            const real = v.alterado_em || v.valido_desde;
+            const diaReal = dataLocalIso(new Date(real));
+            const meiaNoite = fmtHora(v.valido_desde) === '00:00';
+            if (diaReal === dia && !(meiaNoite && !v.alterado_em)) return `${formatDate(dia)} ${fmtHora(real)}`;
+            if (!v.alterado_em) return formatDate(dia);
+            return `${formatDate(dia)} (alterado em ${formatDate(diaReal).slice(0, 5)} ${fmtHora(real)})`;
         }
 
         // O que mudou de uma versão para a outra (ex.: "Aspersores 1.000 → 1.200")
@@ -8190,11 +8231,17 @@
                     ${dias.length ? `<div class="divide-y divide-slate-100">${linhasDias}</div>`
                         : `<p class="text-xs text-slate-400 py-3">Nenhuma irrigação deste bloco${periodo ? ' no período' : ''}.</p>`}
                 </div>
-                <div>
-                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Versões do sistema</h4>
-                    ${versoes.length ? `<div class="space-y-2">${linhasVersoes}</div>`
-                        : '<p class="text-xs text-slate-400">Nenhuma versão gravada ainda (rode o volume_historico.sql no Supabase).</p>'}
-                </div>`;
+                ${versoes.length ? `
+                <details class="group border border-slate-200 rounded-xl">
+                    <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none px-3 py-2.5 flex items-center gap-2 hover:bg-slate-50 rounded-xl">
+                        <i data-lucide="layers" class="w-4 h-4 text-slate-400"></i>
+                        <span class="flex-1 text-[10px] font-black text-slate-500 uppercase tracking-widest">Versões do sistema (${versoes.length})</span>
+                        <span class="text-[10px] font-bold text-slate-400">Atual desde ${escapeHtml(quandoVersaoBloco(versoes[versoes.length - 1]))}</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180"></i>
+                    </summary>
+                    <div class="space-y-2 px-3 pb-3">${linhasVersoes}</div>
+                </details>`
+                    : '<p class="text-xs text-slate-400">Nenhuma versão do sistema gravada ainda (rode o volume_historico.sql no Supabase).</p>'}`;
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -10457,7 +10504,7 @@
             motivo: 'Motivo', data_parada: 'Data da parada', horas_ligado: 'Horas ligado/dia', horas: 'Horas ligado', horas_padrao: 'Bombeia (h/dia)',
             nivel_m: 'Nível (m)', altura_maxima_m: 'Altura máx. (m)', capacidade_m3: 'Capacidade (m³)', tipo: 'Tipo', descricao: 'Descrição',
             executado_por: 'Feito por', custo: 'Custo (R$)', cultura: 'Cultura', valvulas: 'Válvulas', data_atualizacao: 'Atualizado em',
-            papel: 'Papel', nome_curto: 'Nome curto', excluido_em: 'Excluído em', minutos_sistema: 'Tempo por sistema', litros_por_min: 'Vazão gravada'
+            papel: 'Papel', nome_curto: 'Nome curto', excluido_em: 'Excluído em', minutos_sistema: 'Tempo por sistema', litros_por_min: 'Vazão do bloco'
         };
         // Campos internos que não interessam no antes/depois
         const CAMPOS_OCULTOS = ['id', 'created_at', 'updated_at', 'criado_por', 'atualizado_por', 'vazao_lh', 'litros_por_min', 'data_envio', 'registrado_em', 'itens'];
@@ -10482,6 +10529,19 @@
             return String(v);
         }
 
+        // Litros de um registro de irrigação no log (vazão gravada × minutos); null sem a vazão
+        function litrosAuditoria(d) {
+            return d && d.litros_por_min != null && d.minutos != null ? Number(d.litros_por_min) * Number(d.minutos) : null;
+        }
+
+        // Campos que mudaram numa alteração (os internos não contam; a vazão gravada conta)
+        function camposMudadosAuditoria(l) {
+            const a = l.dados_antes || {}, d = l.dados_depois || {};
+            return [...new Set([...Object.keys(a), ...Object.keys(d)])]
+                .filter(c => !CAMPOS_OCULTOS.includes(c) || c === 'litros_por_min')
+                .filter(c => JSON.stringify(a[c] ?? null) !== JSON.stringify(d[c] ?? null));
+        }
+
         function ehExclusao(l) {
             return l.acao === 'DELETE' || (l.acao === 'UPDATE' && l.dados_depois && l.dados_depois.excluido_em && !(l.dados_antes || {}).excluido_em);
         }
@@ -10496,7 +10556,22 @@
                 const detalhe = `por <b>${formatDuration(Number(d.minutos) || 0)}</b>${d.turno ? ` (${escapeHtml(d.turno)})` : ''}${d.data ? ` no dia ${formatDate(d.data)}` : ''}`;
                 if (l.acao === 'INSERT') return `${quem} registrou que irrigou o ${bloco} ${detalhe}`;
                 if (ehExclusao(l)) return `${quem} excluiu a irrigação do ${bloco} ${detalhe}`;
-                return `${quem} alterou a irrigação do ${bloco}`;
+                // Alteração: já mostra na frase o que mudou (de → para)
+                const antes = l.dados_antes || {};
+                const mudou = camposMudadosAuditoria(l);
+                const qual = `${d.data ? ` de ${formatDate(d.data)}` : ''}${d.turno || d.minutos != null
+                    ? ` <span class="text-slate-500">(${[d.turno, formatDuration(Number(d.minutos) || 0)].filter(Boolean).map(escapeHtml).join(', ')})</span>` : ''}`;
+                const de = t => `<span class="text-red-600 line-through">${t}</span>`, para = t => `<b class="text-green-700">${t}</b>`;
+                const la = litrosAuditoria(antes), ld = litrosAuditoria(d);
+                if (mudou.length === 1 && mudou[0] === 'litros_por_min') {
+                    // Só a vazão mudou: correção do volume pelo sistema do bloco
+                    return `${quem} corrigiu o volume da irrigação do ${bloco}${qual}: ` +
+                        (la != null && ld != null ? `${de(fmtLh(la) + ' L')} → ${para(fmtLh(ld) + ' L')}` : 'vazão do bloco recalculada');
+                }
+                const partes = mudou.filter(c => c !== 'litros_por_min').map(c =>
+                    `${escapeHtml(ROTULOS_CAMPO[c] || c.replace(/_/g, ' '))} ${de(escapeHtml(fmtValorAuditoria(c, antes[c])))} → ${para(escapeHtml(fmtValorAuditoria(c, d[c])))}`);
+                if (la != null && ld != null && Math.round(la) !== Math.round(ld)) partes.push(`Volume ${de(fmtLh(la) + ' L')} → ${para(fmtLh(ld) + ' L')}`);
+                return `${quem} alterou a irrigação do ${bloco}${qual}${partes.length ? `: ${partes.join(' · ')}` : ''}`;
             }
             const resumo = resumoAuditoria(l);
             return `${quem} ${a.verbo} ${ROTULOS_TABELA[l.tabela] || l.tabela}${resumo ? `<span class="text-slate-500"> · ${escapeHtml(resumo)}</span>` : ''}`;
@@ -10512,13 +10587,32 @@
             let linhas;
             if (l.acao === 'UPDATE') {
                 const mudou = campos.filter(c => JSON.stringify(antes[c] ?? null) !== JSON.stringify(depois[c] ?? null));
-                linhas = mudou.length === 0 ? `<p class="text-slate-400">Nenhum campo visível mudou.</p>` : mudou.map(c => `
+                const linhaDePara = (nome, de, para, extra) => `
                     <div class="flex flex-wrap items-baseline gap-x-1.5 py-1">
-                        <span class="font-bold text-slate-500 w-28 shrink-0">${escapeHtml(rotulo(c))}</span>
-                        <span class="text-red-600 line-through">${escapeHtml(fmtValorAuditoria(c, antes[c]))}</span>
+                        <span class="font-bold text-slate-500 w-28 shrink-0">${escapeHtml(nome)}</span>
+                        <span class="text-red-600 line-through">${escapeHtml(de)}</span>
                         <span class="text-slate-400">→</span>
-                        <span class="text-green-700 font-bold">${escapeHtml(fmtValorAuditoria(c, depois[c]))}</span>
-                    </div>`).join('');
+                        <span class="text-green-700 font-bold">${escapeHtml(para)}</span>
+                        ${extra ? `<span class="text-[10px] font-bold text-slate-500">${escapeHtml(extra)}</span>` : ''}
+                    </div>`;
+                linhas = mudou.length === 0 ? `<p class="text-slate-400">Nenhum campo visível mudou.</p>`
+                    : mudou.map(c => linhaDePara(rotulo(c), fmtValorAuditoria(c, antes[c]), fmtValorAuditoria(c, depois[c]))).join('');
+                if (l.tabela === 'registros_irrigacao') {
+                    // Volume da irrigação antes e depois (vazão × tempo), com a diferença
+                    const la = litrosAuditoria(antes), ld = litrosAuditoria(depois);
+                    if (la != null && ld != null && Math.round(la) !== Math.round(ld)) {
+                        const dif = ld - la;
+                        linhas = linhaDePara('Volume da irrigação', `${fmtLh(la)} L`, `${fmtLh(ld)} L`,
+                            `(${dif > 0 ? '+' : '−'}${fmtLh(Math.abs(dif))} L)`) + linhas;
+                    }
+                    // Qual irrigação foi (o que não mudou)
+                    const qual = [depois.data ? formatDate(depois.data) : '', depois.turno, depois.minutos != null ? formatDuration(Number(depois.minutos)) : '',
+                        textoSistemas(depois.minutos_sistema), depois.responsavel ? `lançada por ${depois.responsavel}` : ''].filter(Boolean).join(' · ');
+                    if (qual) linhas = `<p class="text-slate-600 pb-1 mb-1 border-b border-slate-200">Irrigação de <b>${escapeHtml(qual)}</b></p>` + linhas;
+                    if (mudou.length === 1 && mudou[0] === 'litros_por_min') {
+                        linhas += `<p class="text-[10px] text-slate-500 mt-1">Correção de volume: o sistema do bloco foi atualizado e esta irrigação passou a usar a vazão nova. O tempo irrigado não mudou.</p>`;
+                    }
+                }
             } else {
                 const fonte = l.acao === 'DELETE' ? antes : depois;
                 linhas = campos.filter(c => fonte[c] !== null && fonte[c] !== undefined && fonte[c] !== '').map(c => `
@@ -11728,37 +11822,142 @@
         // Botão "Atualizar aplicativo": apaga os arquivos guardados pelo app (cache e service
         // worker) e recarrega da internet. Registros e dados não enviados ficam no
         // localStorage e não são apagados.
+        async function versaoInstalada() {
+            try { return ((await caches.keys()).find(k => k.startsWith('irrigacao-')) || '').replace('irrigacao-', ''); } catch (e) { return ''; }
+        }
+
+        // Baixa a versão nova, envia o que está pendente, limpa o cache e recarrega.
+        // Devolve false se não deu (sem internet): nada é apagado.
+        async function executarAtualizacao(texto) {
+            const overlayTexto = document.getElementById('syncOverlayTexto');
+            overlayTexto.innerText = texto || 'Atualizando o aplicativo...';
+            window.showSyncOverlay();
+            const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+            try {
+                // Sem internet, apagar o cache deixaria o app sem abrir
+                if (reg) await reg.update();
+                else await fetch(location.href, { cache: 'no-store' });
+            } catch (e) {
+                window.hideSyncOverlay();
+                overlayTexto.innerText = 'Sincronizando dados...';
+                return false;
+            }
+            await API.sincronizar(true).catch(() => {});
+            try {
+                if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k)));
+                if (reg) await reg.unregister();
+            } catch (e) {
+                console.warn("Erro ao limpar o cache:", e);
+            }
+            location.reload();
+            return true;
+        }
+
+        const AVISO_SEM_CONEXAO_ATUALIZAR = "Para atualizar o aplicativo é preciso estar com internet. Tente de novo quando tiver sinal.";
+
+        // Botão do topo: o gestor escolhe entre só este aparelho ou todos
         window.atualizarApp = async function() {
-            let versao = '';
-            try { versao = ((await caches.keys()).find(k => k.startsWith('irrigacao-')) || '').replace('irrigacao-', ''); } catch (e) {}
+            if (!API.isGestor()) { window.atualizarEsteAparelho(); return; }
+            const versao = await versaoInstalada();
+            document.getElementById('atualizarModalVersao').innerText = versao ? `Versão instalada: ${versao}` : '';
+            const modal = document.getElementById('atualizarModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        };
+
+        window.fecharAtualizarModal = function() {
+            const modal = document.getElementById('atualizarModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.atualizarEsteAparelho = async function() {
+            const versao = await versaoInstalada();
             pendingConfirmCallback = async () => {
-                const overlayTexto = document.getElementById('syncOverlayTexto');
-                overlayTexto.innerText = 'Atualizando o aplicativo...';
-                window.showSyncOverlay();
-                const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
-                try {
-                    // Sem internet, apagar o cache deixaria o app sem abrir
-                    if (reg) await reg.update();
-                    else await fetch(location.href, { cache: 'no-store' });
-                } catch (e) {
-                    window.hideSyncOverlay();
-                    overlayTexto.innerText = 'Sincronizando dados...';
-                    window.showAlert("Sem conexão", "Para atualizar o aplicativo é preciso estar com internet. Tente de novo quando tiver sinal.");
-                    return;
-                }
-                await API.sincronizar(true).catch(() => {});
-                try {
-                    if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k)));
-                    if (reg) await reg.unregister();
-                } catch (e) {
-                    console.warn("Erro ao limpar o cache:", e);
-                }
-                location.reload();
+                if (!(await executarAtualizacao())) window.showAlert("Sem conexão", AVISO_SEM_CONEXAO_ATUALIZAR);
             };
             window.showConfirmModal("Atualizar aplicativo?",
                 `Baixa a versão mais nova do aplicativo e limpa o cache. Seus registros e os dados ainda não enviados continuam salvos neste aparelho. Precisa de internet.${versao ? `\n\nVersão instalada: ${versao}` : ''}`,
                 "ATUALIZAR", "refresh-cw");
         };
+
+        // --- ATUALIZAR PARA TODOS (só gestor) ---
+        // O número da versão publicada fica em app_versao (supabase/forcar_atualizacao.sql).
+        // Cada aparelho guarda o último número que viu; quando o número sobe, recarrega.
+        const CHAVE_VERSAO_FORCADA = 'irrigacao_versao_forcada';
+        let atualizacaoForcadaEmAndamento = false;
+
+        window.atualizarParaTodos = function() {
+            pendingConfirmCallback = async () => {
+                document.getElementById('syncOverlayTexto').innerText = 'Avisando todos os aparelhos...';
+                window.showSyncOverlay();
+                let versao;
+                try {
+                    versao = await API.forcarAtualizacaoTodos();
+                } catch (err) {
+                    window.hideSyncOverlay();
+                    document.getElementById('syncOverlayTexto').innerText = 'Sincronizando dados...';
+                    window.showAlert("Não foi possível atualizar para todos", err.message);
+                    return;
+                }
+                // Este aparelho já fica com o número novo (não recarrega duas vezes)
+                try { localStorage.setItem(CHAVE_VERSAO_FORCADA, String(versao)); } catch (e) {}
+                atualizacaoForcadaEmAndamento = true;
+                if (!(await executarAtualizacao('Atualizando o aplicativo...'))) {
+                    atualizacaoForcadaEmAndamento = false;
+                    window.showAlert("Aviso enviado", "Os outros aparelhos vão atualizar. Este aparelho perdeu a conexão: toque em atualizar de novo quando tiver sinal.");
+                }
+            };
+            window.showConfirmModal("Atualizar para todos?",
+                "Todos os aparelhos com o app aberto vão recarregar em alguns segundos, já na versão nova. Quem estiver sem internet ou com o app fechado atualiza assim que abrir.\n\nOs registros e os dados ainda não enviados de cada aparelho continuam salvos.",
+                "ATUALIZAR TODOS", "radio-tower");
+        };
+
+        // Recebeu um número de versão (ao abrir, em tempo real ou ao voltar para o app)
+        function aplicarVersaoForcada(versao) {
+            if (versao == null || isNaN(versao) || atualizacaoForcadaEmAndamento) return;
+            let vista = null;
+            try { vista = localStorage.getItem(CHAVE_VERSAO_FORCADA); } catch (e) {}
+            // Primeira vez neste aparelho: já abriu com a versão atual, só guarda o número
+            if (vista === null || isNaN(Number(vista))) {
+                try { localStorage.setItem(CHAVE_VERSAO_FORCADA, String(versao)); } catch (e) {}
+                return;
+            }
+            if (versao <= Number(vista)) return;
+            atualizacaoForcadaEmAndamento = true;
+            let segundos = 5;
+            const overlayTexto = document.getElementById('syncOverlayTexto');
+            const contar = () => { overlayTexto.innerText = `O gestor publicou uma nova versão do aplicativo.\nAtualizando em ${segundos}s...`; };
+            contar();
+            window.showSyncOverlay();
+            const timer = setInterval(async () => {
+                segundos--;
+                if (segundos > 0) { contar(); return; }
+                clearInterval(timer);
+                try { localStorage.setItem(CHAVE_VERSAO_FORCADA, String(versao)); } catch (e) {}
+                if (!(await executarAtualizacao('Atualizando o aplicativo...'))) {
+                    // Sem internet agora: tenta de novo quando conectar
+                    try { localStorage.setItem(CHAVE_VERSAO_FORCADA, String(vista)); } catch (e) {}
+                    atualizacaoForcadaEmAndamento = false;
+                }
+            }, 1000);
+        }
+
+        async function conferirVersaoForcada() {
+            if (!API.usuarioAtual() || atualizacaoForcadaEmAndamento) return;
+            aplicarVersaoForcada(await API.versaoForcada());
+        }
+
+        function iniciarVersaoForcada() {
+            API.assinarVersaoApp(aplicarVersaoForcada);
+            conferirVersaoForcada();
+        }
+
+        // Reserva do tempo real: confere ao voltar para o app, ao voltar a internet e a cada 5 minutos
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') conferirVersaoForcada(); });
+        window.addEventListener('online', () => { if (API.usuarioAtual()) iniciarVersaoForcada(); });
+        setInterval(() => { if (document.visibilityState === 'visible') conferirVersaoForcada(); }, 5 * 60 * 1000);
 
         // --- INSTALAR O APLICATIVO ---
         // Android/Chrome avisa que dá para instalar (beforeinstallprompt); no iPhone o Safari
@@ -11999,6 +12198,7 @@
             window.switchTab('registro');
             renderList();
             iniciarTempoReal();
+            iniciarVersaoForcada();
             carregarBlocosRegistro();
             window.updateProgLockUI();
             API.listarCulturas().then(c => { atualizarApelidos(c); renderList(); renderBlocosRegistro(); }).catch(() => {});
