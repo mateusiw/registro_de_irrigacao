@@ -493,9 +493,11 @@
                     <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
                         <i data-lucide="map-pin" class="w-3.5 h-3.5 text-green-500"></i> Localização
                     </label>
-                    <input type="text" id="block" required maxlength="2" placeholder="(ex: A ou 1)"
-                        oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); window.atualizarAvisoBloco()"
-                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-base font-bold uppercase text-slate-800 tracking-widest transition-all">
+                    <!-- Só os blocos cadastrados em Dados dos Blocos -->
+                    <select id="block" required onchange="window.aoEscolherBlocoRegistro()"
+                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-base font-bold text-slate-800 transition-all">
+                        <option value="">Carregando blocos...</option>
+                    </select>
                     <!-- Aviso: bloco já irrigado hoje por outro irrigador -->
                     <div id="blockAviso" class="hidden mt-2 items-start gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-2">
                         <i data-lucide="info" class="w-3.5 h-3.5 shrink-0 mt-0.5"></i>
@@ -508,9 +510,9 @@
                     <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
                         <i data-lucide="timer" class="w-3.5 h-3.5 text-green-500"></i> Tempo de Execução
                     </label>
-                    <input type="number" id="minutes" required min="1" placeholder="Minutos  (ex: 45)"
-                        oninput="window.updateMinutesHelper()"
-                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-sm font-medium text-slate-800 transition-all">
+                    <!-- Um campo de minutos para cada sistema do bloco (ex.: Fita Gotejo e MicroAspersor) -->
+                    <div id="minutosSistemas" class="space-y-2"></div>
+                    <input type="hidden" id="minutes">
                     <div id="minutesHelper" class="hidden mt-2 flex items-center gap-1.5 text-sm font-bold text-green-700 pl-1">
                         <i data-lucide="clock" class="w-4 h-4"></i>
                         <span id="minutesHelperText"></span>
@@ -2474,14 +2476,118 @@
             updateMotorHoraBadge();
         }
 
+        // ----- Bloco e minutos por sistema no registro -----
+        // Sistemas de cada bloco cadastrado: { bloco: ['Fita Gotejo', 'MicroAspersor'] }
+        let sistemasPorBlocoRegistro = null;
+        const ICONE_SISTEMA = { 'Fita Gotejo': 'droplets', 'MicroAspersor': 'sprout', 'Aspersor': 'cloud-rain' };
+
+        function montarSistemasRegistro(dados) {
+            const mapa = {};
+            (dados || []).forEach(l => {
+                const b = API.limparNomeBloco(l.bloco);
+                if (!b) return;
+                const tipo = API.tipoSistema(l.tipo_aspersor);
+                const lista = mapa[b] = mapa[b] || [];
+                if (!lista.includes(tipo)) lista.push(tipo);
+            });
+            sistemasPorBlocoRegistro = mapa;
+            renderBlocosRegistro();
+        }
+
+        async function carregarBlocosRegistro() {
+            try { montarSistemasRegistro(await API.listarDadosBlocos()); }
+            catch (e) { if (!sistemasPorBlocoRegistro) { sistemasPorBlocoRegistro = {}; renderBlocosRegistro(); } }
+        }
+
+        // Opções do campo Bloco; mantém o escolhido (e um bloco que não existe mais, ao editar registro antigo)
+        function renderBlocosRegistro(extra) {
+            const sel = document.getElementById('block');
+            if (!sel || !sistemasPorBlocoRegistro) return;
+            const atual = extra != null ? extra : sel.value;
+            const blocos = Object.keys(sistemasPorBlocoRegistro).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            if (atual && !blocos.includes(atual)) blocos.push(atual);
+            sel.innerHTML = (blocos.length
+                ? '<option value="">Escolha o bloco...</option>'
+                : '<option value="">Nenhum bloco cadastrado (Dados dos Blocos)</option>') +
+                blocos.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(rotuloBloco(b))}${sistemasPorBlocoRegistro[b] ? '' : ' — não cadastrado'}</option>`).join('');
+            sel.value = atual || '';
+            renderMinutosSistemas();
+        }
+
+        window.aoEscolherBlocoRegistro = function() {
+            renderMinutosSistemas();
+            window.atualizarAvisoBloco();
+        }
+
+        // Campos de minutos do bloco escolhido. valores = { tipo: minutos } para preencher (edição).
+        // Bloco sem sistemas cadastrados: um campo só de tempo total.
+        function renderMinutosSistemas(valores, totalAntigo) {
+            const caixa = document.getElementById('minutosSistemas');
+            if (!caixa) return;
+            const bloco = document.getElementById('block').value;
+            if (!valores) {
+                valores = {};
+                caixa.querySelectorAll('input[data-tipo]').forEach(i => { if (i.value) valores[i.dataset.tipo] = i.value; });
+            }
+            if (!bloco) {
+                caixa.innerHTML = '<p class="text-xs font-medium text-slate-400 pl-1">Escolha o bloco para informar o tempo de cada sistema.</p>';
+                window.updateMinutesHelper();
+                return;
+            }
+            const sistemas = (sistemasPorBlocoRegistro && sistemasPorBlocoRegistro[bloco]) || [''];
+            caixa.innerHTML = sistemas.map(tipo => `
+                <div class="flex items-center gap-2">
+                    <span class="flex-1 min-w-0 flex items-center gap-1.5 text-sm font-bold text-slate-700">
+                        <i data-lucide="${ICONE_SISTEMA[tipo] || 'timer'}" class="w-4 h-4 shrink-0 text-green-600"></i>
+                        <span class="truncate">${escapeHtml(tipo || 'Tempo total')}</span>
+                    </span>
+                    <input type="number" min="0" inputmode="numeric" placeholder="Minutos" data-tipo="${escapeHtml(tipo)}"
+                        value="${escapeHtml(String(valores[tipo] || ''))}" oninput="window.updateMinutesHelper()"
+                        class="w-32 bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-3 text-sm font-medium text-slate-800 transition-all">
+                </div>`).join('') +
+                (totalAntigo ? `<p class="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">Registro feito antes da divisão por sistema: ${formatDuration(totalAntigo)} no total. Informe quanto foi em cada sistema.</p>` : '');
+            window.updateMinutesHelper();
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Minutos digitados em cada sistema: [{ tipo, minutos }] (tipo '' = bloco sem sistemas cadastrados)
+        function lerMinutosSistemas() {
+            return [...document.querySelectorAll('#minutosSistemas input[data-tipo]')]
+                .map(i => ({ tipo: i.dataset.tipo, minutos: Math.max(0, parseInt(i.value) || 0) }))
+                .filter(s => s.minutos > 0);
+        }
+
+        // Preenche o bloco e os minutos de cada sistema ao editar um registro
+        function preencherBlocoEMinutos(bloco, minutos, sistemas) {
+            renderBlocosRegistro(bloco);
+            const valores = {};
+            (sistemas || []).forEach(s => { valores[s.tipo] = (Number(valores[s.tipo]) || 0) + (Number(s.minutos) || 0); });
+            const doBloco = (sistemasPorBlocoRegistro && sistemasPorBlocoRegistro[bloco]) || [''];
+            let totalAntigo = 0;
+            if (!sistemas || !sistemas.length) {
+                // Registro antigo: com um sistema só, o total é dele; com vários, pede para dividir
+                if (doBloco.length === 1) valores[doBloco[0]] = minutos || '';
+                else totalAntigo = minutos || 0;
+            }
+            renderMinutosSistemas(valores, totalAntigo);
+        }
+
+        // "Fita Gotejo 10min · MicroAspersor 25min" (vazio se o registro não foi dividido)
+        function textoSistemas(sistemas) {
+            const lista = (sistemas || []).filter(s => s.tipo && Number(s.minutos) > 0);
+            return lista.map(s => `${s.tipo} ${formatDuration(Number(s.minutos))}`).join(' · ');
+        }
+
         window.updateMinutesHelper = function() {
-            const val = parseInt(document.getElementById('minutes').value);
+            const val = lerMinutosSistemas().reduce((s, x) => s + x.minutos, 0);
+            document.getElementById('minutes').value = val || '';
             const helper = document.getElementById('minutesHelper');
             const helperText = document.getElementById('minutesHelperText');
             if (!val || val <= 0) { helper.classList.add('hidden'); return; }
             const h = Math.floor(val / 60);
             const m = val % 60;
-            helperText.innerText = h === 0 ? `${m} minutos` : m === 0 ? `${h}h` : `${h}h ${m}min`;
+            const tempo = h === 0 ? `${m} minutos` : m === 0 ? `${h}h` : `${h}h ${m}min`;
+            helperText.innerText = document.querySelectorAll('#minutosSistemas input[data-tipo]').length > 1 ? `Total: ${tempo}` : tempo;
             helper.classList.remove('hidden');
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -2558,7 +2664,8 @@
         window.cancelEdit = function() {
             window.resetFormState();
             document.getElementById('block').value = '';
-            document.getElementById('minutes').value = '';
+            document.getElementById('minutosSistemas').innerHTML = '';
+            renderBlocosRegistro('');
             document.getElementById('observation').value = '';
             document.querySelectorAll('input[name="turno"]').forEach(r => r.checked = false);
             document.getElementById('minutesHelper').classList.add('hidden');
@@ -2569,17 +2676,23 @@
 
             const date = document.getElementById('date').value;
             const block = document.getElementById('block').value.toUpperCase();
-            const minutes = parseInt(document.getElementById('minutes').value) || 0;
+            const porSistema = lerMinutosSistemas();
+            const minutes = porSistema.reduce((s, x) => s + x.minutos, 0);
+            // Só guarda a divisão quando o bloco tem sistemas cadastrados
+            const sistemas = porSistema.filter(s => s.tipo);
             const observation = document.getElementById('observation').value;
             const turnoEl = document.querySelector('input[name="turno"]:checked');
             const turno = turnoEl ? turnoEl.value : '';
+
+            if (!block) { window.showAlert("Escolha o bloco", "Selecione na lista o bloco que foi irrigado."); return; }
+            if (minutes <= 0) { window.showAlert("Informe os minutos", "Coloque quantos minutos foram em cada sistema (pelo menos um)."); return; }
 
             // Corrigindo um registro do banco (de outro irrigador, ou de um dia anterior)
             if (editingEquipeId !== null) {
                 const reg = registrosServidorNaTela().find(r => r.id === editingEquipeId);
                 if (!reg || !podeEditarRegistroServidor(reg)) { window.cancelEdit(); return; }
-                API.atualizarRegistroEquipe(reg.id, { date, block, minutes, turno, observation });
-                Object.assign(reg, { data: date, bloco: block, minutos: minutes, turno, observacao: observation });
+                API.atualizarRegistroEquipe(reg.id, { date, block, minutes, sistemas, turno, observation });
+                Object.assign(reg, { data: date, bloco: block, minutos: minutes, minutos_sistema: sistemas.length ? sistemas : null, turno, observacao: observation });
                 // Mudou a data: sai da lista do dia que está na tela
                 if (date !== (diaVisualizado || diaEquipe)) removerDaListaServidor(reg.id);
                 editingEquipeId = null;
@@ -2596,7 +2709,7 @@
             if (editingId !== null) {
                 const index = records.findIndex(r => r.id === editingId);
                 if (index !== -1) {
-                    records[index] = { ...records[index], date, block, minutes, turno, observation };
+                    records[index] = { ...records[index], date, block, minutes, sistemas, turno, observation };
                     API.salvarRegistro(records[index]);
                     const btn = document.getElementById('submitBtn');
                     btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> Alteração Salva!`;
@@ -2617,7 +2730,7 @@
 
                 const newRecord = {
                     id: Date.now(),
-                    date, block, minutes, turno, observation,
+                    date, block, minutes, sistemas, turno, observation,
                     registradoEm: new Date().toISOString()
                 };
                 records.push(newRecord);
@@ -2649,11 +2762,9 @@
             if (!record) return;
 
             document.getElementById('date').value = record.date;
-            document.getElementById('block').value = record.block;
-            document.getElementById('minutes').value = record.minutes || '';
+            preencherBlocoEMinutos(API.limparNomeBloco(record.block), record.minutes, record.sistemas);
             document.getElementById('observation').value = record.observation || '';
             document.querySelectorAll('input[name="turno"]').forEach(r => { r.checked = r.value === record.turno; });
-            window.updateMinutesHelper();
 
             editingId = id;
             editingEquipeId = null;
@@ -2672,11 +2783,9 @@
             if (!reg || !podeEditarRegistroServidor(reg)) return;
 
             document.getElementById('date').value = reg.data;
-            document.getElementById('block').value = String(reg.bloco || '').toUpperCase();
-            document.getElementById('minutes').value = reg.minutos || '';
+            preencherBlocoEMinutos(API.limparNomeBloco(reg.bloco), Number(reg.minutos) || 0, reg.minutos_sistema);
             document.getElementById('observation').value = reg.observacao || '';
             document.querySelectorAll('input[name="turno"]').forEach(r => { r.checked = r.value === reg.turno; });
-            window.updateMinutesHelper();
 
             editingId = null;
             editingEquipeId = id;
@@ -2862,6 +2971,7 @@
             if (diaVisualizado) {
                 return registrosHistorico.map(r => ({
                     id: r.id, date: r.data, block: String(r.bloco || '').toUpperCase(), minutes: Number(r.minutos) || 0,
+                    sistemas: r.minutos_sistema || null,
                     turno: r.turno || '', observation: r.observacao || '', responsavel: r.responsavel || 'Irrigador',
                     _equipe: true, _podeEditar: podeEditarRegistroServidor(r)
                 }));
@@ -2870,6 +2980,7 @@
             return records.map(r => Object.assign({}, r, { responsavel: meuNome }))
                 .concat(registrosEquipe.map(r => ({
                     id: r.id, date: r.data, block: String(r.bloco || '').toUpperCase(), minutes: Number(r.minutos) || 0,
+                    sistemas: r.minutos_sistema || null,
                     turno: r.turno || '', observation: r.observacao || '', responsavel: r.responsavel || 'Outro irrigador', _equipe: true
                 })));
         }
@@ -2934,6 +3045,11 @@
                     const turnoBadge = rec.turno
                         ? `<span class="text-[11px] font-bold ${turnoBg} border flex items-center gap-1 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap reg-chip"><i data-lucide="${turnoIcon}" class="w-3 h-3"></i>${rec.turno}</span>`
                         : '';
+                    // Minutos de cada sistema (ex.: Fita Gotejo 10min · MicroAspersor 25min)
+                    const sisTexto = textoSistemas(rec.sistemas);
+                    const sistemasHtml = sisTexto
+                        ? `<p class="text-[11px] font-bold text-slate-500 flex items-center gap-1"><i data-lucide="split" class="w-3 h-3 shrink-0"></i>${escapeHtml(sisTexto)}</p>`
+                        : '';
                     if (rec._equipe) {
                         const editandoEquipe = rec.id === editingEquipeId;
                         // Gestor pode corrigir/excluir o que os irrigadores lançaram
@@ -2960,6 +3076,7 @@
                                 ${turnoBadge}
                                 <span class="text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-200 flex items-center gap-1 px-2 py-0.5 rounded-full min-w-0 reg-chip" title="${escapeHtml(rec.responsavel)}"><i data-lucide="user" class="w-3 h-3 shrink-0"></i><span class="truncate">${escapeHtml(rec.responsavel)}</span></span>
                             </div>
+                            ${sistemasHtml}
                             ${rec.observation ? `
                             <div class="mt-1.5 flex items-start gap-1.5 text-xs text-slate-500 italic bg-white px-2 py-1.5 rounded-lg border border-slate-100">
                                 <i data-lucide="message-square" class="w-3 h-3 shrink-0 mt-0.5 text-slate-400"></i>
@@ -2980,6 +3097,7 @@
                                 </span>
                                 ${turnoBadge}
                             </div>
+                            ${sistemasHtml}
                             ${obsHtml}
                         </div>
                         <div class="flex gap-1 shrink-0">
@@ -3025,7 +3143,7 @@
         // --- TEMPO REAL: REGISTROS DOS OUTROS IRRIGADORES ---
 
         function registroEquipeParaLista(r) {
-            return { id: r.id, data: r.data, bloco: r.bloco, minutos: r.minutos, turno: r.turno,
+            return { id: r.id, data: r.data, bloco: r.bloco, minutos: r.minutos, minutos_sistema: r.minutos_sistema || null, turno: r.turno,
                      observacao: r.observacao, responsavel: r.responsavel, registrado_em: r.registrado_em };
         }
 
@@ -3057,7 +3175,7 @@
             }
             faltando.forEach(r => records.push({
                 id: r.idLocal, date: r.data, block: String(r.bloco || '').toUpperCase(), minutes: Number(r.minutos) || 0,
-                turno: r.turno || '', observation: r.observacao || '', registradoEm: r.registrado_em
+                sistemas: r.minutos_sistema || null, turno: r.turno || '', observation: r.observacao || '', registradoEm: r.registrado_em
             }));
             records.sort((a, b) => a.block.localeCompare(b.block, undefined, {numeric: true}));
             saveData();
@@ -3079,7 +3197,7 @@
             const r = evento.registro;
             if (!r) return;
             const rec = { id: evento.idLocal, date: r.data, block: String(r.bloco || '').toUpperCase(), minutes: Number(r.minutos) || 0,
-                          turno: r.turno || '', observation: r.observacao || '', registradoEm: r.registrado_em };
+                          sistemas: r.minutos_sistema || null, turno: r.turno || '', observation: r.observacao || '', registradoEm: r.registrado_em };
             if (idx !== -1) {
                 records[idx] = Object.assign({}, records[idx], rec);
             } else if (r.data === dataLocalIso()) {
@@ -3136,7 +3254,7 @@
             const aviso = document.getElementById('blockAviso');
             if (!aviso) return;
             const bloco = document.getElementById('block').value.trim().toUpperCase();
-            const doBloco = bloco ? registrosEquipe.filter(r => String(r.bloco || '').toUpperCase() === bloco) : [];
+            const doBloco = bloco ? registrosEquipe.filter(r => API.limparNomeBloco(r.bloco) === bloco) : [];
             aviso.classList.toggle('hidden', doBloco.length === 0);
             aviso.classList.toggle('flex', doBloco.length > 0);
             if (doBloco.length) {
@@ -4714,7 +4832,7 @@
                     total_litros_mil: totalLitrosEnvio,
                     motor_ligado: motorLigadoHora || null,
                     motor_desligado: motorDesligadoHora || null,
-                    itens: regs.map(r => ({ bloco: r.block, minutos: r.minutes, turno: r.turno, observacao: r.observation, data: r.date, responsavel: r.responsavel }))
+                    itens: regs.map(r => ({ bloco: r.block, minutos: r.minutes, minutos_sistema: r.sistemas || null, turno: r.turno, observacao: r.observation, data: r.date, responsavel: r.responsavel }))
                 });
             } catch (err) {
                 console.error("Erro ao registrar o envio:", err);
@@ -9089,6 +9207,7 @@
                 dadosBlocosCache = dados.map(lerDadoBloco);
                 culturasCache = culturas || [];
                 atualizarApelidos(culturasCache);
+                montarSistemasRegistro(dados);   // lista de blocos do registro acompanha o cadastro
                 renderDadosBlocos();
             } catch (err) {
                 document.getElementById('dadosBlocosLista').innerHTML = `<p class="text-xs font-medium text-red-500">Não foi possível carregar: ${escapeHtml(err.message)}</p>`;
@@ -9830,7 +9949,7 @@
             motivo: 'Motivo', data_parada: 'Data da parada', horas_ligado: 'Horas ligado/dia', horas: 'Horas ligado', horas_padrao: 'Bombeia (h/dia)',
             nivel_m: 'Nível (m)', altura_maxima_m: 'Altura máx. (m)', capacidade_m3: 'Capacidade (m³)', tipo: 'Tipo', descricao: 'Descrição',
             executado_por: 'Feito por', custo: 'Custo (R$)', cultura: 'Cultura', valvulas: 'Válvulas', data_atualizacao: 'Atualizado em',
-            papel: 'Papel', nome_curto: 'Nome curto', excluido_em: 'Excluído em'
+            papel: 'Papel', nome_curto: 'Nome curto', excluido_em: 'Excluído em', minutos_sistema: 'Tempo por sistema'
         };
         // Campos internos que não interessam no antes/depois
         const CAMPOS_OCULTOS = ['id', 'created_at', 'updated_at', 'criado_por', 'atualizado_por', 'vazao_lh', 'litros_por_min', 'data_envio', 'registrado_em', 'itens'];
@@ -9844,6 +9963,7 @@
             if (v === null || v === undefined || v === '') return '—';
             if (typeof v === 'boolean') return v ? 'Sim' : 'Não';
             if (campo === 'minutos') return formatDuration(Number(v));
+            if (campo === 'minutos_sistema') return textoSistemas(Array.isArray(v) ? v : []) || '—';
             if (campo === 'poco_id') { const p = pocosCache.find(x => x.id === v); return p ? `Poço ${p.numero}` : 'Poço'; }
             if (campo === 'reservatorio_id') { const r = reservCache.find(x => x.id === v); return r ? r.nome : 'Reservatório'; }
             if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return formatDate(v);
@@ -11368,8 +11488,9 @@
             window.switchTab('registro');
             renderList();
             iniciarTempoReal();
+            carregarBlocosRegistro();
             window.updateProgLockUI();
-            API.listarCulturas().then(c => { atualizarApelidos(c); renderList(); }).catch(() => {});
+            API.listarCulturas().then(c => { atualizarApelidos(c); renderList(); renderBlocosRegistro(); }).catch(() => {});
             await carregarPerfis();
             window.calcularConsumoProgramacao();
             API.sincronizar();
