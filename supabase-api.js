@@ -1325,6 +1325,46 @@
     }
 
     // ------------------------------------------------------------
+    // "Atualizar para todos" (supabase/forcar_atualizacao.sql)
+    // ------------------------------------------------------------
+    // Número da versão publicada pelo gestor (null = sem internet ou tabela ainda não criada)
+    async function versaoForcada() {
+        if (!navigator.onLine) return null;
+        try {
+            const resp = await sb.from('app_versao').select('versao').eq('id', 1).maybeSingle();
+            if (resp.error || !resp.data) return null;
+            return Number(resp.data.versao);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Somente gestor: todos os aparelhos recarregam o app
+    async function forcarAtualizacaoTodos() {
+        if (!navigator.onLine) throw new Error("Sem conexão. Atualizar para todos precisa de internet.");
+        const resp = await sb.rpc('forcar_atualizacao');
+        if (resp.error) {
+            const e = erroSupabase(resp);
+            if (/forcar_atualizacao|app_versao|schema cache/i.test(e.message)) {
+                e.message = "Rode o arquivo supabase/forcar_atualizacao.sql no Supabase para usar esta opção.";
+            }
+            throw e;
+        }
+        return Number(resp.data);
+    }
+
+    // cb(versao) quando o gestor publica uma nova versão
+    let canalVersao = null;
+    function assinarVersaoApp(cb) {
+        if (canalVersao) sb.removeChannel(canalVersao);
+        canalVersao = sb.channel('app-versao')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'app_versao' }, payload => {
+                if (payload.new && payload.new.versao != null) cb(Number(payload.new.versao));
+            })
+            .subscribe();
+    }
+
+    // ------------------------------------------------------------
     // Log de auditoria (somente gestor, precisa de internet)
     // ------------------------------------------------------------
     async function listarAuditoria(limite) {
@@ -1518,6 +1558,8 @@
         listarCulturas, salvarCultura, salvarApelidoBloco,
         // tempo real (registros dos outros irrigadores)
         listarRegistrosEquipe, listarMeusRegistros, listarRegistrosDia, assinarRegistros, cancelarAssinaturaRegistros, assinarAgua,
+        // atualizar o app de todos
+        versaoForcada, forcarAtualizacaoTodos, assinarVersaoApp,
         // auditoria e sessões
         listarAuditoria, listarAuditoriaPeriodo, restaurarAuditoria, iniciarSessao, informarAbaSessao, encerrarSessao, listarSessoes, atividadesDaSessao, autoresAuditoriaPeriodo
     };
