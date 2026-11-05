@@ -1331,9 +1331,9 @@
     async function versaoForcada() {
         if (!navigator.onLine) return null;
         try {
-            const resp = await sb.from('app_versao').select('versao').eq('id', 1).maybeSingle();
+            const resp = await sb.from('app_versao').select('versao,publicado_por_nome').eq('id', 1).maybeSingle();
             if (resp.error || !resp.data) return null;
-            return Number(resp.data.versao);
+            return { versao: Number(resp.data.versao), nome: resp.data.publicado_por_nome || '' };
         } catch (e) {
             return null;
         }
@@ -1353,13 +1353,13 @@
         return Number(resp.data);
     }
 
-    // cb(versao) quando o gestor publica uma nova versão
+    // cb(versao, nome de quem publicou) quando o gestor publica uma nova versão
     let canalVersao = null;
     function assinarVersaoApp(cb) {
         if (canalVersao) sb.removeChannel(canalVersao);
         canalVersao = sb.channel('app-versao')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'app_versao' }, payload => {
-                if (payload.new && payload.new.versao != null) cb(Number(payload.new.versao));
+                if (payload.new && payload.new.versao != null) cb(Number(payload.new.versao), payload.new.publicado_por_nome || '');
             })
             .subscribe();
     }
