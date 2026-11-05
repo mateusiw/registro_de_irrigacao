@@ -1,4 +1,4 @@
-const CACHE = 'irrigacao-v72';
+const CACHE = 'irrigacao-v73';
 
 // Arquivos do próprio app
 const ARQUIVOS_APP = [
@@ -56,6 +56,9 @@ self.addEventListener('fetch', e => {
 
   // Chamadas ao banco (Supabase) sempre vão direto para a rede
   if (url.hostname.endsWith('.supabase.co')) return;
+
+  // Consulta de IP/provedor (usuários online): sempre da rede, nunca guardada
+  if (url.hostname === 'ipwho.is' || url.hostname === 'ipapi.co') return;
 
   // Arquivos do app: primeiro a internet (sempre a versão mais nova publicada);
   // sem conexão, usa a cópia guardada
