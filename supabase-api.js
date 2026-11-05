@@ -1418,6 +1418,70 @@
         return `${so}${nav ? ' · ' + nav : ''}${app}`;
     }
 
+    // Versão do app instalada neste aparelho (nome do cache do service worker, ex.: "v72")
+    async function versaoAppInstalada() {
+        try {
+            const k = (await caches.keys()).find(c => c.startsWith('irrigacao-'));
+            return k ? k.replace('irrigacao-', '') : null;
+        } catch (e) { return null; }
+    }
+
+    // IP, provedor e cidade da conexão (serviços gratuitos de geolocalização por IP).
+    // Guardado por 15 min para não consultar a cada sinal; trocar de rede atualiza depois disso.
+    const K_REDE = 'irrigacao_rede_atual';
+    const REDE_VALIDADE_MS = 15 * 60 * 1000;
+    let consultandoRede = null;
+
+    async function buscarJson(url) {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 5000);
+        try {
+            const r = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
+            return r.ok ? await r.json() : null;
+        } finally { clearTimeout(t); }
+    }
+
+    async function consultarRede() {
+        try {
+            const a = await buscarJson('https://ipwho.is/?fields=success,ip,city,region_code,region,country_code,connection');
+            if (a && a.success !== false && a.ip) {
+                const uf = a.country_code === 'BR' ? (a.region_code || a.region) : (a.region || a.country_code);
+                return { ip: a.ip, provedor: (a.connection && (a.connection.isp || a.connection.org)) || null,
+                         cidade: [a.city, uf].filter(Boolean).join(' - ') || null };
+            }
+        } catch (e) {}
+        try {
+            const b = await buscarJson('https://ipapi.co/json/');
+            if (b && !b.error && b.ip) {
+                const uf = b.country_code === 'BR' ? b.region_code : (b.region || b.country_code);
+                return { ip: b.ip, provedor: (b.org || '').replace(/^AS\d+\s*/, '') || null,
+                         cidade: [b.city, uf].filter(Boolean).join(' - ') || null };
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    async function redeAtual() {
+        const salvo = ler(K_REDE, null);
+        if (salvo && Date.now() - salvo.em < REDE_VALIDADE_MS) return salvo.dados;
+        if (!consultandoRede) {
+            consultandoRede = consultarRede().then(dados => {
+                if (dados) gravar(K_REDE, { em: Date.now(), dados });
+                return dados || (salvo && salvo.dados) || null;
+            }).finally(() => { consultandoRede = null; });
+        }
+        return consultandoRede;
+    }
+
+    // Trocou de rede (Wi-Fi ↔ dados móveis): consulta de novo no próximo sinal
+    window.addEventListener('online', () => localStorage.removeItem(K_REDE));
+    try {
+        const conexao = navigator.connection;
+        if (conexao && conexao.addEventListener) conexao.addEventListener('change', () => localStorage.removeItem(K_REDE));
+    } catch (e) {}
+
+    let sessaoComRede = true;
+
     // Envia o "estou online". Sem internet ou sem sessão válida, simplesmente não envia.
     async function enviarSinal() {
         const u = usuarioAtual();
@@ -1431,7 +1495,18 @@
                 ultimo_sinal: new Date().toISOString(), dispositivo: descreverDispositivo(), aba: sessaoAba, fim: null
             };
             if (sessaoComLocal) linha.local = localAtual();
-            const resp = await sb.from('sessoes').upsert(linha, { onConflict: 'id' });
+            if (sessaoComRede) {
+                const [versao, rede] = await Promise.all([versaoAppInstalada(), redeAtual().catch(() => null)]);
+                if (versao) linha.versao_app = versao;
+                if (rede) Object.assign(linha, { ip: rede.ip, provedor: rede.provedor, cidade: rede.cidade });
+            }
+            let resp = await sb.from('sessoes').upsert(linha, { onConflict: 'id' });
+            // Banco ainda sem as colunas novas (sessoes_rede.sql não rodado): manda sem elas
+            if (resp.error && sessaoComRede && /versao_app|provedor|cidade|\bip\b/i.test(resp.error.message || '')) {
+                sessaoComRede = false;
+                ['versao_app', 'ip', 'provedor', 'cidade'].forEach(c => delete linha[c]);
+                resp = await sb.from('sessoes').upsert(linha, { onConflict: 'id' });
+            }
             // Banco ainda sem a coluna "local" (schema.sql não rodado): continua mandando o sinal sem ela
             if (resp.error && sessaoComLocal && /local/i.test(resp.error.message || '')) {
                 sessaoComLocal = false;
