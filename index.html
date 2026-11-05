@@ -11939,7 +11939,7 @@
         };
 
         // Recebeu um número de versão (ao abrir, em tempo real ou ao voltar para o app)
-        function aplicarVersaoForcada(versao) {
+        function aplicarVersaoForcada(versao, quem) {
             if (versao == null || isNaN(versao) || atualizacaoForcadaEmAndamento) return;
             let vista = null;
             try { vista = localStorage.getItem(CHAVE_VERSAO_FORCADA); } catch (e) {}
@@ -11952,7 +11952,7 @@
             atualizacaoForcadaEmAndamento = true;
             let segundos = 5;
             const overlayTexto = document.getElementById('syncOverlayTexto');
-            const contar = () => { overlayTexto.innerText = `O gestor publicou uma nova versão do aplicativo.\nAtualizando em ${segundos}s...`; };
+            const contar = () => { overlayTexto.innerText = `${quem || 'O gestor'} publicou uma nova versão do aplicativo.\nAtualizando em ${segundos}s...`; };
             contar();
             window.showSyncOverlay();
             const timer = setInterval(async () => {
@@ -11970,7 +11970,8 @@
 
         async function conferirVersaoForcada() {
             if (!API.usuarioAtual() || atualizacaoForcadaEmAndamento) return;
-            aplicarVersaoForcada(await API.versaoForcada());
+            const v = await API.versaoForcada();
+            if (v) aplicarVersaoForcada(v.versao, v.nome);
         }
 
         function iniciarVersaoForcada() {
