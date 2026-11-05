@@ -10856,6 +10856,7 @@
             const filtroData = document.getElementById('onlineFiltroData');
             filtroData.max = dataLocalIso();
             if (!filtroData.value) filtroData.value = dataLocalIso();
+            versaoInstalada().then(v => { versaoAppGestor = v; });
             window.carregarOnline();
             clearInterval(timerOnline);
             timerOnline = setInterval(() => window.carregarOnline(true), 30 * 1000);
@@ -11011,6 +11012,26 @@
                 <i data-lucide="map-pin" class="w-2.5 h-2.5"></i>${escapeHtml(API.nomeLocal(local).replace(/^SPG\s+/i, ''))}</span>`;
         }
 
+        // Versão do app do gestor (a mais nova publicada): quem estiver abaixo aparece como desatualizado
+        let versaoAppGestor = '';
+        const numeroVersao = v => { const m = /(\d+)/.exec(String(v || '')); return m ? Number(m[1]) : null; };
+
+        function seloVersaoSessao(versao) {
+            if (!versao) return '';
+            const nv = numeroVersao(versao), ng = numeroVersao(versaoAppGestor);
+            const velha = nv != null && ng != null && nv < ng;
+            return `<span title="${velha ? 'Versão desatualizada (a sua é ' + escapeHtml(versaoAppGestor) + ')' : 'Versão do aplicativo'}"
+                class="inline-flex items-center gap-0.5 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${velha ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-50 text-slate-500 border-slate-200'}">
+                <i data-lucide="${velha ? 'alert-triangle' : 'package'}" class="w-2.5 h-2.5"></i>${escapeHtml(versao)}${velha ? ' · desatualizado' : ''}</span>`;
+        }
+
+        // "IP 177.12.3.4 · Brisanet · Mossoró - RN"
+        function linhaRedeSessao(s) {
+            const partes = [s.ip ? 'IP ' + s.ip : '', s.provedor || '', s.cidade || ''].filter(Boolean);
+            if (!partes.length) return '';
+            return `<p class="text-[10px] text-slate-400 flex items-center gap-1 min-w-0"><i data-lucide="wifi" class="w-3 h-3 shrink-0"></i><span class="truncate" title="${escapeHtml(partes.join(' · '))}">${escapeHtml(partes.join(' · '))}</span></p>`;
+        }
+
         function linhaSessaoCompacta(s) {
             const online = estaOnline(s);
             const duracao = fmtDuracao(new Date(fimDaSessao(s)) - new Date(s.inicio));
@@ -11020,7 +11041,8 @@
                     <span class="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${online ? 'bg-green-500' : 'bg-slate-300'}"></span>
                     <div class="min-w-0 flex-1">
                         <p class="text-[11px] font-bold text-slate-700">${seloLocalSessao(s.local)} ${fmtHora(s.inicio)} – ${online ? 'agora' : fmtHora(fimDaSessao(s))} <span class="font-medium text-slate-400">· ${duracao} · ${status}</span></p>
-                        <p class="text-[10px] text-slate-400">${escapeHtml(s.dispositivo || '')}${s.aba ? ` · aba ${escapeHtml(NOMES_ABAS[s.aba] || s.aba)}` : ''}</p>
+                        <p class="text-[10px] text-slate-400">${escapeHtml(s.dispositivo || '')}${s.aba ? ` · aba ${escapeHtml(NOMES_ABAS[s.aba] || s.aba)}` : ''} ${seloVersaoSessao(s.versao_app)}</p>
+                        ${linhaRedeSessao(s)}
                     </div>
                 </div>`;
         }
@@ -11046,8 +11068,9 @@
                             <span class="truncate">${escapeHtml(g.nome)}</span>
                             ${g.online ? '<span class="text-[9px] font-black uppercase tracking-wider text-green-700">online</span>' : ''}
                         </p>
-                        ${locais.length ? `<div class="flex flex-wrap gap-1 mt-1">${locais.map(seloLocalSessao).join('')}</div>` : ''}
+                        ${locais.length || (sessaoAtual && sessaoAtual.versao_app) ? `<div class="flex flex-wrap gap-1 mt-1">${locais.map(seloLocalSessao).join('')}${sessaoAtual ? seloVersaoSessao(sessaoAtual.versao_app) : ''}</div>` : ''}
                         <p class="text-[10px] text-slate-400 mt-0.5">${g.papel ? `<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 mr-1">${g.papel}</span>` : ''}${n} sess${n === 1 ? 'ão' : 'ões'}${alteracoes}${g.ultima && g.ultima.dispositivo ? ' · ' + escapeHtml(g.ultima.dispositivo) : ''}</p>
+                        ${sessaoAtual ? linhaRedeSessao(sessaoAtual) : ''}
                         <p class="text-[10px] font-bold ${g.online ? 'text-green-700' : 'text-slate-500'} mt-0.5">${periodo}</p>
                     </div>
                     <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 shrink-0 transition-transform ${aberto ? 'rotate-180' : ''}"></i>
