@@ -194,6 +194,24 @@
         return String(nome || "").toUpperCase().replace("BLOCO", "").trim().replace(/^0+(?=\d)/, "");
     }
 
+    // Nome do sistema de irrigação de uma linha dos Dados dos Blocos ("MicroAspesor 90 L/H" -> "MicroAspersor").
+    // Mesma regra do tipo_sistema() do banco (minutos_por_sistema.sql).
+    function tipoSistema(tipo) {
+        const nome = String(tipo || '').replace(/[\d.,]+\s*L\/H.*$/i, '').trim();
+        if (/micro/i.test(nome)) return 'MicroAspersor';
+        if (!nome || /^aspersor$/i.test(nome)) return 'Aspersor';
+        if (/^fita\s*gotejo$/i.test(nome)) return 'Fita Gotejo';
+        return nome;
+    }
+
+    // Minutos de cada sistema de um registro ([{ tipo, minutos }]), só os que têm tempo
+    function limparSistemas(sistemas) {
+        const lista = (Array.isArray(sistemas) ? sistemas : [])
+            .map(s => ({ tipo: tipoSistema(s.tipo), minutos: Math.max(0, parseInt(s.minutos) || 0) }))
+            .filter(s => s.minutos > 0);
+        return lista.length ? lista : null;
+    }
+
     // Erro do Supabase -> Error com status (status 0 = sem conexão)
     function erroSupabase(resposta) {
         const e = new Error(resposta.error.message || 'Erro desconhecido');
@@ -377,12 +395,19 @@
     }
 
     async function executar(op) {
-        let consulta;
-        if (op.tipo === 'upsert') consulta = sb.from(op.tabela).upsert(op.dados, { onConflict: 'id' });
-        else if (op.tipo === 'update') consulta = sb.from(op.tabela).update(op.dados.valores).eq('id', op.dados.id);
-        else if (op.tipo === 'delete') consulta = sb.from(op.tabela).delete().eq('id', op.dados.id);
-        else throw new Error("Operação desconhecida: " + op.tipo);
-        const resp = await consulta;
+        const montar = (dados, valores) => {
+            if (op.tipo === 'upsert') return sb.from(op.tabela).upsert(dados, { onConflict: 'id' });
+            if (op.tipo === 'update') return sb.from(op.tabela).update(valores).eq('id', op.dados.id);
+            if (op.tipo === 'delete') return sb.from(op.tabela).delete().eq('id', op.dados.id);
+            throw new Error("Operação desconhecida: " + op.tipo);
+        };
+        let resp = await montar(op.dados, op.dados.valores);
+        // Banco ainda sem a coluna minutos_sistema (minutos_por_sistema.sql não rodado):
+        // grava sem ela, o total de minutos continua indo
+        if (resp.error && op.tabela === 'registros_irrigacao' && /minutos_sistema/.test(resp.error.message || '')) {
+            const sem = o => { if (!o) return o; const { minutos_sistema, ...resto } = o; return resto; };
+            resp = await montar(sem(op.dados), sem(op.dados.valores));
+        }
         if (resp.error) throw erroSupabase(resp);
     }
 
@@ -625,7 +650,7 @@
             }
 
             if (!infoBlocos[nomeBloco]) {
-                infoBlocos[nomeBloco] = { vazaoTotalBlocoLh: 0, qtdTotalValvulasNoBloco: 0, qtdTotalAspersores: 0, detalhesAspersores: [], dataIso: null, dataAtualizacao: null };
+                infoBlocos[nomeBloco] = { vazaoTotalBlocoLh: 0, qtdTotalValvulasNoBloco: 0, qtdTotalAspersores: 0, detalhesAspersores: [], dataIso: null, dataAtualizacao: null, porSistema: {} };
             }
             const info = infoBlocos[nomeBloco];
 
@@ -637,6 +662,11 @@
 
             info.vazaoTotalBlocoLh += qtdAspersoresLinha * vazaoLh;
             info.qtdTotalValvulasNoBloco += qtdValvulasLinha;
+            // Por sistema (Fita Gotejo, MicroAspersor...): para os registros com minutos de cada sistema
+            const tipo = tipoSistema(tipoAspersor);
+            const sis = info.porSistema[tipo] = info.porSistema[tipo] || { vazaoLh: 0, valvulas: 0 };
+            sis.vazaoLh += qtdAspersoresLinha * vazaoLh;
+            sis.valvulas += qtdValvulasLinha;
             info.qtdTotalAspersores += qtdAspersoresLinha;
 
             const tipoFormatado = tipoAspersor
@@ -655,11 +685,24 @@
 
         const dataAtualizacaoFormatada = dataMaisRecente || "Não informada";
 
-        // Soma minutos por bloco
+        // Vazão de uma válvula (L/h): soma das vazões / nº de válvulas
+        const lhUmaValvula = x => x && x.valvulas > 0 ? x.vazaoLh / x.valvulas : 0;
+
+        // Soma minutos e litros por bloco. Registro com minutos de cada sistema: cada parte
+        // usa a vazão do seu sistema; sem isso (ou sistema não cadastrado), a vazão do bloco.
         const tempoPorBloco = {};
+        const litrosPorBloco = {};
         registros.forEach(rec => {
             const blocoApp = limparNomeBloco(rec.block);
             tempoPorBloco[blocoApp] = (tempoPorBloco[blocoApp] || 0) + (rec.minutes || 0);
+            const infos = infoBlocos[blocoApp];
+            if (!infos) return;
+            const lhBloco = lhUmaValvula({ vazaoLh: infos.vazaoTotalBlocoLh, valvulas: infos.qtdTotalValvulasNoBloco });
+            const sistemas = limparSistemas(rec.sistemas);
+            const litros = sistemas
+                ? sistemas.reduce((s, x) => s + (infos.porSistema[x.tipo] ? lhUmaValvula(infos.porSistema[x.tipo]) : lhBloco) * x.minutos / 60, 0)
+                : lhBloco * (rec.minutes || 0) / 60;
+            litrosPorBloco[blocoApp] = (litrosPorBloco[blocoApp] || 0) + litros;
         });
 
         const textosResumo = [];
@@ -672,17 +715,13 @@
             const minutos = tempoPorBloco[bloco];
             totalGeralMinutos += minutos;
 
-            const horasDecimal = minutos / 60;
             const hFormat = Math.floor(minutos / 60);
             const mFormat = minutos % 60;
             const tempoTexto = ((hFormat > 0 ? hFormat + "h " : "") + (mFormat > 0 || hFormat === 0 ? mFormat + "min" : "")).trim();
 
             const infos = infoBlocos[bloco];
             if (infos) {
-                const vazaoMediaUmaValvula = infos.qtdTotalValvulasNoBloco > 0
-                    ? infos.vazaoTotalBlocoLh / infos.qtdTotalValvulasNoBloco
-                    : 0;
-                const litrosTotais = vazaoMediaUmaValvula * horasDecimal;
+                const litrosTotais = litrosPorBloco[bloco] || 0;
                 totalGeralLitros += litrosTotais;
                 totalBlocos++;
 
@@ -902,6 +941,7 @@
             data: rec.date,
             bloco: limparNomeBloco(rec.block),
             minutos: Number(rec.minutes) || 0,
+            minutos_sistema: limparSistemas(rec.sistemas),
             turno: rec.turno || "",
             observacao: rec.observation || "",
             responsavel: nomeUsuario(),
@@ -920,6 +960,7 @@
             data: rec.date,
             bloco: limparNomeBloco(rec.block),
             minutos: Number(rec.minutes) || 0,
+            minutos_sistema: limparSistemas(rec.sistemas),
             turno: rec.turno || "",
             observacao: rec.observation || ""
         } });
@@ -1174,12 +1215,18 @@
     // ------------------------------------------------------------
     const CAMPOS_REGISTRO_EQUIPE = 'id,data,bloco,minutos,turno,observacao,responsavel,registrado_em,criado_por';
 
+    // Busca com os minutos de cada sistema; banco ainda sem a coluna: busca sem ela
+    async function comMinutosSistema(consulta) {
+        const resp = await consulta(CAMPOS_REGISTRO_EQUIPE + ',minutos_sistema');
+        return resp.error ? consulta(CAMPOS_REGISTRO_EQUIPE) : resp;
+    }
+
     // Registros do dia feitos por outros usuários (sem conexão, usa a última cópia salva)
     async function listarRegistrosEquipe(data) {
         const u = usuarioAtual();
         const prefixo = u ? u.id.slice(0, 8) + '-' : null;
         const lista = await buscarComCache(`registros_equipe_${data}`,
-            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('local', localAtual()).eq('data', data).limit(2000), 0).catch(() => []);
+            () => comMinutosSistema(c => sb.from('registros_irrigacao').select(c).eq('local', localAtual()).eq('data', data).limit(2000)), 0).catch(() => []);
         // Aplica as correções do gestor ainda na fila; tira os do próprio usuário
         return mesclarPendentes('registros_irrigacao', lista)
             .filter(r => r.data === data && (!u || (r.criado_por !== u.id && !String(r.id).startsWith(prefixo))));
@@ -1192,7 +1239,7 @@
         if (!u) return [];
         const prefixo = u.id.slice(0, 8) + '-';
         const lista = await buscarComCache(`registros_meus_${data}`,
-            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('local', localAtual()).eq('data', data).like('id', prefixo + '%').limit(500), 0).catch(() => []);
+            () => comMinutosSistema(c => sb.from('registros_irrigacao').select(c).eq('local', localAtual()).eq('data', data).like('id', prefixo + '%').limit(500)), 0).catch(() => []);
         // Aplica a fila: exclusões ainda não enviadas não voltam para a lista
         return mesclarPendentes('registros_irrigacao', lista)
             .filter(r => r.data === data && String(r.id).startsWith(prefixo) && /^\d+$/.test(String(r.id).slice(prefixo.length)))
@@ -1203,7 +1250,7 @@
     // usuário), com as alterações ainda na fila já aplicadas. Usado ao consultar dias anteriores.
     async function listarRegistrosDia(data) {
         const lista = await buscarComCache(`registros_dia_${data}`,
-            () => sb.from('registros_irrigacao').select(CAMPOS_REGISTRO_EQUIPE).eq('local', localAtual()).eq('data', data).limit(2000), 0).catch(() => []);
+            () => comMinutosSistema(c => sb.from('registros_irrigacao').select(c).eq('local', localAtual()).eq('data', data).limit(2000)), 0).catch(() => []);
         return mesclarPendentes('registros_irrigacao', lista).filter(r => r.data === data);
     }
 
@@ -1444,7 +1491,7 @@
         enviar, historico, programacaoAtual, listarVersoesBloco, listarRegistrosBloco, salvarProgramacaoItem, excluirProgramacaoItem,
         salvarRegistro, excluirRegistro, atualizarRegistroEquipe, excluirRegistroEquipe, salvarMotor, registrarEnvio,
         // dados dos blocos
-        limparNomeBloco, listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
+        limparNomeBloco, tipoSistema, listarDadosBlocos, salvarDadoBloco, excluirDadoBloco,
         // água
         listarPocos, salvarPoco, listarLeiturasPocos, listarLeiturasDoPoco, salvarLeituraPoco, atualizarLeituraPoco, excluirLeituraPoco,
         listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, listarLeiturasReservPeriodo, salvarLeituraReservatorio, atualizarLeituraReservatorio, excluirLeituraReservatorio,
