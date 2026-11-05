@@ -493,11 +493,17 @@
                     <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
                         <i data-lucide="map-pin" class="w-3.5 h-3.5 text-green-500"></i> Localização
                     </label>
-                    <!-- Só os blocos cadastrados em Dados dos Blocos -->
-                    <select id="block" required onchange="window.aoEscolherBlocoRegistro()"
-                        class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-base font-bold text-slate-800 transition-all">
-                        <option value="">Carregando blocos...</option>
-                    </select>
+                    <!-- Lista suspensa só com os blocos cadastrados em Dados dos Blocos -->
+                    <input type="hidden" id="block">
+                    <div id="blockDropdown">
+                        <button type="button" id="blockBtn" onclick="window.alternarListaBlocos()" aria-haspopup="listbox" aria-expanded="false"
+                            class="w-full flex items-center justify-between gap-2 bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-left transition-all hover:border-green-300">
+                            <span id="blockBtnTexto" class="min-w-0 truncate text-base font-bold text-slate-400">Carregando blocos...</span>
+                            <i data-lucide="chevron-down" id="blockBtnSeta" class="w-5 h-5 shrink-0 text-slate-400 transition-transform"></i>
+                        </button>
+                        <div id="blockLista" role="listbox"
+                            class="hidden mt-1.5 bg-white border-2 border-slate-100 rounded-xl shadow-lg max-h-72 overflow-y-auto p-1.5 space-y-0.5"></div>
+                    </div>
                     <!-- Aviso: bloco já irrigado hoje por outro irrigador -->
                     <div id="blockAviso" class="hidden mt-2 items-start gap-1.5 text-xs font-bold text-sky-700 bg-sky-50 border border-sky-200 rounded-lg px-2.5 py-2">
                         <i data-lucide="info" class="w-3.5 h-3.5 shrink-0 mt-0.5"></i>
@@ -1290,6 +1296,10 @@
 
         <!-- SUB-ABAS DOS GRÁFICOS -->
         <div id="grafSubNav" class="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1 gap-1">
+            <button type="button" data-graf-sec="resumo" onclick="window.switchGraficos('resumo')"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
+                <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i> Resumo
+            </button>
             <button type="button" data-graf-sec="tendencias" onclick="window.switchGraficos('tendencias')"
                 class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all text-slate-400">
                 <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Tendências
@@ -1300,8 +1310,35 @@
             </button>
         </div>
 
+        <!-- ===== SEÇÃO: RESUMO (para o agrônomo entender o período num olhar) ===== -->
+        <div id="grafSecResumo" class="hidden space-y-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-end gap-4">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Período</label>
+                    <div class="flex items-center gap-1.5">
+                        <input type="date" id="resumoDe" onchange="window.ajustarPeriodoResumo('de')" aria-label="De"
+                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-2 text-sm font-bold text-slate-800">
+                        <span class="text-xs font-bold text-slate-400">até</span>
+                        <input type="date" id="resumoAte" onchange="window.ajustarPeriodoResumo('ate')" aria-label="Até"
+                            class="bg-slate-50 border-2 border-slate-200 rounded-xl py-2 px-2 text-sm font-bold text-slate-800">
+                    </div>
+                    <div class="flex gap-1 mt-1.5">
+                        <button type="button" data-resumo-dias="1" onclick="window.periodoResumo(1)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">Hoje</button>
+                        <button type="button" data-resumo-dias="7" onclick="window.periodoResumo(7)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">7 dias</button>
+                        <button type="button" data-resumo-dias="15" onclick="window.periodoResumo(15)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">15 dias</button>
+                        <button type="button" data-resumo-dias="30" onclick="window.periodoResumo(30)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">30 dias</button>
+                    </div>
+                </div>
+                <button type="button" onclick="window.carregarResumo()" title="Atualizar"
+                    class="ml-auto flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-white border-2 border-slate-200 text-slate-600 hover:border-slate-300">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Atualizar
+                </button>
+            </div>
+            <div id="resumoConteudo" class="space-y-4"></div>
+        </div>
+
         <!-- ===== SEÇÃO: TENDÊNCIAS ===== -->
-        <div id="grafSecTendencias" class="space-y-4">
+        <div id="grafSecTendencias" class="hidden space-y-4">
         <!-- PERÍODO -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-end gap-4">
             <div>
@@ -1397,6 +1434,15 @@
                 <p class="text-[10px] text-slate-400 font-medium mb-2">Linha = vazão média do dia (L/h). A seta mostra se o poço está subindo ou caindo no período.</p>
                 <div id="grafPocos" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"></div>
             </div>
+        </div>
+
+        <!-- SISTEMAS (Fita Gotejo, MicroAspersor...): quem gasta mais água -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-3">
+            <div>
+                <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider">Uso de água por sistema</h3>
+                <p class="text-[10px] text-slate-400 font-medium">Litros de cada tipo de sistema no período, pelos minutos que o irrigador informou em cada um.</p>
+            </div>
+            <div id="grafSistemas" class="space-y-2"></div>
         </div>
 
         <!-- BLOCOS -->
@@ -2499,24 +2545,78 @@
             catch (e) { if (!sistemasPorBlocoRegistro) { sistemasPorBlocoRegistro = {}; renderBlocosRegistro(); } }
         }
 
-        // Opções do campo Bloco; mantém o escolhido (e um bloco que não existe mais, ao editar registro antigo)
-        function renderBlocosRegistro(extra) {
-            const sel = document.getElementById('block');
-            if (!sel || !sistemasPorBlocoRegistro) return;
-            const atual = extra != null ? extra : sel.value;
+        // Lista suspensa dos blocos; mantém o escolhido (e um bloco que não existe mais, ao editar registro antigo).
+        function renderGradeBlocos() {
+            const lista = document.getElementById('blockLista');
+            if (!lista || !sistemasPorBlocoRegistro) return;
+            const atual = document.getElementById('block').value;
             const blocos = Object.keys(sistemasPorBlocoRegistro).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
             if (atual && !blocos.includes(atual)) blocos.push(atual);
-            sel.innerHTML = (blocos.length
-                ? '<option value="">Escolha o bloco...</option>'
-                : '<option value="">Nenhum bloco cadastrado (Dados dos Blocos)</option>') +
-                blocos.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(rotuloBloco(b))}${sistemasPorBlocoRegistro[b] ? '' : ' — não cadastrado'}</option>`).join('');
-            sel.value = atual || '';
+
+            const texto = document.getElementById('blockBtnTexto');
+            texto.innerText = atual ? rotuloBloco(atual) : blocos.length ? 'Escolha o bloco...' : 'Nenhum bloco cadastrado (Dados dos Blocos)';
+            texto.className = `min-w-0 truncate text-base font-bold ${atual ? 'text-slate-800' : 'text-slate-400'}`;
+            document.getElementById('blockBtn').classList.toggle('border-green-500', !!atual);
+
+            lista.innerHTML = blocos.map(b => {
+                const ativo = b === atual;
+                const apelido = apelidosBloco[b] || '';
+                const sistemas = (sistemasPorBlocoRegistro[b] || []).join(' · ') || 'Não cadastrado';
+                return `<button type="button" role="option" aria-selected="${ativo}" onclick="window.escolherBlocoRegistro('${escapeHtml(b)}')"
+                    class="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg text-left transition-colors ${ativo ? 'bg-green-50' : 'hover:bg-slate-50 active:bg-slate-100'}">
+                    <span class="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black shrink-0 ${ativo ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-700'}">${escapeHtml(b)}</span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-bold truncate ${ativo ? 'text-green-800' : 'text-slate-800'}">Bloco ${escapeHtml(b)}${apelido ? ` <span class="font-medium text-slate-400">· ${escapeHtml(apelido)}</span>` : ''}</span>
+                        <span class="block text-[11px] font-medium text-slate-400 truncate">${escapeHtml(sistemas)}</span>
+                    </span>
+                    ${ativo ? '<i data-lucide="check" class="w-4 h-4 text-green-600 shrink-0"></i>' : ''}
+                </button>`;
+            }).join('');
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.alternarListaBlocos = function(abrir) {
+            const lista = document.getElementById('blockLista');
+            const btn = document.getElementById('blockBtn');
+            if (!lista || !btn) return;
+            if (abrir === undefined) abrir = lista.classList.contains('hidden');
+            if (abrir && !sistemasPorBlocoRegistro) return;
+            lista.classList.toggle('hidden', !abrir);
+            btn.setAttribute('aria-expanded', String(abrir));
+            btn.classList.toggle('ring-2', abrir);
+            btn.classList.toggle('ring-green-200', abrir);
+            const seta = document.getElementById('blockBtnSeta');
+            if (seta) seta.style.transform = abrir ? 'rotate(180deg)' : '';
+            if (abrir) {
+                const escolhido = lista.querySelector('[aria-selected="true"]');
+                if (escolhido) escolhido.scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        // Fecha a lista ao tocar fora dela ou apertar Esc
+        document.addEventListener('click', e => {
+            const caixa = document.getElementById('blockDropdown');
+            if (caixa && !caixa.contains(e.target)) window.alternarListaBlocos(false);
+        });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') window.alternarListaBlocos(false); });
+
+        function renderBlocosRegistro(extra) {
+            if (!sistemasPorBlocoRegistro) return;
+            if (extra != null) document.getElementById('block').value = extra;
+            renderGradeBlocos();
             renderMinutosSistemas();
         }
 
-        window.aoEscolherBlocoRegistro = function() {
-            renderMinutosSistemas();
+        window.escolherBlocoRegistro = function(bloco) {
+            const campo = document.getElementById('block');
+            window.alternarListaBlocos(false);
+            if (campo.value === bloco) return;
+            campo.value = bloco;
+            renderGradeBlocos();
+            renderMinutosSistemas({});   // outro bloco: campos de minutos vazios
             window.atualizarAvisoBloco();
+            const primeiro = document.querySelector('#minutosSistemas input[data-tipo]');
+            if (primeiro) primeiro.focus({ preventScroll: true });
         }
 
         // Campos de minutos do bloco escolhido. valores = { tipo: minutos } para preencher (edição).
@@ -2993,6 +3093,7 @@
             const todos = registrosDoDia();
             if(badge) badge.innerText = todos.length;
             window.atualizarAvisoBloco();
+            renderGradeBlocos();
 
             if (todos.length === 0) {
                 list.innerHTML = '';
@@ -5330,6 +5431,7 @@
 
         // Sub-abas da aba Gráficos (a última escolhida fica salva no aparelho)
         const GRAF_SECOES = {
+            resumo:     { painel: 'grafSecResumo',     cor: 'bg-emerald-600' },
             tendencias: { painel: 'grafSecTendencias', cor: 'bg-indigo-600' },
             balanco:    { painel: 'grafSecBalanco',    cor: 'bg-blue-600' }
         };
@@ -5343,11 +5445,13 @@
             Object.entries(GRAF_SECOES).forEach(([nome, s]) => {
                 document.getElementById(s.painel).classList.toggle('hidden', nome !== secao);
                 const btn = document.querySelector(`[data-graf-sec="${nome}"]`);
-                btn.classList.remove('bg-blue-600', 'bg-indigo-600', 'text-white', 'shadow-sm', 'text-slate-400');
+                btn.classList.remove('bg-blue-600', 'bg-indigo-600', 'bg-emerald-600', 'text-white', 'shadow-sm', 'text-slate-400');
                 if (nome === secao) btn.classList.add(s.cor, 'text-white', 'shadow-sm');
                 else btn.classList.add('text-slate-400');
             });
-            if (secao === 'balanco') window.carregarBalanco(); else window.carregarGraficos();
+            if (secao === 'balanco') window.carregarBalanco();
+            else if (secao === 'resumo') window.carregarResumo();
+            else window.carregarGraficos();
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -8310,11 +8414,54 @@
             return taxas;
         }
 
+        // Vazão atual (L/min) de cada sistema de cada bloco: { bloco: { tipo: lpm } }
+        // (mesma conta do relatório: soma das vazões do sistema / nº de válvulas dele)
+        function vazaoSistemasPorBloco(dados) {
+            const acum = {};
+            (dados || []).forEach(l => {
+                const d = lerDadoBloco(l);
+                const b = API.limparNomeBloco(l.bloco);   // "06" e "6" são o mesmo bloco
+                if (!b) return;
+                const tipo = API.tipoSistema(l.tipo_aspersor);
+                const s = ((acum[b] = acum[b] || {})[tipo] = acum[b][tipo] || { vazao: 0, valv: 0 });
+                s.vazao += d.qtd * d.vazao;
+                s.valv += d.valvulas;
+            });
+            const lpm = {};
+            Object.keys(acum).forEach(b => {
+                lpm[b] = {};
+                Object.keys(acum[b]).forEach(t => lpm[b][t] = acum[b][t].valv > 0 ? acum[b][t].vazao / acum[b][t].valv / 60 : 0);
+            });
+            return lpm;
+        }
+
+        const SEM_DIVISAO = 'Sem divisão';
+
+        // Partes de um registro por sistema: [{ tipo, minutos, litros }]. Os litros do registro (vazão
+        // congelada) são repartidos pela vazão atual de cada sistema × tempo dele. Registro antigo
+        // (sem minutos por sistema): bloco com um sistema só fica com ele; com vários, "Sem divisão".
+        function partesPorSistema(r, litros, vazoesBloco) {
+            const total = Number(r.minutos) || 0;
+            const tipos = Object.keys(vazoesBloco || {});
+            let partes = Array.isArray(r.minutos_sistema)
+                ? r.minutos_sistema.map(s => ({ tipo: API.tipoSistema(s.tipo), minutos: Number(s.minutos) || 0 })).filter(s => s.minutos > 0)
+                : [];
+            if (!partes.length) partes = total > 0 ? [{ tipo: tipos.length === 1 ? tipos[0] : SEM_DIVISAO, minutos: total }] : [];
+            const pesos = partes.map(p => (vazoesBloco && vazoesBloco[p.tipo] || 0) * p.minutos);
+            const somaPesos = pesos.reduce((s, x) => s + x, 0);
+            const somaMin = partes.reduce((s, p) => s + p.minutos, 0);
+            return partes.map((p, k) => ({
+                ...p,
+                litros: litros == null ? null : somaPesos > 0 ? litros * pesos[k] / somaPesos : somaMin > 0 ? litros * p.minutos / somaMin : 0
+            }));
+        }
+
         // Séries diárias do período: irrigação (saída), poços (entrada) e nível do tanque
         async function dadosGraficosPeriodo(de, ate) {
-            const [registros, leituras, horasRegs, pocos, reservs, leiturasRes] = await Promise.all([
+            const [registros, leituras, horasRegs, pocos, reservs, leiturasRes, dadosBlocos] = await Promise.all([
                 API.listarRegistrosPeriodo(de, ate), API.listarLeiturasPocoPeriodo(de, ate), API.listarHorasPocoPeriodo(de, ate),
-                API.listarPocos(), API.listarReservatorios(), API.listarLeiturasReservPeriodo(de, ate)
+                API.listarPocos(), API.listarReservatorios(), API.listarLeiturasReservPeriodo(de, ate),
+                API.listarDadosBlocos().catch(() => [])
             ]);
             const dias = diasNoPeriodo(de, ate);
             const idx = {};
@@ -8332,11 +8479,20 @@
             // Litros por bloco em cada dia, pela vazão gravada em cada registro (sem a chave = bloco sem dados)
             const taxas = await litrosPorMinutoBlocos([...new Set(minDiaBloco.flatMap(o => Object.keys(o)))]);
             const litDiaBloco = dias.map(() => ({}));
+            // Por sistema: { bloco: { tipo: { minutos, litros } } } em cada dia (litros null = bloco sem dados)
+            const vazoesSis = vazaoSistemasPorBloco(dadosBlocos);
+            const sisDiaBloco = dias.map(() => ({}));
             registros.forEach(r => {
                 const i = idx[r.data];
                 const b = API.limparNomeBloco(r.bloco);
                 const l = litrosDoRegistro(r, taxas);
-                if (i == null || !b || l == null) return;
+                if (i == null || !b) return;
+                partesPorSistema(r, l, vazoesSis[b]).forEach(p => {
+                    const s = ((sisDiaBloco[i][b] = sisDiaBloco[i][b] || {})[p.tipo] = sisDiaBloco[i][b][p.tipo] || { minutos: 0, litros: null });
+                    s.minutos += p.minutos;
+                    if (p.litros != null) s.litros = (s.litros || 0) + p.litros;
+                });
+                if (l == null) return;
                 litDiaBloco[i][b] = (litDiaBloco[i][b] || 0) + l;
             });
 
@@ -8386,26 +8542,48 @@
                 };
             }).filter(n => n.valores.some(v => v != null));
 
-            return { de, ate, dias, minDiaBloco, litDiaBloco, listaPocos, niveis, emPct };
+            return { de, ate, dias, minDiaBloco, litDiaBloco, sisDiaBloco, listaPocos, niveis, emPct };
         }
 
-        // Totais por dia considerando os filtros de poços e blocos (lista vazia = todos)
-        function agregarGraficos(g) {
-            const fp = filtroGraf.pocos, fb = filtroGraf.blocos;
+        // Totais por dia considerando os filtros de poços, blocos e sistemas (lista vazia = todos)
+        function agregarGraficos(g, filtro) {
+            filtro = filtro || filtroGraf;
+            const fp = filtro.pocos, fb = filtro.blocos, fs = filtro.sistemas;
             const vazio = () => g.dias.map(() => null);
             const horas = vazio(), qtdBlocos = vazio(), saida = vazio();
             const porBloco = {};
+            const porSistema = {};
             g.minDiaBloco.forEach((o, i) => {
-                const nomes = Object.keys(o).filter(b => o[b] > 0 && (!fb.size || fb.has(b)));
+                const sisDia = g.sisDiaBloco[i] || {};
+                // Minutos e litros do bloco no dia, só dos sistemas filtrados
+                const doBloco = b => {
+                    if (!fs.size) return { min: o[b], lit: g.litDiaBloco[i][b] };
+                    let min = 0, lit = null;
+                    Object.entries(sisDia[b] || {}).forEach(([t, s]) => {
+                        if (!fs.has(t)) return;
+                        min += s.minutos;
+                        if (s.litros != null) lit = (lit || 0) + s.litros;
+                    });
+                    return { min, lit };
+                };
+                const nomes = Object.keys(o).filter(b => (!fb.size || fb.has(b)) && doBloco(b).min > 0);
                 if (!nomes.length) return;
                 let minutos = 0, litros = 0;
                 nomes.forEach(b => {
-                    const l = g.litDiaBloco[i][b] ?? 0;
-                    minutos += o[b];
+                    const { min, lit } = doBloco(b);
+                    const l = lit ?? 0;
+                    minutos += min;
                     litros += l;
                     const pb = porBloco[b] = porBloco[b] || { bloco: b, minutos: 0, litros: 0, dias: 0, semDados: true };
-                    pb.minutos += o[b]; pb.litros += l; pb.dias++;
-                    if (g.litDiaBloco[i][b] != null) pb.semDados = false;
+                    pb.minutos += min; pb.litros += l; pb.dias++;
+                    if (lit != null) pb.semDados = false;
+                    Object.entries(sisDia[b] || {}).forEach(([t, s]) => {
+                        if (fs.size && !fs.has(t)) return;
+                        const ps = porSistema[t] = porSistema[t] || { tipo: t, minutos: 0, litros: 0, semDados: true, dias: new Set(), blocos: new Set() };
+                        ps.minutos += s.minutos;
+                        if (s.litros != null) { ps.litros += s.litros; ps.semDados = false; }
+                        ps.dias.add(i); ps.blocos.add(b);
+                    });
                 });
                 horas[i] = minutos / 60;
                 qtdBlocos[i] = nomes.length;
@@ -8418,16 +8596,17 @@
                 vazaoTotal[i] = (vazaoTotal[i] || 0) + m;
                 entrada[i] = (entrada[i] || 0) + l.volume[i];
             }));
-            return { ...g, horas, qtdBlocos, saida, porBloco, entrada, vazaoTotal, listaPocos };
+            return { ...g, horas, qtdBlocos, saida, porBloco, porSistema, entrada, vazaoTotal, listaPocos };
         }
 
-        // ----- Filtros (poços e blocos), lembrados no aparelho -----
+        // ----- Filtros (poços, blocos e sistemas), lembrados no aparelho -----
         const filtroGraf = (() => {
             try {
                 const f = JSON.parse(localStorage.getItem('irrigacao_graf_filtros')) || {};
-                return { pocos: new Set(f.pocos || []), blocos: new Set(f.blocos || []) };
-            } catch (e) { return { pocos: new Set(), blocos: new Set() }; }
+                return { pocos: new Set(f.pocos || []), blocos: new Set(f.blocos || []), sistemas: new Set(f.sistemas || []) };
+            } catch (e) { return { pocos: new Set(), blocos: new Set(), sistemas: new Set() }; }
         })();
+        const algumFiltroGraf = () => !!(filtroGraf.pocos.size || filtroGraf.blocos.size || filtroGraf.sistemas.size);
         let rotulosGraf = (() => { try { return localStorage.getItem('irrigacao_graf_rotulos') === '1'; } catch (e) { return false; } })();
         let filtroAberto = null;
         let buscaFiltro = '';
@@ -8447,6 +8626,13 @@
         function opcoesFiltro(tipo) {
             if (!ultimoGraf) return [];
             if (tipo === 'pocos') return ultimoGraf.g.listaPocos.map(l => ({ id: l.poco.id, curto: l.poco.numero, nome: `Poço ${l.poco.numero}${l.poco.nome ? ' — ' + l.poco.nome : ''}` }));
+            if (tipo === 'sistemas') {
+                const tipos = new Set([...ultimoGraf.g.sisDiaBloco, ...ultimoGraf.ant.sisDiaBloco]
+                    .flatMap(o => Object.values(o).flatMap(s => Object.keys(s))));
+                filtroGraf.sistemas.forEach(t => tipos.add(t));
+                return [...tipos].sort((a, b) => (a === SEM_DIVISAO) - (b === SEM_DIVISAO) || a.localeCompare(b))
+                    .map(t => ({ id: t, curto: t, nome: t }));
+            }
             const blocos = new Set([...ultimoGraf.g.minDiaBloco, ...ultimoGraf.ant.minDiaBloco].flatMap(o => Object.keys(o)));
             filtroGraf.blocos.forEach(b => blocos.add(b));
             return [...blocos].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
@@ -8493,7 +8679,7 @@
                         </div>
                         <div class="relative mb-3">
                             <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                            <input type="search" id="grafFiltroBusca" value="${escapeHtml(buscaFiltro)}" oninput="window.buscarFiltroGraf(this.value)" placeholder="Buscar ${tipo === 'pocos' ? 'poço' : 'bloco'}..."
+                            <input type="search" id="grafFiltroBusca" value="${escapeHtml(buscaFiltro)}" oninput="window.buscarFiltroGraf(this.value)" placeholder="Buscar ${tipo === 'pocos' ? 'poço' : tipo === 'sistemas' ? 'sistema' : 'bloco'}..."
                                 class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2 pl-9 pr-3 text-sm font-medium text-slate-800">
                         </div>
                         <div class="flex flex-wrap gap-1.5 mb-3">
@@ -8501,7 +8687,7 @@
                             ${atalho('inverter', 'Inverter', 'arrow-left-right')}
                             ${tipo === 'pocos' ? atalho('subindo', 'Subindo', 'trending-up') + atalho('caindo', 'Caindo', 'trending-down') + atalho('estavel', 'Estáveis', 'minus') : ''}
                         </div>
-                        <div id="grafFiltroChips" class="grid grid-cols-4 sm:grid-cols-5 gap-1.5">${chips || '<p class="col-span-full text-xs text-slate-400 py-3 text-center">Nada no período.</p>'}</div>
+                        <div id="grafFiltroChips" class="grid ${tipo === 'sistemas' ? 'grid-cols-2' : 'grid-cols-4 sm:grid-cols-5'} gap-1.5">${chips || '<p class="col-span-full text-xs text-slate-400 py-3 text-center">Nada no período.</p>'}</div>
                         <div class="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-100">
                             <span class="text-[11px] font-bold text-slate-400">${sel.size ? `${sel.size} de ${opcoes.length} selecionado${sel.size === 1 ? '' : 's'}` : `Todos os ${opcoes.length}`}</span>
                             <button type="button" onclick="window.fecharFiltroGraf()" class="text-xs font-black px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">Pronto</button>
@@ -8509,11 +8695,12 @@
                     </div>` : ''}
                 </div>`;
             };
-            const algum = filtroGraf.pocos.size || filtroGraf.blocos.size;
+            const algum = algumFiltroGraf();
             box.innerHTML = `
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Filtros</span>
                 ${filtro('pocos', 'droplet', 'Poços')}
                 ${filtro('blocos', 'layers', 'Blocos')}
+                ${filtro('sistemas', 'sprout', 'Sistemas')}
                 ${algum ? `<button type="button" onclick="window.limparFiltrosGraf()" class="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-rose-600 px-2 py-1.5"><i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Limpar filtros</button>` : ''}
                 <button type="button" role="switch" aria-checked="${rotulosGraf}" onclick="window.alternarRotulosGraf()" title="Mostrar os valores nos gráficos"
                     class="ml-auto flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full border-2 text-xs font-bold transition-all
@@ -8527,7 +8714,7 @@
         }
 
         function aplicarFiltrosGraf() {
-            try { localStorage.setItem('irrigacao_graf_filtros', JSON.stringify({ pocos: [...filtroGraf.pocos], blocos: [...filtroGraf.blocos] })); } catch (e) {}
+            try { localStorage.setItem('irrigacao_graf_filtros', JSON.stringify({ pocos: [...filtroGraf.pocos], blocos: [...filtroGraf.blocos], sistemas: [...filtroGraf.sistemas] })); } catch (e) {}
             if (ultimoGraf) renderGraficos(ultimoGraf.g, ultimoGraf.ant);
             else renderFiltrosGraficos();
         }
@@ -8578,6 +8765,7 @@
         window.limparFiltrosGraf = function() {
             filtroGraf.pocos.clear();
             filtroGraf.blocos.clear();
+            filtroGraf.sistemas.clear();
             aplicarFiltrosGraf();
         }
 
@@ -8603,7 +8791,7 @@
             });
 
             const carregando = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-6"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
-            ['grafDiretor', 'grafAgua', 'grafNivel', 'grafHoras', 'grafBlocos', 'grafVazao', 'grafEficiencia', 'grafPocos', 'grafTabelaBlocos', 'grafTabelaDias'].forEach(id => document.getElementById(id).innerHTML = carregando);
+            ['grafDiretor', 'grafAgua', 'grafNivel', 'grafHoras', 'grafBlocos', 'grafVazao', 'grafEficiencia', 'grafPocos', 'grafSistemas', 'grafTabelaBlocos', 'grafTabelaDias'].forEach(id => document.getElementById(id).innerHTML = carregando);
             if(typeof lucide !== 'undefined') lucide.createIcons();
 
             // Período anterior com o mesmo número de dias, para comparação
@@ -8753,6 +8941,282 @@
             </div>`;
         }
 
+        // ----- Uso de água por sistema (Fita Gotejo, MicroAspersor...) -----
+        const COR_SISTEMA = { 'Fita Gotejo': '#0ea5e9', 'MicroAspersor': '#16a34a', 'Aspersor': '#f97316' };
+        const COR_SISTEMA_OUTROS = ['#8b5cf6', '#e11d48', '#ca8a04', '#0d9488'];
+        function corSistema(tipo, k) { return tipo === SEM_DIVISAO ? '#cbd5e1' : COR_SISTEMA[tipo] || COR_SISTEMA_OUTROS[k % COR_SISTEMA_OUTROS.length]; }
+
+        // Sistemas do período, do que mais gasta água para o que menos gasta (com % do total)
+        function listaSistemasGraf(g) {
+            const lista = Object.values(g.porSistema).sort((a, b) =>
+                (a.tipo === SEM_DIVISAO) - (b.tipo === SEM_DIVISAO) || b.litros - a.litros || b.minutos - a.minutos);
+            const totalL = lista.reduce((s, x) => s + x.litros, 0);
+            let k = 0;
+            return lista.map(x => ({
+                ...x, pct: totalL > 0 ? x.litros / totalL * 100 : 0,
+                lh: x.minutos > 0 && !x.semDados ? x.litros / (x.minutos / 60) : null,
+                cor: corSistema(x.tipo, COR_SISTEMA[x.tipo] || x.tipo === SEM_DIVISAO ? 0 : k++)
+            }));
+        }
+
+        function htmlSistemasGraf(g, ant) {
+            const lista = listaSistemasGraf(g);
+            if (!lista.length) return `<p class="text-xs text-slate-400 py-4 text-center">Nenhum registro de irrigação no período${ant && ant.semFiltro ? '' : algumFiltroGraf() ? ' com esses filtros' : ''}.</p>`;
+            const maior = lista.find(x => x.tipo !== SEM_DIVISAO && !x.semDados && x.litros > 0);
+            const totalL = lista.reduce((s, x) => s + x.litros, 0);
+            const destaque = maior && lista.filter(x => x.tipo !== SEM_DIVISAO).length > 1 ? `
+                <div class="flex items-center gap-2.5 rounded-xl border px-3 py-2.5" style="background:${maior.cor}14;border-color:${maior.cor}55">
+                    <i data-lucide="trophy" class="w-5 h-5 shrink-0" style="color:${maior.cor}"></i>
+                    <p class="text-sm text-slate-700 leading-snug">Quem mais gasta água: <b class="font-black text-slate-900">${escapeHtml(maior.tipo)}</b>
+                        com <b class="font-black text-slate-900">${fmtNum(maior.pct, 0)}%</b> do total (${fmtLh(maior.litros)} L)</p>
+                </div>` : '';
+            const linhas = lista.map(x => {
+                const a = ant.porSistema[x.tipo];
+                const comp = a && a.litros > 0 && !x.semDados ? textoComparacao(x.litros, a.litros) : '';
+                return `<div class="py-2.5">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <span class="flex items-center gap-1.5 text-sm font-black text-slate-800 min-w-0">
+                            <span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background:${x.cor}"></span>
+                            <span class="truncate">${escapeHtml(x.tipo)}</span>
+                        </span>
+                        <span class="text-sm font-black text-slate-900 shrink-0">${x.semDados ? '<span class="text-xs text-slate-300">sem dados do bloco</span>' : `${fmtLh(x.litros)} <span class="text-[10px] font-bold text-slate-400">L</span>`}</span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1.5">
+                        <div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:${x.pct.toFixed(1)}%;background:${x.cor}"></div></div>
+                        <span class="w-10 text-right text-[11px] font-black text-slate-600">${fmtNum(x.pct, 0)}%</span>
+                    </div>
+                    <p class="text-[10px] font-medium text-slate-500 mt-1">${formatDuration(x.minutos)} irrigando${x.lh != null ? ` · ${fmtLh(x.lh)} L por hora` : ''} · ${x.blocos.size} bloco${x.blocos.size === 1 ? '' : 's'} · ${x.dias.size} dia${x.dias.size === 1 ? '' : 's'}${comp ? ` · <span class="font-bold text-slate-400">${comp}</span>` : ''}</p>
+                </div>`;
+            }).join('');
+            const notaSemDivisao = lista.some(x => x.tipo === SEM_DIVISAO)
+                ? `<p class="text-[10px] text-slate-400 font-medium">"${SEM_DIVISAO}" = registros de blocos com mais de um sistema lançados antes de informar os minutos de cada sistema.</p>` : '';
+            return `${destaque}
+                <div class="divide-y divide-slate-100">${linhas}</div>
+                <div class="flex items-center justify-between pt-2 border-t-2 border-slate-100 text-xs font-black text-slate-700">
+                    <span>Total</span><span>${fmtLh(totalL)} L · ${formatDuration(lista.reduce((s, x) => s + x.minutos, 0))}</span>
+                </div>
+                ${notaSemDivisao}`;
+        }
+
+        // ===== ABA RESUMO: tudo do período num olhar (sem os filtros da aba Tendências) =====
+        let resumoPedido = 0;
+        const FILTRO_VAZIO = { pocos: new Set(), blocos: new Set(), sistemas: new Set() };
+
+        window.periodoResumo = function(dias) {
+            const hoje = new Date();
+            document.getElementById('resumoAte').value = dataLocalIso(hoje);
+            document.getElementById('resumoDe').value = dataLocalIso(new Date(hoje.getTime() - (dias - 1) * 86400000));
+            window.carregarResumo();
+        }
+
+        window.ajustarPeriodoResumo = function(campo) {
+            const de = document.getElementById('resumoDe'), ate = document.getElementById('resumoAte');
+            if (!de.value) de.value = ate.value || dataLocalIso();
+            if (!ate.value) ate.value = de.value;
+            if (de.value > ate.value) { if (campo === 'de') ate.value = de.value; else de.value = ate.value; }
+            window.carregarResumo();
+        }
+
+        window.carregarResumo = async function() {
+            const deInput = document.getElementById('resumoDe'), ateInput = document.getElementById('resumoAte');
+            if (!deInput.value || !ateInput.value) {
+                ateInput.value = dataLocalIso();
+                deInput.value = dataLocalIso(new Date(Date.now() - 6 * 86400000));
+            }
+            const de = deInput.value, ate = ateInput.value;
+            const pedido = ++resumoPedido;
+            const nDias = diasNoPeriodo(de, ate).length;
+            document.querySelectorAll('[data-resumo-dias]').forEach(b => {
+                const ativo = ate === dataLocalIso() && Number(b.dataset.resumoDias) === nDias;
+                b.classList.toggle('bg-emerald-600', ativo); b.classList.toggle('text-white', ativo);
+                b.classList.toggle('bg-slate-100', !ativo); b.classList.toggle('text-slate-600', !ativo);
+            });
+            const caixa = document.getElementById('resumoConteudo');
+            caixa.innerHTML = `<div class="flex items-center justify-center gap-2 text-xs font-medium text-slate-400 py-10"><i data-lucide="loader-circle" class="w-4 h-4 animate-spin"></i> Carregando...</div>`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            try {
+                const [g, culturas] = await Promise.all([dadosGraficosPeriodo(de, ate), API.listarCulturas().catch(() => [])]);
+                if (pedido !== resumoPedido) return;
+                atualizarApelidos(culturas);
+                caixa.innerHTML = htmlResumo(agregarGraficos(g, FILTRO_VAZIO), culturas || []);
+            } catch (err) {
+                console.error(err);
+                if (pedido === resumoPedido) caixa.innerHTML = `<p class="text-xs text-rose-500 py-6 text-center">Não foi possível carregar os dados.</p>`;
+            }
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function htmlResumo(a, culturas) {
+            const cartaoSecao = (icone, titulo, sub, corpo) => `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-3">
+                    <div>
+                        <h3 class="text-xs font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5"><i data-lucide="${icone}" class="w-4 h-4 text-emerald-600"></i> ${titulo}</h3>
+                        ${sub ? `<p class="text-[10px] text-slate-400 font-medium mt-0.5">${sub}</p>` : ''}
+                    </div>
+                    ${corpo}
+                </div>`;
+            const vazio = txt => `<p class="text-xs text-slate-400 py-3 text-center">${txt}</p>`;
+            const barra = (pct, cor) => `<div class="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full rounded-full" style="width:${Math.max(0, Math.min(100, pct)).toFixed(1)}%;background:${cor}"></div></div>`;
+
+            // ----- Totais -----
+            const saida = somaDe(a.saida), entrada = somaDe(a.entrada);
+            const diasIrrig = a.horas.filter(v => v != null).length;
+            const diasAfer = a.entrada.filter(v => v != null).length;
+            const minutosTotal = Object.values(a.porBloco).reduce((s, b) => s + b.minutos, 0);
+
+            // ----- Sistemas -----
+            const sistemas = listaSistemasGraf(a);
+            const corDoSistema = {};
+            sistemas.forEach(s => corDoSistema[s.tipo] = s.cor);
+            const reais = sistemas.filter(s => s.tipo !== SEM_DIVISAO && !s.semDados);
+            const maisGasta = reais.filter(s => s.litros > 0)[0];
+            const maisPorHora = reais.filter(s => s.lh != null).sort((x, y) => y.lh - x.lh)[0];
+
+            // ----- Blocos (com a parte de cada sistema) -----
+            const culturaDe = b => { const c = culturas.find(x => String(x.id) === b); return c && c.cultura ? c.cultura.trim() : ''; };
+            const nomesCultura = [...new Set(culturas.map(c => (c.cultura || '').trim()).filter(Boolean))].sort((x, y) => x.localeCompare(y));
+            const corCultura = n => n ? CORES_CULTURA[nomesCultura.indexOf(n) % CORES_CULTURA.length] : COR_SEM_CULTURA;
+            const sisDoBloco = {};
+            (a.sisDiaBloco || []).forEach(dia => Object.entries(dia).forEach(([b, porTipo]) => Object.entries(porTipo).forEach(([t, s]) => {
+                const x = ((sisDoBloco[b] = sisDoBloco[b] || {})[t] = sisDoBloco[b][t] || { litros: 0, minutos: 0 });
+                x.litros += s.litros || 0; x.minutos += s.minutos;
+            })));
+            const blocos = Object.values(a.porBloco).sort((x, y) => y.litros - x.litros || y.minutos - x.minutos);
+            const maxBloco = Math.max(1, ...blocos.map(b => b.litros));
+            const maiorBloco = blocos.find(b => !b.semDados && b.litros > 0);
+
+            // ----- Poços -----
+            const pocos = a.listaPocos.map(l => ({ l, total: somaDe(l.volume), media: mediaDe(l.media) }))
+                .sort((x, y) => y.total - x.total || String(x.l.poco.numero).localeCompare(String(y.l.poco.numero), undefined, { numeric: true }));
+            const pocosCom = pocos.filter(p => p.l.afericoes > 0);
+            const pocosSem = pocos.filter(p => !p.l.afericoes);
+            const maxPoco = Math.max(1, ...pocosCom.map(p => p.total));
+
+            // ----- Tanque -----
+            const fmtNivel = v => fmtNum(v, a.emPct ? 0 : 2);
+            const un = a.emPct ? '%' : ' m';
+            const tanques = a.niveis.map(n => {
+                const v = n.valores.filter(x => x != null);
+                const ultimo = n.ultima ? (a.emPct ? Number(n.ultima.nivel_m) / Number(n.reserv.altura_maxima_m) * 100 : Number(n.ultima.nivel_m)) : null;
+                return { n, media: mediaDe(n.valores), min: v.length ? Math.min(...v) : null, max: v.length ? Math.max(...v) : null, ultimo, t: tendencia(n.valores) };
+            });
+
+            // ----- Em resumo (frases) -----
+            const frases = [];
+            if (saida > 0) {
+                frases.push(`A irrigação usou **${fmtM3(saida)} m³** (${fmtLh(saida)} L) em ${diasIrrig} dia${diasIrrig === 1 ? '' : 's'}, ${formatDuration(minutosTotal)} de irrigação.`);
+            } else frases.push('Nenhuma irrigação registrada no período.');
+            if (entrada > 0) {
+                frases.push(`Os poços colocaram **${fmtM3(entrada)} m³**` + (saida > 0 ? ` e repõem **${fmtNum(entrada / saida * 100, 0)}%** do que foi usado.` : '.'));
+            } else frases.push('Sem aferição de poço no período: não dá para saber quanto entrou.');
+            if (maiorBloco) frases.push(`Bloco que mais usou água: **${rotuloBloco(maiorBloco.bloco)}**${culturaDe(maiorBloco.bloco) ? ` (${culturaDe(maiorBloco.bloco)})` : ''} com ${fmtLh(maiorBloco.litros)} L (${fmtNum(saida > 0 ? maiorBloco.litros / saida * 100 : 0, 0)}% do total).`);
+            if (maisGasta && reais.length > 1) frases.push(`Sistema que mais usou água: **${maisGasta.tipo}** (${fmtNum(maisGasta.pct, 0)}% do total).` +
+                (maisPorHora && maisPorHora.tipo !== maisGasta.tipo ? ` Por hora ligado, quem gasta mais é **${maisPorHora.tipo}** (${fmtLh(maisPorHora.lh)} L/h).` : ''));
+            else if (maisGasta) frases.push(`Todo o volume informado foi de **${maisGasta.tipo}**.`);
+            if (tanques.length && tanques[0].media != null) {
+                const t = tanques[0];
+                frases.push(`Tanque: média de **${fmtNivel(t.media)}${un}** no período, entre ${fmtNivel(t.min)}${un} e ${fmtNivel(t.max)}${un}` +
+                    (t.ultimo != null ? `; última leitura ${fmtNivel(t.ultimo)}${un}` : '') +
+                    (t.t ? ` (${t.t.dir > 0 ? 'subindo' : t.t.dir < 0 ? 'caindo' : 'estável'})` : '') + '.');
+            } else frases.push('Nenhuma leitura do nível do tanque no período.');
+            const negrito = s => escapeHtml(s).replace(/\*\*(.+?)\*\*/g, '<b class="font-black text-slate-900">$1</b>');
+            const emResumo = `
+                <div class="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                    <h2 class="text-base font-black text-emerald-800 flex items-center gap-2"><i data-lucide="sprout" class="w-5 h-5"></i> Em resumo</h2>
+                    <p class="text-[11px] font-bold text-emerald-700/70 mt-0.5">${escapeHtml(rotuloPeriodo(a.de, a.ate))}</p>
+                    <ul class="mt-3 space-y-2">${frases.map(f => `<li class="flex items-start gap-2.5 text-sm text-slate-700 leading-snug">
+                        <span class="mt-1.5 w-2 h-2 rounded-full shrink-0 bg-emerald-500"></span><span>${negrito(f)}</span></li>`).join('')}</ul>
+                </div>`;
+
+            // ----- Cartões de totais -----
+            const cartao = (cor, rotulo, valor, detalhe) => `
+                <div class="bg-white border border-slate-200 rounded-xl px-3 py-3 shadow-sm">
+                    <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm shrink-0" style="background:${cor}"></span>
+                        <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 truncate">${rotulo}</span></div>
+                    <div class="text-lg font-black text-slate-900 leading-tight mt-1">${valor}</div>
+                    <div class="text-[10px] font-medium text-slate-500 mt-0.5">${detalhe}</div>
+                </div>`;
+            const saldo = entrada - saida;
+            const t0 = tanques[0];
+            const cartoes = `<div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                ${cartao(COR_SAIDA, 'Água usada', saida > 0 ? `${fmtLh(saida)} L` : 'Sem dados', saida > 0 ? `${fmtM3(saida)} m³ · média ${fmtLh(saida / Math.max(1, diasIrrig))} L/dia` : 'nenhuma irrigação')}
+                ${cartao(COR_ENTRADA, 'Entrou (poços)', entrada > 0 ? `${fmtLh(entrada)} L` : 'Sem dados', entrada > 0 ? `${fmtM3(entrada)} m³ · ${diasAfer} dia${diasAfer === 1 ? '' : 's'} com aferição` : 'nenhuma aferição')}
+                ${cartao('#c3c2b7', 'Saldo', saida > 0 || entrada > 0 ? `${saldo >= 0 ? '+' : '−'}${fmtLh(Math.abs(saldo))} L` : 'Sem dados', saldo >= 0 ? 'entrou mais do que saiu' : 'saiu mais do que entrou')}
+                ${cartao(COR_NIVEL, 'Tanque (média)', t0 && t0.media != null ? `${fmtNivel(t0.media)}${un}` : 'Sem dados', t0 && t0.ultimo != null ? `última leitura ${fmtNivel(t0.ultimo)}${un}` : 'nenhuma leitura')}
+            </div>`;
+
+            // ----- Sistemas -----
+            const secSistemas = cartaoSecao('sprout', 'Qual sistema usa mais água',
+                'Litros de cada tipo de sistema e quanto cada um gasta por hora ligado.',
+                htmlSistemasGraf(a, { porSistema: {}, semFiltro: true }));
+
+            // ----- Blocos -----
+            const legendaSis = sistemas.length > 1 ? `<div class="flex flex-wrap gap-x-3 gap-y-1">${sistemas.map(s =>
+                `<span class="flex items-center gap-1 text-[10px] font-bold text-slate-500"><span class="w-2.5 h-2.5 rounded-sm" style="background:${s.cor}"></span>${escapeHtml(s.tipo)}</span>`).join('')}</div>` : '';
+            const linhasBlocos = blocos.map(b => {
+                const cult = culturaDe(b.bloco);
+                const partes = Object.entries(sisDoBloco[b.bloco] || {}).sort((x, y) => y[1].litros - x[1].litros);
+                const somaPartes = partes.reduce((s, [, x]) => s + x.litros, 0);
+                const largura = b.litros / maxBloco * 100;
+                const segmentos = somaPartes > 0
+                    ? partes.map(([t, x]) => `<div style="width:${(x.litros / somaPartes * 100).toFixed(2)}%;background:${corDoSistema[t] || '#94a3b8'}" title="${escapeHtml(t)}: ${fmtLh(x.litros)} L"></div>`).join('')
+                    : '';
+                const detalheSis = partes.length > 1 ? `<p class="text-[10px] text-slate-500 mt-1">${partes.map(([t, x]) => `${escapeHtml(t)} ${fmtLh(x.litros)} L (${formatDuration(x.minutos)})`).join(' · ')}</p>` : '';
+                return `<div class="py-2.5">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <span class="text-sm font-black text-slate-800 truncate">${escapeHtml(rotuloBloco(b.bloco))}</span>
+                        <span class="text-sm font-black text-slate-900 shrink-0">${b.semDados ? '<span class="text-xs text-slate-300">sem dados do bloco</span>' : `${fmtLh(b.litros)} <span class="text-[10px] font-bold text-slate-400">L</span>`}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 mt-0.5 mb-1.5">
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md" style="background:${corCultura(cult)}1f;color:${corCultura(cult)}">${escapeHtml(cult || 'Sem cultura')}</span>
+                        <span class="text-[10px] font-medium text-slate-500">${formatDuration(b.minutos)} · ${b.dias} dia${b.dias === 1 ? '' : 's'}${saida > 0 && !b.semDados ? ` · ${fmtNum(b.litros / saida * 100, 0)}% da água` : ''}</span>
+                    </div>
+                    <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full flex rounded-full overflow-hidden" style="width:${largura.toFixed(1)}%">${segmentos}</div></div>
+                    ${detalheSis}
+                </div>`;
+            }).join('');
+            const secBlocos = cartaoSecao('layers', 'Água por bloco',
+                'Do bloco que mais usou água para o que menos usou. As cores da barra mostram a parte de cada sistema.',
+                blocos.length ? `${legendaSis}<div class="divide-y divide-slate-100">${linhasBlocos}</div>
+                    <div class="flex items-center justify-between pt-2 border-t-2 border-slate-100 text-xs font-black text-slate-700">
+                        <span>Total · ${blocos.length} bloco${blocos.length === 1 ? '' : 's'}</span><span>${fmtLh(saida)} L</span></div>`
+                    : vazio('Nenhum registro de irrigação no período.'));
+
+            // ----- Poços -----
+            const linhasPocos = pocosCom.map(p => `<div class="py-2.5">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <span class="text-sm font-black text-slate-800 truncate">Poço ${escapeHtml(p.l.poco.numero)}${p.l.poco.nome ? ` <span class="font-medium text-slate-400">· ${escapeHtml(p.l.poco.nome)}</span>` : ''}</span>
+                        <span class="text-sm font-black text-slate-900 shrink-0">${fmtLh(p.total)} <span class="text-[10px] font-bold text-slate-400">L</span></span>
+                    </div>
+                    <div class="my-1.5">${barra(p.total / maxPoco * 100, COR_ENTRADA)}</div>
+                    <p class="text-[10px] font-medium text-slate-500">média ${p.media != null ? fmtLh(p.media) + ' L/h' : '—'} · ${p.l.afericoes} aferiç${p.l.afericoes === 1 ? 'ão' : 'ões'}${entrada > 0 ? ` · ${fmtNum(p.total / entrada * 100, 0)}% da entrada` : ''}${p.l.diasDesligado ? ` · ${p.l.diasDesligado} dia${p.l.diasDesligado === 1 ? '' : 's'} desligado` : ''}</p>
+                </div>`).join('');
+            const secPocos = cartaoSecao('droplet', 'Água que entrou por poço',
+                'Volume de cada poço no período (vazão aferida × horas ligado).',
+                pocosCom.length ? `<div class="divide-y divide-slate-100">${linhasPocos}</div>
+                    <div class="flex items-center justify-between pt-2 border-t-2 border-slate-100 text-xs font-black text-slate-700">
+                        <span>Total · ${pocosCom.length} poço${pocosCom.length === 1 ? '' : 's'}</span><span>${fmtLh(entrada)} L</span></div>
+                    ${pocosSem.length ? `<p class="text-[10px] text-slate-400 font-medium">Sem aferição no período: ${pocosSem.map(p => 'Poço ' + escapeHtml(p.l.poco.numero)).join(', ')}.</p>` : ''}`
+                    : vazio('Nenhuma aferição de poço no período.'));
+
+            // ----- Tanque -----
+            const coresNivel = [COR_NIVEL, '#e87ba4', '#008300', '#e34948'];
+            const series = tanques.map((t, i) => ({ nome: t.n.reserv.nome, cor: coresNivel[i % coresNivel.length], valores: t.n.valores, extra: t.n.extra }));
+            const chip = (rot, v) => `<div class="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-center">
+                <div class="text-[9px] font-black uppercase tracking-widest text-slate-400">${rot}</div>
+                <div class="text-sm font-black text-slate-800 mt-0.5">${v == null ? '—' : fmtNivel(v) + un}</div></div>`;
+            const secTanque = cartaoSecao('waves', `Nível do tanque (${a.emPct ? '% cheio' : 'metros'})`,
+                'Média das leituras de cada dia.',
+                tanques.length ? `${tanques.map(t => `
+                    ${tanques.length > 1 ? `<p class="text-xs font-black text-slate-600">${escapeHtml(t.n.reserv.nome)}</p>` : ''}
+                    <div class="grid grid-cols-4 gap-1.5">${chip('Média', t.media)}${chip('Mínimo', t.min)}${chip('Máximo', t.max)}${chip('Última', t.ultimo)}</div>`).join('')}
+                    ${series.length > 1 ? `<div>${legendaCulturasHtml(series, 11)}</div>` : ''}
+                    <div class="overflow-x-auto"><div class="min-w-[480px]">${svgDias(a.dias, series, { fmt: fmtNivel, unidade: a.emPct ? '%' : 'm', zero: a.emPct, titulo: 'Nível do tanque', vazio: 'Nenhuma leitura de nível no período.' })}</div></div>`
+                    : vazio('Nenhuma leitura do nível do tanque no período.'));
+
+            return emResumo + cartoes + secSistemas + secBlocos + secPocos + secTanque;
+        }
+
         function renderGraficos(gBruto, antBruto) {
             ultimoGraf = { g: gBruto, ant: antBruto };
             tendenciaPorPoco = {};
@@ -8760,7 +9224,8 @@
             renderFiltrosGraficos();
             const g = agregarGraficos(gBruto), ant = agregarGraficos(antBruto);
             const nPocosSel = filtroGraf.pocos.size ? ` · ${g.listaPocos.length} de ${gBruto.listaPocos.length} poços` : '';
-            const nBlocosSel = filtroGraf.blocos.size ? ` · ${filtroGraf.blocos.size} bloco${filtroGraf.blocos.size === 1 ? '' : 's'} filtrado${filtroGraf.blocos.size === 1 ? '' : 's'}` : '';
+            const nBlocosSel = (filtroGraf.blocos.size ? ` · ${filtroGraf.blocos.size} bloco${filtroGraf.blocos.size === 1 ? '' : 's'} filtrado${filtroGraf.blocos.size === 1 ? '' : 's'}` : '') +
+                (filtroGraf.sistemas.size ? ` · só ${[...filtroGraf.sistemas].join(', ')}` : '');
             const dias = g.dias;
             const mediaSaida = mediaDe(g.saida), mediaEntrada = mediaDe(g.entrada);
             const mediaHoras = mediaDe(g.horas), mediaBlocos = mediaDe(g.qtdBlocos), mediaVazao = mediaDe(g.vazaoTotal);
@@ -8776,7 +9241,7 @@
 
             // ----- Resumo para a diretoria -----
             const diretor = resumoDiretor(g, ant, tPocos, nivelPrincipal);
-            document.getElementById('grafDiretor').innerHTML = htmlResumoDiretor(diretor, filtroGraf.pocos.size || filtroGraf.blocos.size);
+            document.getElementById('grafDiretor').innerHTML = htmlResumoDiretor(diretor, algumFiltroGraf());
 
             // ----- Resumo -----
             // O resumo também vai para o PDF (texto puro)
@@ -8802,7 +9267,7 @@
                     tendencia(g.entrada), textoComparacao(mediaEntrada, mediaDe(ant.entrada))) +
                 cartao('#c3c2b7', 'Saldo médio', saldo != null ? `${saldo >= 0 ? '+' : '−'}${fmtLh(Math.abs(saldo))} L/dia` : 'Sem dados',
                     (saldo == null ? 'sem entrada nem saída' : saldo >= 0 ? 'entra mais do que sai' : 'sai mais do que entra') +
-                        (filtroGraf.pocos.size || filtroGraf.blocos.size ? ' (com filtro)' : ''), false, '') +
+                        (algumFiltroGraf() ? ' (com filtro)' : ''), false, '') +
                 cartao(COR_NIVEL, 'Nível do tanque', nivelPrincipal && nivelPrincipal.ultima
                         ? (g.emPct ? `${fmtNum(Number(nivelPrincipal.ultima.nivel_m) / Number(nivelPrincipal.reserv.altura_maxima_m) * 100, 0)}%` : `${fmtNum(nivelPrincipal.ultima.nivel_m, 2)} m`)
                         : 'Sem dados',
@@ -8857,6 +9322,9 @@
                             <span class="text-[9px] font-bold text-slate-400">${l.afericoes} aferiç${l.afericoes === 1 ? 'ão' : 'ões'}${l.diasDesligado ? ` · ${l.diasDesligado}d desl.` : ''}</span>
                         </div>
                     </div>`).join('');
+
+            // ----- Uso de água por sistema -----
+            document.getElementById('grafSistemas').innerHTML = htmlSistemasGraf(g, ant);
 
             // ----- Tabela por bloco -----
             const blocos = Object.values(g.porBloco).sort((a, b) => b.minutos - a.minutos || a.bloco.localeCompare(b.bloco, undefined, { numeric: true }));
@@ -9008,7 +9476,7 @@
                     return [...filtroGraf[tipo]].map(id => (op.find(o => o.id === id) || { curto: id }).curto)
                         .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).join(', ');
                 };
-                const filtros = doc.splitTextToSize(`Filtros: poços ${nomesFiltro('pocos')} · blocos ${nomesFiltro('blocos')}`, W - M * 2 - 22);
+                const filtros = doc.splitTextToSize(`Filtros: poços ${nomesFiltro('pocos')} · blocos ${nomesFiltro('blocos')} · sistemas ${nomesFiltro('sistemas')}`, W - M * 2 - 22);
                 doc.text(filtros, M + 22, 26);
                 y = 26 + filtros.length * 4;
                 doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')} ${fmtHora(new Date().toISOString())} por ${API.nomeUsuario()}`, M + 22, y);
@@ -9111,6 +9579,18 @@
                         }
                     }
                 } : { body: [['Nenhum poço no filtro.']], theme: 'plain' });
+
+                // ----- Sistemas (quem gasta mais água) -----
+                const sistemas = listaSistemasGraf(g);
+                secao('Uso de água por sistema', 30);
+                tabela(sistemas.length ? {
+                    head: [['Sistema', 'Volume (L)', '% da água', 'Horas', 'L por hora', 'Blocos', 'Dias']],
+                    body: sistemas.map(x => [pdfTxt(x.tipo), x.semDados ? 'sem dados do bloco' : fmtLh(x.litros), `${fmtNum(x.pct, 0)}%`,
+                        formatDuration(x.minutos), x.lh != null ? fmtLh(x.lh) : '-', String(x.blocos.size), String(x.dias.size)]),
+                    foot: [['Total', fmtLh(sistemas.reduce((s, x) => s + x.litros, 0)), '100%', formatDuration(sistemas.reduce((s, x) => s + x.minutos, 0)), '', '', '']],
+                    footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
+                    columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right', fontStyle: 'bold' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } }
+                } : { body: [['Nenhum registro de irrigação no período.']], theme: 'plain' });
 
                 // ----- Blocos -----
                 const blocos = Object.values(g.porBloco).sort((a, b) => b.minutos - a.minutos || a.bloco.localeCompare(b.bloco, undefined, { numeric: true }));
@@ -9434,10 +9914,12 @@
                         <i data-lucide="plus" class="w-3.5 h-3.5"></i> Adicionar sistema
                     </button>
                     <label class="flex items-center justify-between gap-2 mt-3">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Data de atualização</span>
-                        <input type="date" value="${rascunhoBlocoData}" oninput="rascunhoBlocoData = this.value"
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sistema vale desde</span>
+                        <input type="date" value="${rascunhoBlocoData}" max="${dataLocalIso()}" oninput="rascunhoBlocoData = this.value"
                             class="bg-white border-2 border-slate-200 rounded-lg py-1.5 px-2 text-xs text-slate-800">
                     </label>
+                    ${bloco === NOVO_BLOCO ? '' : `<p class="text-[10px] text-slate-400 mt-1">Esqueceu de atualizar e já teve irrigação com o sistema antigo? Coloque o dia em que o sistema mudou:
+                        ao salvar, o volume dos registros desde esse dia é corrigido com este sistema.</p>`}
                     <p id="dbEditErro" class="hidden text-xs font-bold text-red-500 mt-2"></p>
                     <div class="flex gap-2 py-3">
                         <button type="button" onclick="window.editarBloco(null)" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
@@ -9447,6 +9929,23 @@
                     </div>
                 </div>
             </div>`;
+        }
+
+        // Sistema atualizado com atraso: confirma e recalcula o volume dos registros do bloco desde "desde"
+        function perguntarCorrecaoVolume(bloco, desde) {
+            pendingConfirmCallback = async () => {
+                try {
+                    const qtd = await API.recalcularVolumeBloco(bloco, desde);
+                    window.showAlert("Volume corrigido", qtd
+                        ? `${qtd} registro${qtd === 1 ? '' : 's'} do Bloco ${bloco} desde ${formatDate(desde)} ${qtd === 1 ? 'passou' : 'passaram'} a usar o sistema atual. Os gráficos e o histórico do bloco já mostram o volume corrigido.`
+                        : `Nenhum registro do Bloco ${bloco} desde ${formatDate(desde)} precisou mudar: o volume já estava com o sistema atual.`);
+                } catch (err) {
+                    window.showAlert("Não foi possível corrigir", err.message);
+                }
+            };
+            window.showConfirmModal("Corrigir dias anteriores?",
+                `Os registros de irrigação do Bloco ${bloco} de ${formatDate(desde)} até hoje vão ter o volume (litros) recalculado com o sistema atual do bloco.\n\nO relatório que já foi enviado no WhatsApp não muda. Cada correção fica no Log de Atividades.`,
+                "CORRIGIR", "refresh-cw");
         }
 
         window.salvarBloco = async function() {
@@ -9459,7 +9958,10 @@
                 if (dadosBlocosCache.some(d => d.bloco === bloco)) return mostrarErro(`O Bloco ${bloco} já existe. Para alterar, toque no lápis dele na lista.`);
                 if (!rascunhoBloco.some(s => !s.removido)) return mostrarErro("Adicione pelo menos um sistema de aspersão.");
             }
-            if (!rascunhoBlocoData) return mostrarErro("Informe a data de atualização.");
+            if (!rascunhoBlocoData) return mostrarErro("Informe desde quando o sistema vale.");
+            if (rascunhoBlocoData > dataLocalIso()) return mostrarErro("A data não pode ser no futuro.");
+            // Data anterior a hoje: depois de salvar, corrige o volume dos registros desde esse dia
+            const corrigirDesde = !novo && rascunhoBlocoData < dataLocalIso() ? rascunhoBlocoData : null;
             const apelido = rascunhoApelido.replace(/\s+/g, ' ').trim();
             const mudouApelido = apelido !== (apelidosBloco[bloco] || '');
             // Cultura obrigatória (legenda do gráfico de saída); usa a grafia de uma já cadastrada, se for a mesma
@@ -9498,6 +10000,7 @@
                     await carregarDadosBlocos(true);
                     window.calcularConsumoProgramacao();
                     if (mudouApelido) renderList();
+                    if (corrigirDesde && vaiFicarNaLista) perguntarCorrecaoVolume(bloco, corrigirDesde);
                 } catch (err) {
                     // Parte pode ter sido gravada: recarrega e mantém o editor aberto com o erro
                     await carregarDadosBlocos(true);
@@ -9508,7 +10011,12 @@
                 }
             };
 
-            if (!salvar.length && !excluir.length && !mudouApelido && !mudouCultura) { window.editarBloco(null); return; }
+            if (!salvar.length && !excluir.length && !mudouApelido && !mudouCultura) {
+                // Nada mudou no sistema, mas a data é anterior: só corrige o volume dos dias anteriores
+                window.editarBloco(null);
+                if (corrigirDesde) perguntarCorrecaoVolume(bloco, corrigirDesde);
+                return;
+            }
             if (rascunhoBloco.every(s => s.removido)) {
                 pendingConfirmCallback = aplicar;
                 window.showConfirmModal("Remover o bloco?",
@@ -9949,7 +10457,7 @@
             motivo: 'Motivo', data_parada: 'Data da parada', horas_ligado: 'Horas ligado/dia', horas: 'Horas ligado', horas_padrao: 'Bombeia (h/dia)',
             nivel_m: 'Nível (m)', altura_maxima_m: 'Altura máx. (m)', capacidade_m3: 'Capacidade (m³)', tipo: 'Tipo', descricao: 'Descrição',
             executado_por: 'Feito por', custo: 'Custo (R$)', cultura: 'Cultura', valvulas: 'Válvulas', data_atualizacao: 'Atualizado em',
-            papel: 'Papel', nome_curto: 'Nome curto', excluido_em: 'Excluído em', minutos_sistema: 'Tempo por sistema'
+            papel: 'Papel', nome_curto: 'Nome curto', excluido_em: 'Excluído em', minutos_sistema: 'Tempo por sistema', litros_por_min: 'Vazão gravada'
         };
         // Campos internos que não interessam no antes/depois
         const CAMPOS_OCULTOS = ['id', 'created_at', 'updated_at', 'criado_por', 'atualizado_por', 'vazao_lh', 'litros_por_min', 'data_envio', 'registrado_em', 'itens'];
@@ -9963,6 +10471,7 @@
             if (v === null || v === undefined || v === '') return '—';
             if (typeof v === 'boolean') return v ? 'Sim' : 'Não';
             if (campo === 'minutos') return formatDuration(Number(v));
+            if (campo === 'litros_por_min') return `${fmtNum(Number(v) * 60, 0)} L/h`;
             if (campo === 'minutos_sistema') return textoSistemas(Array.isArray(v) ? v : []) || '—';
             if (campo === 'poco_id') { const p = pocosCache.find(x => x.id === v); return p ? `Poço ${p.numero}` : 'Poço'; }
             if (campo === 'reservatorio_id') { const r = reservCache.find(x => x.id === v); return r ? r.nome : 'Reservatório'; }
@@ -9996,7 +10505,9 @@
         // Quadro "antes → depois" (alteração) ou lista dos valores (registro novo / exclusão)
         function detalhesAuditoriaHtml(l) {
             const antes = l.dados_antes || {}, depois = l.dados_depois || {};
-            const campos = [...new Set([...Object.keys(antes), ...Object.keys(depois)])].filter(c => !CAMPOS_OCULTOS.includes(c));
+            // Na alteração, a vazão gravada aparece (correção de volume de dias anteriores)
+            const campos = [...new Set([...Object.keys(antes), ...Object.keys(depois)])]
+                .filter(c => !CAMPOS_OCULTOS.includes(c) || (c === 'litros_por_min' && l.acao === 'UPDATE'));
             const rotulo = c => ROTULOS_CAMPO[c] || c.replace(/_/g, ' ');
             let linhas;
             if (l.acao === 'UPDATE') {
