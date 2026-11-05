@@ -10548,7 +10548,8 @@
 
         // Frase principal, ex.: "Fulano registrou que irrigou o Bloco 12 por 15min (Manhã) no dia 09/10"
         function fraseAuditoria(l) {
-            const quem = `<span class="font-black">${escapeHtml(l.usuario_nome || 'Sistema')}</span>`;
+            // Nome atual do perfil (se a pessoa trocou o nome, o log antigo também mostra o novo)
+            const quem = `<span class="font-black">${escapeHtml(l.usuario_id ? nomeDoUsuario(l.usuario_id, l.usuario_nome) : (l.usuario_nome || 'Sistema'))}</span>`;
             const d = l.dados_depois || l.dados_antes || {};
             const a = acaoDaAuditoria(l);
             if (l.tabela === 'registros_irrigacao') {
