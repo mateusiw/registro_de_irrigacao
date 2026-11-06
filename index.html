@@ -490,11 +490,23 @@
 
                 <!-- LOCALIZAÇÃO -->
                 <div class="px-5 py-4">
-                    <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-green-500"></i> Localização
-                    </label>
+                    <div class="flex items-center justify-between gap-2 mb-2.5">
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-green-500"></i> Localização
+                        </label>
+                        <!-- Um bloco por vez ou vários blocos de uma vez (some ao editar um registro) -->
+                        <div id="modoRegistroToggle" class="flex bg-slate-100 rounded-lg p-0.5 gap-0.5">
+                            <button type="button" data-modo-registro="um" onclick="window.setModoLote(false)"
+                                class="text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-md transition-all">Um bloco</button>
+                            <button type="button" data-modo-registro="lote" onclick="window.setModoLote(true)"
+                                class="text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-md transition-all">Vários blocos</button>
+                        </div>
+                    </div>
+                    <!-- VÁRIOS BLOCOS: escolhe os blocos e informa os minutos de cada sistema de cada um -->
+                    <div id="registroLote" class="hidden"></div>
                     <!-- Lista suspensa só com os blocos cadastrados em Dados dos Blocos -->
                     <input type="hidden" id="block">
+                    <div id="registroUmBloco">
                     <div id="blockDropdown">
                         <button type="button" id="blockBtn" onclick="window.alternarListaBlocos()" aria-haspopup="listbox" aria-expanded="false"
                             class="w-full flex items-center justify-between gap-2 bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 text-left transition-all hover:border-green-300">
@@ -509,10 +521,11 @@
                         <i data-lucide="info" class="w-3.5 h-3.5 shrink-0 mt-0.5"></i>
                         <span id="blockAvisoText"></span>
                     </div>
+                    </div>
                 </div>
 
-                <!-- TEMPO -->
-                <div class="px-5 py-4">
+                <!-- TEMPO (no modo vários blocos, os minutos ficam no cartão de cada bloco) -->
+                <div id="tempoSecao" class="px-5 py-4">
                     <label class="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
                         <i data-lucide="timer" class="w-3.5 h-3.5 text-green-500"></i> Tempo de Execução
                     </label>
@@ -2637,7 +2650,259 @@
             if (extra != null) document.getElementById('block').value = extra;
             renderGradeBlocos();
             renderMinutosSistemas();
+            if (modoLote) renderLote();
         }
+
+        // ----- Registro de vários blocos de uma vez -----
+        // Mesma data, turno e observação; cada bloco com os minutos de cada sistema dele.
+        // (var: pode ser lido antes desta linha rodar)
+        var modoLote = (() => { try { return localStorage.getItem('irrigacao_modo_lote') === '1'; } catch (e) { return false; } })();
+        var loteSel = new Set();   // blocos marcados
+        var loteMin = {};          // { bloco: { tipo: minutos } }
+
+        const blocosLoteOrdenados = () => Object.keys(sistemasPorBlocoRegistro || {}).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        const blocosMarcadosLote = () => blocosLoteOrdenados().filter(b => loteSel.has(b));
+        const sistemasDoBloco = b => (sistemasPorBlocoRegistro && sistemasPorBlocoRegistro[b] && sistemasPorBlocoRegistro[b].length) ? sistemasPorBlocoRegistro[b] : [''];
+        const minutosLoteBloco = b => Object.values(loteMin[b] || {}).reduce((s, v) => s + (Number(v) || 0), 0);
+
+        var voltarLoteAposEdicao = false;
+
+        // salvar = false: troca só a tela (ex.: ao editar), sem mudar a preferência guardada no aparelho
+        window.setModoLote = function(ativo, salvar) {
+            // Editando um registro: sempre um bloco só
+            if (ativo && (editingId !== null || editingEquipeId !== null)) return;
+            modoLote = !!ativo;
+            if (salvar !== false) { try { localStorage.setItem('irrigacao_modo_lote', modoLote ? '1' : '0'); } catch (e) {} }
+            document.querySelectorAll('[data-modo-registro]').forEach(btn => {
+                const sel = (btn.dataset.modoRegistro === 'lote') === modoLote;
+                btn.classList.toggle('bg-white', sel);
+                btn.classList.toggle('text-green-700', sel);
+                btn.classList.toggle('shadow-sm', sel);
+                btn.classList.toggle('text-slate-500', !sel);
+            });
+            document.getElementById('registroLote').classList.toggle('hidden', !modoLote);
+            document.getElementById('registroUmBloco').classList.toggle('hidden', modoLote);
+            document.getElementById('tempoSecao').classList.toggle('hidden', modoLote);
+            if (modoLote) { window.alternarListaBlocos(false); renderLote(); }
+            atualizarResumoLote();
+        }
+
+        // Blocos que já têm irrigação na data do formulário (sua ou de outro irrigador)
+        function blocosJaIrrigadosNaData() {
+            const data = document.getElementById('date').value;
+            const set = new Set();
+            records.filter(r => r.date === data).forEach(r => set.add(API.limparNomeBloco(r.block)));
+            if (data === diaEquipe) registrosEquipe.forEach(r => set.add(API.limparNomeBloco(r.bloco)));
+            return set;
+        }
+
+        function renderLote() {
+            const caixa = document.getElementById('registroLote');
+            if (!caixa || !modoLote) return;
+            if (!sistemasPorBlocoRegistro) {
+                caixa.innerHTML = '<p class="text-xs font-medium text-slate-400">Carregando blocos...</p>';
+                return;
+            }
+            const blocos = blocosLoteOrdenados();
+            if (!blocos.length) {
+                caixa.innerHTML = '<p class="text-xs font-medium text-slate-400">Nenhum bloco cadastrado (Dados dos Blocos).</p>';
+                return;
+            }
+            // Bloco que saiu do cadastro não fica marcado
+            [...loteSel].forEach(b => { if (!blocos.includes(b)) loteSel.delete(b); });
+            const jaIrrigados = blocosJaIrrigadosNaData();
+            const marcados = blocosMarcadosLote();
+
+            const chips = blocos.map(b => {
+                const ativo = loteSel.has(b);
+                return `<button type="button" onclick="window.alternarBlocoLote('${escapeHtml(b)}')" title="${escapeHtml(rotuloBloco(b))}"
+                    class="relative h-10 rounded-xl text-sm font-black transition-colors ${ativo ? 'bg-green-600 text-white shadow-sm' : 'bg-slate-50 border-2 border-slate-200 text-slate-700 hover:border-green-300'}">
+                    ${escapeHtml(b)}${jaIrrigados.has(b) ? `<span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${ativo ? 'bg-white' : 'bg-sky-500'}"></span>` : ''}</button>`;
+            }).join('');
+
+            // "Mesmo tempo para todos": um campo por tipo de sistema presente nos blocos marcados
+            const tiposMarcados = [...new Set(marcados.flatMap(sistemasDoBloco))];
+            const mesmoTempo = marcados.length > 1 ? `
+                <div class="rounded-xl border border-dashed border-green-300 bg-green-50/50 px-3 py-2.5">
+                    <p class="text-[10px] font-black text-green-800 uppercase tracking-widest mb-1.5 flex items-center gap-1"><i data-lucide="copy" class="w-3 h-3"></i> Mesmo tempo para todos os marcados</p>
+                    <div class="space-y-1.5">${tiposMarcados.map(tipo => `
+                        <div class="flex items-center gap-2">
+                            <span class="flex-1 min-w-0 flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                                <i data-lucide="${ICONE_SISTEMA[tipo] || 'timer'}" class="w-3.5 h-3.5 shrink-0 text-green-600"></i>
+                                <span class="truncate">${escapeHtml(tipo || 'Tempo total')}</span>
+                            </span>
+                            <input type="number" min="0" inputmode="numeric" placeholder="Minutos" data-tipo="${escapeHtml(tipo)}"
+                                oninput="window.aplicarMinLoteTodos(this)"
+                                class="w-28 bg-white border-2 border-green-200 rounded-lg py-2 px-2 text-sm font-medium text-slate-800">
+                        </div>`).join('')}
+                    </div>
+                    <p class="text-[10px] text-green-700/80 mt-1.5">Preenche todos os blocos marcados; depois dá para ajustar bloco por bloco.</p>
+                </div>` : '';
+
+            const cartoes = marcados.map(b => {
+                const apelido = apelidosBloco[b] || '';
+                const sistemas = sistemasDoBloco(b);
+                return `
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                    <div class="bg-green-50 px-3 py-2 border-b border-green-100 flex items-center justify-between gap-2">
+                        <span class="text-xs font-black text-green-800 uppercase tracking-wide truncate">Bloco ${escapeHtml(b)}${apelido ? ` <span class="normal-case font-bold text-green-700">· ${escapeHtml(apelido)}</span>` : ''}</span>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            ${jaIrrigados.has(b) ? '<span class="text-[9px] font-black uppercase tracking-wider text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">já irrigado</span>' : ''}
+                            <span data-lote-total="${escapeHtml(b)}" class="text-[11px] font-bold text-green-700"></span>
+                            <button type="button" onclick="window.alternarBlocoLote('${escapeHtml(b)}')" title="Tirar este bloco"
+                                class="p-1 text-slate-400 hover:text-red-500 rounded"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                    </div>
+                    <div class="px-3 py-2 space-y-1.5">${sistemas.map(tipo => `
+                        <div class="flex items-center gap-2">
+                            <span class="flex-1 min-w-0 flex items-center gap-1.5 text-sm font-bold text-slate-700">
+                                <i data-lucide="${ICONE_SISTEMA[tipo] || 'timer'}" class="w-4 h-4 shrink-0 text-green-600"></i>
+                                <span class="truncate">${escapeHtml(tipo || 'Tempo total')}</span>
+                            </span>
+                            <input type="number" min="0" inputmode="numeric" placeholder="Minutos"
+                                data-lote-bloco="${escapeHtml(b)}" data-tipo="${escapeHtml(tipo)}"
+                                value="${escapeHtml(String((loteMin[b] || {})[tipo] || ''))}" oninput="window.setMinLote(this)"
+                                class="w-28 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-medium text-slate-800 transition-all">
+                        </div>`).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+
+            caixa.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] font-bold text-slate-500">Toque nos blocos irrigados <span id="loteQtd" class="text-green-700"></span></span>
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="window.selecionarTodosLote(true)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">Todos</button>
+                        <button type="button" onclick="window.selecionarTodosLote(false)" class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">Limpar</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-6 sm:grid-cols-8 gap-1.5">${chips}</div>
+                <p class="flex items-center gap-1 text-[10px] font-medium text-slate-400 mt-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> já tem irrigação registrada nesta data</p>
+                ${marcados.length ? `<div class="mt-3 space-y-2">${mesmoTempo}${cartoes}</div>` : ''}
+                <div id="loteResumo" class="hidden mt-3 items-center gap-1.5 text-sm font-bold text-green-700 pl-1">
+                    <i data-lucide="clock" class="w-4 h-4"></i><span id="loteResumoTexto"></span>
+                </div>`;
+            atualizarResumoLote();
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        window.alternarBlocoLote = function(b) {
+            if (loteSel.has(b)) loteSel.delete(b); else loteSel.add(b);
+            renderLote();
+        }
+
+        window.selecionarTodosLote = function(todos) {
+            loteSel = new Set(todos ? blocosLoteOrdenados() : []);
+            renderLote();
+        }
+
+        // Digitando: só guarda o valor e atualiza os totais (sem redesenhar, para não perder o foco)
+        window.setMinLote = function(input) {
+            const b = input.dataset.loteBloco, tipo = input.dataset.tipo;
+            (loteMin[b] = loteMin[b] || {})[tipo] = Math.max(0, parseInt(input.value) || 0);
+            atualizarResumoLote();
+        }
+
+        window.aplicarMinLoteTodos = function(input) {
+            const tipo = input.dataset.tipo;
+            const v = Math.max(0, parseInt(input.value) || 0);
+            blocosMarcadosLote().forEach(b => {
+                if (!sistemasDoBloco(b).includes(tipo)) return;
+                (loteMin[b] = loteMin[b] || {})[tipo] = v;
+            });
+            document.querySelectorAll('#registroLote input[data-lote-bloco]').forEach(i => {
+                if (i.dataset.tipo === tipo) i.value = v || '';
+            });
+            atualizarResumoLote();
+        }
+
+        // Totais de cada bloco, resumo geral e texto do botão
+        function atualizarResumoLote() {
+            const marcados = modoLote ? blocosMarcadosLote() : [];
+            document.querySelectorAll('#registroLote [data-lote-total]').forEach(el => {
+                const m = minutosLoteBloco(el.dataset.loteTotal);
+                el.innerText = m ? formatDuration(m) : '';
+            });
+            const qtd = document.getElementById('loteQtd');
+            if (qtd) qtd.innerText = marcados.length ? `· ${marcados.length} marcado${marcados.length === 1 ? '' : 's'}` : '';
+            const comTempo = marcados.filter(b => minutosLoteBloco(b) > 0);
+            const total = comTempo.reduce((s, b) => s + minutosLoteBloco(b), 0);
+            const resumo = document.getElementById('loteResumo');
+            if (resumo) {
+                resumo.classList.toggle('hidden', !total);
+                resumo.classList.toggle('flex', !!total);
+                document.getElementById('loteResumoTexto').innerText = `${comTempo.length} bloco${comTempo.length === 1 ? '' : 's'} · total ${formatDuration(total)}`;
+            }
+            const txt = document.getElementById('submitBtnText');
+            if (txt && editingId === null && editingEquipeId === null) {
+                txt.innerText = modoLote && marcados.length
+                    ? `Registrar ${marcados.length} bloco${marcados.length === 1 ? '' : 's'}`
+                    : 'Registrar Irrigação';
+            }
+        }
+
+        function addRecordLote() {
+            const date = document.getElementById('date').value;
+            const observation = document.getElementById('observation').value;
+            const turnoEl = document.querySelector('input[name="turno"]:checked');
+            const turno = turnoEl ? turnoEl.value : '';
+            const marcados = blocosMarcadosLote();
+
+            if (!marcados.length) { window.showAlert("Escolha os blocos", "Toque nos blocos que foram irrigados (um ou vários)."); return; }
+            const semTempo = marcados.filter(b => minutosLoteBloco(b) <= 0);
+            if (semTempo.length) {
+                window.showAlert("Informe os minutos", `Falta o tempo de: ${semTempo.map(b => 'Bloco ' + b).join(', ')}. Coloque os minutos ou tire o bloco da seleção.`);
+                return;
+            }
+            if (HORA_MOTOR_ATIVA && records.length === 0 && !motorLigadoHora) {
+                window.showAlert("Hora Motor obrigatória", "Antes de registrar o primeiro bloco do dia, toque em \"Ligar Motor\" (logo abaixo da Data).");
+                return;
+            }
+            if (records.length === 0) {
+                expirationTime = Date.now() + (24 * 60 * 60 * 1000);
+                localStorage.setItem(API_chaveLocal('irrigation_expiration'), expirationTime);
+            }
+
+            // Ids numéricos e únicos (o banco usa o id do aparelho para não duplicar)
+            const base = Math.max(Date.now(), ...records.map(r => Number(r.id) || 0).map(n => n + 1));
+            const agora = new Date().toISOString();
+            marcados.forEach((block, i) => {
+                const porSistema = Object.entries(loteMin[block] || {})
+                    .map(([tipo, m]) => ({ tipo, minutos: Number(m) || 0 })).filter(s => s.minutos > 0);
+                const minutes = porSistema.reduce((s, x) => s + x.minutos, 0);
+                const sistemas = porSistema.filter(s => s.tipo);
+                const novo = { id: base + i, date, block, minutes, sistemas, turno, observation, registradoEm: agora };
+                records.push(novo);
+                API.salvarRegistro(novo);
+            });
+            records.sort((a, b) => a.block.localeCompare(b.block, undefined, {numeric: true}));
+
+            // Limpa para o próximo lançamento
+            loteSel = new Set();
+            loteMin = {};
+            document.getElementById('observation').value = '';
+            document.querySelectorAll('input[name="turno"]').forEach(r => r.checked = false);
+
+            saveData();
+            updateTimerDisplay();
+            renderLote();
+
+            const btn = document.getElementById('submitBtn');
+            btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> ${marcados.length} registro${marcados.length === 1 ? '' : 's'} salvo${marcados.length === 1 ? '' : 's'}!`;
+            btn.className = "btn-primary w-full bg-green-800 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+            setTimeout(() => {
+                btn.innerHTML = `<i data-lucide="save" class="w-5 h-5"></i> <span id="submitBtnText">Registrar Irrigação</span>`;
+                btn.className = "btn-primary w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2 touch-manipulation text-base";
+                atualizarResumoLote();
+                if(typeof lucide !== 'undefined') lucide.createIcons();
+            }, 1500);
+        }
+
+        // Abre no modo usado da última vez; trocar a data atualiza a marcação de "já irrigado"
+        window.setModoLote(modoLote, false);
+        document.getElementById('date').addEventListener('change', () => { if (modoLote) renderLote(); });
 
         window.escolherBlocoRegistro = function(bloco) {
             const campo = document.getElementById('block');
@@ -2789,6 +3054,11 @@
             const cancelBtn = document.getElementById('cancelEditBtn');
             if(cancelBtn) { cancelBtn.classList.add('hidden'); cancelBtn.classList.remove('flex'); }
 
+            // Fim da edição: volta a mostrar a escolha "um bloco / vários blocos"
+            document.getElementById('modoRegistroToggle').classList.remove('hidden');
+            if (voltarLoteAposEdicao) { voltarLoteAposEdicao = false; window.setModoLote(true, false); }
+            else atualizarResumoLote();
+
             if(typeof lucide !== 'undefined') lucide.createIcons();
             renderList();
         }
@@ -2805,6 +3075,7 @@
 
         window.addRecord = function(e) {
             e.preventDefault();
+            if (modoLote && editingId === null && editingEquipeId === null) { addRecordLote(); return; }
 
             const date = document.getElementById('date').value;
             const block = document.getElementById('block').value.toUpperCase();
@@ -2939,6 +3210,9 @@
         }
 
         function aplicarModoEdicao(titulo) {
+            // A edição é sempre de um registro só: sai do modo vários blocos enquanto edita
+            if (modoLote) { voltarLoteAposEdicao = true; window.setModoLote(false, false); }
+            document.getElementById('modoRegistroToggle').classList.add('hidden');
             const formContainer = document.getElementById('formContainer');
             formContainer.classList.add('ring-2', 'ring-amber-400');
             const header = formContainer.querySelector('.bg-gradient-to-r');
