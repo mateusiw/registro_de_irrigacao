@@ -1658,7 +1658,7 @@
         </div>
     </div>
 
-    <!-- ATUALIZAR APLICATIVO (gestor escolhe: só este aparelho ou todos) -->
+    <!-- ATUALIZAR APLICATIVO (administrador escolhe: só este aparelho ou todos) -->
     <div id="atualizarModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden items-center justify-center p-5 backdrop-blur-sm" onclick="if (event.target === this) window.fecharAtualizarModal()">
         <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl p-6 text-center">
             <div class="w-16 h-16 bg-sky-50 text-sky-600 rounded-full flex items-center justify-center mb-4 mx-auto">
@@ -12153,9 +12153,10 @@
 
         const AVISO_SEM_CONEXAO_ATUALIZAR = "Para atualizar o aplicativo é preciso estar com internet. Tente de novo quando tiver sinal.";
 
-        // Botão do topo: o gestor escolhe entre só este aparelho ou todos
+        // Botão do topo: o administrador escolhe entre só este aparelho ou todos;
+        // os demais (inclusive outros gestores) atualizam só o próprio aparelho
         window.atualizarApp = async function() {
-            if (!API.isGestor()) { window.atualizarEsteAparelho(); return; }
+            if (!API.isAdmin()) { window.atualizarEsteAparelho(); return; }
             const versao = await versaoInstalada();
             document.getElementById('atualizarModalVersao').innerText = versao ? `Versão instalada: ${versao}` : '';
             const modal = document.getElementById('atualizarModal');
@@ -12180,13 +12181,14 @@
                 "ATUALIZAR", "refresh-cw");
         };
 
-        // --- ATUALIZAR PARA TODOS (só gestor) ---
+        // --- ATUALIZAR PARA TODOS (só o administrador) ---
         // O número da versão publicada fica em app_versao (supabase/forcar_atualizacao.sql).
         // Cada aparelho guarda o último número que viu; quando o número sobe, recarrega.
         const CHAVE_VERSAO_FORCADA = 'irrigacao_versao_forcada';
         let atualizacaoForcadaEmAndamento = false;
 
         window.atualizarParaTodos = function() {
+            if (!API.isAdmin()) { window.atualizarEsteAparelho(); return; }
             pendingConfirmCallback = async () => {
                 document.getElementById('syncOverlayTexto').innerText = 'Avisando todos os aparelhos...';
                 window.showSyncOverlay();
