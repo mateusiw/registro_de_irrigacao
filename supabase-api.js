@@ -204,12 +204,37 @@
         return nome;
     }
 
-    // Minutos de cada sistema de um registro ([{ tipo, minutos }]), só os que têm tempo
+    // Minutos de cada sistema/válvula de um registro ([{ tipo, valvula?, minutos }]), só os que têm tempo
     function limparSistemas(sistemas) {
         const lista = (Array.isArray(sistemas) ? sistemas : [])
-            .map(s => ({ tipo: tipoSistema(s.tipo), minutos: Math.max(0, parseInt(s.minutos) || 0) }))
+            .map(s => {
+                const x = { tipo: tipoSistema(s.tipo), minutos: Math.max(0, parseInt(s.minutos) || 0) };
+                const v = parseInt(s.valvula);
+                if (v >= 1) x.valvula = v;
+                return x;
+            })
             .filter(s => s.minutos > 0);
         return lista.length ? lista : null;
+    }
+
+    // Válvulas de cada bloco: { bloco: [{ n, tipo, qtd, vazao, lh }] }, numeradas a partir de 1.
+    // Linhas dos Dados dos Blocos em ordem (id); uma linha com N válvulas vira N válvulas,
+    // cada uma com 1/N dos aspersores. Mesma regra do valvulas_do_bloco() do banco (minutos_por_valvula.sql).
+    function valvulasDoBloco(dados) {
+        const mapa = {};
+        [...(dados || [])].sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0)).forEach(linha => {
+            const b = limparNomeBloco(linha.bloco);
+            if (!b) return;
+            const mv = String(linha.valvulas || '').match(/(\d+)/);
+            const n = Math.max(1, mv ? parseInt(mv[1]) || 1 : 1);
+            const tipoTxt = String(linha.tipo_aspersor || '').trim();
+            const mz = tipoTxt.match(/([\d.,]+)\s*L\/H/i);
+            const vazao = mz ? parseFloat(mz[1].replace(',', '.')) || 0 : 0;
+            const qtd = parseFloat(String(linha.qtd_aspersores || '').trim().replace(/\./g, '').replace(/,/g, '.')) || 0;
+            const lista = mapa[b] = mapa[b] || [];
+            for (let i = 0; i < n; i++) lista.push({ n: lista.length + 1, tipo: tipoSistema(tipoTxt), qtd: qtd / n, vazao, lh: qtd / n * vazao });
+        });
+        return mapa;
     }
 
     // Erro do Supabase -> Error com status (status 0 = sem conexão)
@@ -704,8 +729,9 @@
         // Vazão de uma válvula (L/h): soma das vazões / nº de válvulas
         const lhUmaValvula = x => x && x.valvulas > 0 ? x.vazaoLh / x.valvulas : 0;
 
-        // Soma minutos e litros por bloco. Registro com minutos de cada sistema: cada parte
-        // usa a vazão do seu sistema; sem isso (ou sistema não cadastrado), a vazão do bloco.
+        // Soma minutos e litros por bloco. Registro com minutos por válvula: cada parte usa a vazão
+        // daquela válvula; por sistema: a do sistema; sem isso (ou não cadastrado), a vazão do bloco.
+        const valvulas = valvulasDoBloco(dados);
         const tempoPorBloco = {};
         const litrosPorBloco = {};
         registros.forEach(rec => {
@@ -716,7 +742,11 @@
             const lhBloco = lhUmaValvula({ vazaoLh: infos.vazaoTotalBlocoLh, valvulas: infos.qtdTotalValvulasNoBloco });
             const sistemas = limparSistemas(rec.sistemas);
             const litros = sistemas
-                ? sistemas.reduce((s, x) => s + (infos.porSistema[x.tipo] ? lhUmaValvula(infos.porSistema[x.tipo]) : lhBloco) * x.minutos / 60, 0)
+                ? sistemas.reduce((s, x) => {
+                    const v = x.valvula && (valvulas[blocoApp] || [])[x.valvula - 1];
+                    const lh = v ? v.lh : infos.porSistema[x.tipo] ? lhUmaValvula(infos.porSistema[x.tipo]) : lhBloco;
+                    return s + lh * x.minutos / 60;
+                }, 0)
                 : lhBloco * (rec.minutes || 0) / 60;
             litrosPorBloco[blocoApp] = (litrosPorBloco[blocoApp] || 0) + litros;
         });
@@ -1623,7 +1653,7 @@
         enviar, historico, programacaoAtual, listarVersoesBloco, listarRegistrosBloco, salvarProgramacaoItem, excluirProgramacaoItem,
         salvarRegistro, excluirRegistro, atualizarRegistroEquipe, excluirRegistroEquipe, salvarMotor, registrarEnvio,
         // dados dos blocos
-        limparNomeBloco, tipoSistema, listarDadosBlocos, salvarDadoBloco, excluirDadoBloco, recalcularVolumeBloco,
+        limparNomeBloco, tipoSistema, valvulasDoBloco, listarDadosBlocos, salvarDadoBloco, excluirDadoBloco, recalcularVolumeBloco,
         // água
         listarPocos, salvarPoco, listarLeiturasPocos, listarLeiturasDoPoco, salvarLeituraPoco, atualizarLeituraPoco, excluirLeituraPoco,
         listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, listarLeiturasReservPeriodo, salvarLeituraReservatorio, atualizarLeituraReservatorio, excluirLeituraReservatorio,
