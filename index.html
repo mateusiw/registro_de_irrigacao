@@ -1346,6 +1346,8 @@
                     class="ml-auto flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-white border-2 border-slate-200 text-slate-600 hover:border-slate-300">
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i> Atualizar
                 </button>
+                <!-- FILTRO DE BLOCOS (igual ao da aba Tendências) -->
+                <div id="resumoFiltros" class="w-full flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100"></div>
             </div>
             <div id="resumoConteudo" class="space-y-4"></div>
         </div>
@@ -2570,6 +2572,8 @@
         // ----- Bloco e minutos por sistema no registro -----
         // Sistemas de cada bloco cadastrado: { bloco: ['Fita Gotejo', 'MicroAspersor'] }
         let sistemasPorBlocoRegistro = null;
+        // Válvulas de cada bloco: { bloco: [{ n, tipo, qtd, vazao, lh }] }
+        let valvulasPorBlocoRegistro = {};
         const ICONE_SISTEMA = { 'Fita Gotejo': 'droplets', 'MicroAspersor': 'sprout', 'Aspersor': 'cloud-rain' };
 
         function montarSistemasRegistro(dados) {
@@ -2582,6 +2586,7 @@
                 if (!lista.includes(tipo)) lista.push(tipo);
             });
             sistemasPorBlocoRegistro = mapa;
+            valvulasPorBlocoRegistro = API.valvulasDoBloco(dados);
             renderBlocosRegistro();
         }
 
@@ -2662,7 +2667,6 @@
 
         const blocosLoteOrdenados = () => Object.keys(sistemasPorBlocoRegistro || {}).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         const blocosMarcadosLote = () => blocosLoteOrdenados().filter(b => loteSel.has(b));
-        const sistemasDoBloco = b => (sistemasPorBlocoRegistro && sistemasPorBlocoRegistro[b] && sistemasPorBlocoRegistro[b].length) ? sistemasPorBlocoRegistro[b] : [''];
         const minutosLoteBloco = b => Object.values(loteMin[b] || {}).reduce((s, v) => s + (Number(v) || 0), 0);
 
         var voltarLoteAposEdicao = false;
@@ -2721,10 +2725,11 @@
             }).join('');
 
             // "Mesmo tempo para todos": um campo por tipo de sistema presente nos blocos marcados
-            const tiposMarcados = [...new Set(marcados.flatMap(sistemasDoBloco))];
+            // (vale para cada válvula daquele sistema)
+            const tiposMarcados = [...new Set(marcados.flatMap(b => camposMinutosBloco(b).map(c => c.tipo)))];
             const mesmoTempo = marcados.length > 1 ? `
                 <div class="rounded-xl border border-dashed border-green-300 bg-green-50/50 px-3 py-2.5">
-                    <p class="text-[10px] font-black text-green-800 uppercase tracking-widest mb-1.5 flex items-center gap-1"><i data-lucide="copy" class="w-3 h-3"></i> Mesmo tempo para todos os marcados</p>
+                    <p class="text-[10px] font-black text-green-800 uppercase tracking-widest mb-1.5 flex items-center gap-1"><i data-lucide="copy" class="w-3 h-3"></i> Mesmo tempo para todos os marcados (por válvula)</p>
                     <div class="space-y-1.5">${tiposMarcados.map(tipo => `
                         <div class="flex items-center gap-2">
                             <span class="flex-1 min-w-0 flex items-center gap-1.5 text-xs font-bold text-slate-600">
@@ -2736,12 +2741,12 @@
                                 class="w-28 bg-white border-2 border-green-200 rounded-lg py-2 px-2 text-sm font-medium text-slate-800">
                         </div>`).join('')}
                     </div>
-                    <p class="text-[10px] text-green-700/80 mt-1.5">Preenche todos os blocos marcados; depois dá para ajustar bloco por bloco.</p>
+                    <p class="text-[10px] text-green-700/80 mt-1.5">Preenche cada válvula dos blocos marcados; depois dá para ajustar válvula por válvula.</p>
                 </div>` : '';
 
             const cartoes = marcados.map(b => {
                 const apelido = apelidosBloco[b] || '';
-                const sistemas = sistemasDoBloco(b);
+                const campos = camposMinutosBloco(b);
                 return `
                 <div class="border border-slate-200 rounded-xl overflow-hidden">
                     <div class="bg-green-50 px-3 py-2 border-b border-green-100 flex items-center justify-between gap-2">
@@ -2753,15 +2758,15 @@
                                 class="p-1 text-slate-400 hover:text-red-500 rounded"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
                         </div>
                     </div>
-                    <div class="px-3 py-2 space-y-1.5">${sistemas.map(tipo => `
+                    <div class="px-3 py-2 space-y-1.5">${campos.map(c => `
                         <div class="flex items-center gap-2">
                             <span class="flex-1 min-w-0 flex items-center gap-1.5 text-sm font-bold text-slate-700">
-                                <i data-lucide="${ICONE_SISTEMA[tipo] || 'timer'}" class="w-4 h-4 shrink-0 text-green-600"></i>
-                                <span class="truncate">${escapeHtml(tipo || 'Tempo total')}</span>
+                                <i data-lucide="${ICONE_SISTEMA[c.tipo] || 'timer'}" class="w-4 h-4 shrink-0 text-green-600"></i>
+                                <span class="min-w-0"><span class="block truncate">${escapeHtml(c.rotulo)}</span>${c.detalhe ? `<span class="block text-[10px] font-medium text-slate-400 truncate">${escapeHtml(c.detalhe)}</span>` : ''}</span>
                             </span>
                             <input type="number" min="0" inputmode="numeric" placeholder="Minutos"
-                                data-lote-bloco="${escapeHtml(b)}" data-tipo="${escapeHtml(tipo)}"
-                                value="${escapeHtml(String((loteMin[b] || {})[tipo] || ''))}" oninput="window.setMinLote(this)"
+                                data-lote-bloco="${escapeHtml(b)}" data-chave="${escapeHtml(c.chave)}" data-tipo="${escapeHtml(c.tipo)}"
+                                value="${escapeHtml(String((loteMin[b] || {})[c.chave] || ''))}" oninput="window.setMinLote(this)"
                                 class="w-28 bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-3 text-sm font-medium text-slate-800 transition-all">
                         </div>`).join('')}
                     </div>
@@ -2799,8 +2804,8 @@
 
         // Digitando: só guarda o valor e atualiza os totais (sem redesenhar, para não perder o foco)
         window.setMinLote = function(input) {
-            const b = input.dataset.loteBloco, tipo = input.dataset.tipo;
-            (loteMin[b] = loteMin[b] || {})[tipo] = Math.max(0, parseInt(input.value) || 0);
+            const b = input.dataset.loteBloco, chave = input.dataset.chave;
+            (loteMin[b] = loteMin[b] || {})[chave] = Math.max(0, parseInt(input.value) || 0);
             atualizarResumoLote();
         }
 
@@ -2808,8 +2813,7 @@
             const tipo = input.dataset.tipo;
             const v = Math.max(0, parseInt(input.value) || 0);
             blocosMarcadosLote().forEach(b => {
-                if (!sistemasDoBloco(b).includes(tipo)) return;
-                (loteMin[b] = loteMin[b] || {})[tipo] = v;
+                camposMinutosBloco(b).filter(c => c.tipo === tipo).forEach(c => (loteMin[b] = loteMin[b] || {})[c.chave] = v);
             });
             document.querySelectorAll('#registroLote input[data-lote-bloco]').forEach(i => {
                 if (i.dataset.tipo === tipo) i.value = v || '';
@@ -2868,8 +2872,12 @@
             const base = Math.max(Date.now(), ...records.map(r => Number(r.id) || 0).map(n => n + 1));
             const agora = new Date().toISOString();
             marcados.forEach((block, i) => {
-                const porSistema = Object.entries(loteMin[block] || {})
-                    .map(([tipo, m]) => ({ tipo, minutos: Number(m) || 0 })).filter(s => s.minutos > 0);
+                const porSistema = camposMinutosBloco(block)
+                    .map(c => {
+                        const s = { tipo: c.tipo, minutos: Number((loteMin[block] || {})[c.chave]) || 0 };
+                        if (c.valvula) s.valvula = c.valvula;
+                        return s;
+                    }).filter(s => s.minutos > 0);
                 const minutes = porSistema.reduce((s, x) => s + x.minutos, 0);
                 const sistemas = porSistema.filter(s => s.tipo);
                 const novo = { id: base + i, date, block, minutes, sistemas, turno, observation, registradoEm: agora };
@@ -2912,67 +2920,119 @@
             renderGradeBlocos();
             renderMinutosSistemas({});   // outro bloco: campos de minutos vazios
             window.atualizarAvisoBloco();
-            const primeiro = document.querySelector('#minutosSistemas input[data-tipo]');
+            const primeiro = document.querySelector('#minutosSistemas input[data-chave]');
             if (primeiro) primeiro.focus({ preventScroll: true });
         }
 
-        // Campos de minutos do bloco escolhido. valores = { tipo: minutos } para preencher (edição).
-        // Bloco sem sistemas cadastrados: um campo só de tempo total.
-        function renderMinutosSistemas(valores, totalAntigo) {
+        // Campos de minutos de um bloco: um por válvula (cada válvula pode ter aspersores diferentes).
+        // [{ chave, tipo, valvula, rotulo, detalhe }]. Bloco sem cadastro: um campo só de tempo total.
+        function camposMinutosBloco(bloco) {
+            const valvulas = (valvulasPorBlocoRegistro && valvulasPorBlocoRegistro[bloco]) || [];
+            if (!valvulas.length) return [{ chave: '', tipo: '', valvula: null, rotulo: 'Tempo total', detalhe: '' }];
+            const asp = v => v.qtd > 0 ? `${fmtNum(v.qtd, 0)} aspersor${Math.round(v.qtd) === 1 ? '' : 'es'}` : '';
+            if (valvulas.length === 1) {
+                const v = valvulas[0];
+                return [{ chave: 'v1', tipo: v.tipo, valvula: 1, rotulo: v.tipo, detalhe: asp(v) }];
+            }
+            return valvulas.map(v => ({ chave: 'v' + v.n, tipo: v.tipo, valvula: v.n, rotulo: `Válvula ${v.n}`, detalhe: [v.tipo, asp(v)].filter(Boolean).join(' · ') }));
+        }
+
+        // Minutos de um registro já salvo nos campos do bloco: { chave: minutos } e um aviso, se precisou adivinhar.
+        // Registro por sistema (antes das válvulas): divide o tempo do sistema igual entre as válvulas dele
+        // (dá o mesmo volume da conta antiga). Registro só com o total: com um campo, é dele; senão pede para informar.
+        function valoresMinutosBloco(bloco, minutos, sistemas) {
+            const campos = camposMinutosBloco(bloco);
+            const valores = {};
+            const somar = (c, m) => { valores[c.chave] = (Number(valores[c.chave]) || 0) + m; };
+            let dividiu = false, semLugar = 0;
+            const lista = (sistemas || []).filter(s => Number(s.minutos) > 0);
+            lista.forEach(s => {
+                const m = Number(s.minutos);
+                const daValvula = s.valvula && campos.find(c => c.valvula === Number(s.valvula));
+                if (daValvula) return somar(daValvula, m);
+                const doTipo = campos.filter(c => c.valvula && c.tipo === API.tipoSistema(s.tipo));
+                if (!doTipo.length) {
+                    if (campos.length === 1) somar(campos[0], m); else semLugar += m;
+                    return;
+                }
+                const base = Math.floor(m / doTipo.length);
+                doTipo.forEach((c, k) => somar(c, base + (k < m - base * doTipo.length ? 1 : 0)));
+                if (doTipo.length > 1) dividiu = true;
+            });
+            if (!lista.length && minutos) {
+                if (campos.length === 1) somar(campos[0], Number(minutos)); else semLugar = Number(minutos);
+            }
+            let aviso = '';
+            if (semLugar) aviso = `Registro feito antes da divisão por válvula: ${formatDuration(semLugar)} sem válvula definida. Informe quanto foi em cada válvula.`;
+            else if (dividiu) aviso = 'Registro feito antes da divisão por válvula: o tempo de cada sistema foi dividido igual entre as válvulas. Ajuste se foi diferente.';
+            return { valores, aviso };
+        }
+
+        // Campos de minutos do bloco escolhido. valores = { chave: minutos } para preencher (edição).
+        function renderMinutosSistemas(valores, aviso) {
             const caixa = document.getElementById('minutosSistemas');
             if (!caixa) return;
             const bloco = document.getElementById('block').value;
             if (!valores) {
                 valores = {};
-                caixa.querySelectorAll('input[data-tipo]').forEach(i => { if (i.value) valores[i.dataset.tipo] = i.value; });
+                caixa.querySelectorAll('input[data-chave]').forEach(i => { if (i.value) valores[i.dataset.chave] = i.value; });
             }
             if (!bloco) {
-                caixa.innerHTML = '<p class="text-xs font-medium text-slate-400 pl-1">Escolha o bloco para informar o tempo de cada sistema.</p>';
+                caixa.innerHTML = '<p class="text-xs font-medium text-slate-400 pl-1">Escolha o bloco para informar o tempo de cada válvula.</p>';
                 window.updateMinutesHelper();
                 return;
             }
-            const sistemas = (sistemasPorBlocoRegistro && sistemasPorBlocoRegistro[bloco]) || [''];
-            caixa.innerHTML = sistemas.map(tipo => `
+            const campos = camposMinutosBloco(bloco);
+            caixa.innerHTML = (campos.length > 1 ? '<p class="text-[11px] font-medium text-slate-400 pl-1 -mt-1">Minutos que cada válvula ficou aberta (deixe vazio a que não abriu).</p>' : '') +
+                campos.map(c => `
                 <div class="flex items-center gap-2">
                     <span class="flex-1 min-w-0 flex items-center gap-1.5 text-sm font-bold text-slate-700">
-                        <i data-lucide="${ICONE_SISTEMA[tipo] || 'timer'}" class="w-4 h-4 shrink-0 text-green-600"></i>
-                        <span class="truncate">${escapeHtml(tipo || 'Tempo total')}</span>
+                        <i data-lucide="${ICONE_SISTEMA[c.tipo] || 'timer'}" class="w-4 h-4 shrink-0 text-green-600"></i>
+                        <span class="min-w-0"><span class="block truncate">${escapeHtml(c.rotulo)}</span>${c.detalhe ? `<span class="block text-[11px] font-medium text-slate-400 truncate">${escapeHtml(c.detalhe)}</span>` : ''}</span>
                     </span>
-                    <input type="number" min="0" inputmode="numeric" placeholder="Minutos" data-tipo="${escapeHtml(tipo)}"
-                        value="${escapeHtml(String(valores[tipo] || ''))}" oninput="window.updateMinutesHelper()"
+                    <input type="number" min="0" inputmode="numeric" placeholder="Minutos" data-chave="${escapeHtml(c.chave)}" data-tipo="${escapeHtml(c.tipo)}" data-valvula="${c.valvula || ''}"
+                        value="${escapeHtml(String(valores[c.chave] || ''))}" oninput="window.updateMinutesHelper()"
                         class="w-32 bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-3 text-sm font-medium text-slate-800 transition-all">
                 </div>`).join('') +
-                (totalAntigo ? `<p class="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">Registro feito antes da divisão por sistema: ${formatDuration(totalAntigo)} no total. Informe quanto foi em cada sistema.</p>` : '');
+                (aviso ? `<p class="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">${escapeHtml(aviso)}</p>` : '');
             window.updateMinutesHelper();
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        // Minutos digitados em cada sistema: [{ tipo, minutos }] (tipo '' = bloco sem sistemas cadastrados)
+        // Minutos digitados: [{ tipo, valvula, minutos }] (tipo '' = bloco sem sistemas cadastrados)
         function lerMinutosSistemas() {
-            return [...document.querySelectorAll('#minutosSistemas input[data-tipo]')]
-                .map(i => ({ tipo: i.dataset.tipo, minutos: Math.max(0, parseInt(i.value) || 0) }))
+            return [...document.querySelectorAll('#minutosSistemas input[data-chave]')]
+                .map(i => {
+                    const s = { tipo: i.dataset.tipo, minutos: Math.max(0, parseInt(i.value) || 0) };
+                    if (i.dataset.valvula) s.valvula = Number(i.dataset.valvula);
+                    return s;
+                })
                 .filter(s => s.minutos > 0);
         }
 
-        // Preenche o bloco e os minutos de cada sistema ao editar um registro
+        // Preenche o bloco e os minutos de cada válvula ao editar um registro
         function preencherBlocoEMinutos(bloco, minutos, sistemas) {
             renderBlocosRegistro(bloco);
-            const valores = {};
-            (sistemas || []).forEach(s => { valores[s.tipo] = (Number(valores[s.tipo]) || 0) + (Number(s.minutos) || 0); });
-            const doBloco = (sistemasPorBlocoRegistro && sistemasPorBlocoRegistro[bloco]) || [''];
-            let totalAntigo = 0;
-            if (!sistemas || !sistemas.length) {
-                // Registro antigo: com um sistema só, o total é dele; com vários, pede para dividir
-                if (doBloco.length === 1) valores[doBloco[0]] = minutos || '';
-                else totalAntigo = minutos || 0;
-            }
-            renderMinutosSistemas(valores, totalAntigo);
+            const { valores, aviso } = valoresMinutosBloco(bloco, minutos, sistemas);
+            renderMinutosSistemas(valores, aviso);
         }
 
-        // "Fita Gotejo 10min · MicroAspersor 25min" (vazio se o registro não foi dividido)
+        // "MicroAspersor 25min · Fita Gotejo 10min"; com válvulas: "MicroAspersor (V1 30min, V2 45min)"
+        // (vazio se o registro não foi dividido)
         function textoSistemas(sistemas) {
             const lista = (sistemas || []).filter(s => s.tipo && Number(s.minutos) > 0);
-            return lista.map(s => `${s.tipo} ${formatDuration(Number(s.minutos))}`).join(' · ');
+            const grupos = [];
+            lista.forEach(s => {
+                let g = grupos.find(x => x.tipo === s.tipo);
+                if (!g) grupos.push(g = { tipo: s.tipo, partes: [] });
+                g.partes.push(s);
+            });
+            return grupos.map(g => {
+                const comValvula = g.partes.filter(s => s.valvula);
+                const total = g.partes.reduce((t, s) => t + Number(s.minutos), 0);
+                if (comValvula.length < 2) return `${g.tipo} ${formatDuration(total)}`;
+                return `${g.tipo} (${g.partes.map(s => `${s.valvula ? 'V' + s.valvula + ' ' : ''}${formatDuration(Number(s.minutos))}`).join(', ')})`;
+            }).join(' · ');
         }
 
         window.updateMinutesHelper = function() {
@@ -2984,7 +3044,7 @@
             const h = Math.floor(val / 60);
             const m = val % 60;
             const tempo = h === 0 ? `${m} minutos` : m === 0 ? `${h}h` : `${h}h ${m}min`;
-            helperText.innerText = document.querySelectorAll('#minutosSistemas input[data-tipo]').length > 1 ? `Total: ${tempo}` : tempo;
+            helperText.innerText = document.querySelectorAll('#minutosSistemas input[data-chave]').length > 1 ? `Total: ${tempo}` : tempo;
             helper.classList.remove('hidden');
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -4961,7 +5021,7 @@
             const blocos = new Set(r.itens.map(i => String(i.block))).size;
             L.push('', `⏱️ Total: ${blocos} bloco${blocos === 1 ? '' : 's'} · ${formatDuration(r.itens.reduce((s, i) => s + (i.minutes || 0), 0))} de irrigação`);
             L.push('', '📲 A programação também está disponível para consulta no aplicativo, na aba *Programação*.');
-            L.push('', `_Gerado pelo app em ${new Date().toLocaleDateString('pt-BR')} ${fmtHora(new Date().toISOString())} por ${API.nomeUsuario()}_`);
+            L.push('', `_Gerado pelo Sistema de Irrigação em ${new Date().toLocaleDateString('pt-BR')} ${fmtHora(new Date().toISOString())} por ${API.nomeUsuario()}_`);
             return L.join('\n');
         }
 
@@ -7563,7 +7623,26 @@
                 nivel: comparar(nivel ? Number(nivel.nivel_m) : null, nivelAnt)
             };
 
-            ultimoBalanco = { de, ate, umDia, entrada, saida, somaVazao, comDados, semDados, blocos, legenda, nivel, pctNivel, varTotais, registros, taxas, leituras, horasRegs };
+            // ----- Água por sistema (aspersor, fita, gotejo...), para o texto do WhatsApp -----
+            const dadosBlocos = await API.listarDadosBlocos().catch(() => []);
+            if (deInput.value !== de || ateInput.value !== ate) return;
+            const vazoesSis = vazaoSistemasPorBloco(dadosBlocos);
+            const valvulasBl = API.valvulasDoBloco(dadosBlocos);
+            const porSistema = {};
+            registros.forEach(r => {
+                const bl = API.limparNomeBloco(r.bloco);
+                if (!bl) return;
+                partesPorSistema(r, litrosDoRegistro(r, taxas), vazoesSis[bl], valvulasBl[bl]).forEach(p => {
+                    const s = porSistema[p.tipo] = porSistema[p.tipo] || { tipo: p.tipo, minutos: 0, litros: 0, semDados: true, blocos: new Set() };
+                    s.minutos += p.minutos;
+                    if (p.litros != null) { s.litros += p.litros; s.semDados = false; }
+                    s.blocos.add(bl);
+                });
+            });
+            const sistemas = Object.values(porSistema).sort((x, y) =>
+                (x.tipo === SEM_DIVISAO) - (y.tipo === SEM_DIVISAO) || y.litros - x.litros || y.minutos - x.minutos);
+
+            ultimoBalanco = { de, ate, umDia, entrada, saida, somaVazao, comDados, semDados, blocos, legenda, nivel, pctNivel, varTotais, registros, taxas, leituras, horasRegs, sistemas };
 
             // ----- Resumo -----
             document.getElementById('balancoResumo').innerHTML = cartoesResumoBalanco(ultimoBalanco, 1).join('');
@@ -7740,8 +7819,6 @@
             const diferenca = b.entrada - b.saida;
             const linhas = [];
 
-            linhas.push('@all');
-            linhas.push('');
             linhas.push(`💧 *BALANÇO DE ÁGUA*`);
             linhas.push(`📅 ${rotuloPeriodo(b.de, b.ate)}`);
             linhas.push('');
@@ -7797,8 +7874,30 @@
                 destaques.forEach(d => linhas.push(`• ${d}`));
             }
 
+            // ----- Água por sistema (aspersor, fita, gotejo...) -----
+            const sistemas = (b.sistemas || []).filter(s => s.minutos > 0);
+            if (sistemas.length) {
+                const totalSis = sistemas.reduce((s, x) => s + x.litros, 0);
+                const reais = sistemas.filter(s => s.tipo !== SEM_DIVISAO && !s.semDados && s.litros > 0);
+                linhas.push('');
+                linhas.push('🌱 *Água por sistema*');
+                sistemas.forEach(s => {
+                    const lh = !s.semDados && s.minutos > 0 ? s.litros / (s.minutos / 60) : null;
+                    const nb = s.blocos.size;
+                    linhas.push(`• ${s.tipo}: ${s.semDados ? 'sem dados para calcular litros' : `*${fmtLh(s.litros)} L*${totalSis > 0 ? ` (${fmtNum(s.litros / totalSis * 100, 0)}%)` : ''}`}` +
+                        ` · ${formatDuration(s.minutos)}${lh != null ? ` · ${fmtLh(lh)} L/h` : ''} · ${nb} bloco${nb === 1 ? '' : 's'}`);
+                });
+                if (reais.length > 1) {
+                    const maisPorHora = reais.map(s => ({ ...s, lh: s.litros / (s.minutos / 60) })).sort((x, y) => y.lh - x.lh)[0];
+                    linhas.push(`🏆 Mais usou água: *${reais[0].tipo}*` +
+                        (maisPorHora.tipo !== reais[0].tipo ? ` · por hora ligado, quem gasta mais é *${maisPorHora.tipo}*` : ''));
+                }
+                if (sistemas.some(s => s.tipo === SEM_DIVISAO))
+                    linhas.push(`_"${SEM_DIVISAO}" = registros de blocos com mais de um sistema sem os minutos de cada sistema._`);
+            }
+
             linhas.push('');
-            linhas.push(`_Gerado pelo app em ${new Date().toLocaleDateString('pt-BR')} ${fmtHora(new Date().toISOString())} por ${API.nomeUsuario()}_`);
+            linhas.push(`_Gerado pelo Sistema de Irrigação em ${new Date().toLocaleDateString('pt-BR')} ${fmtHora(new Date().toISOString())} por ${API.nomeUsuario()}_`);
             return linhas.join('\n');
         }
 
@@ -8761,14 +8860,19 @@
         // Partes de um registro por sistema: [{ tipo, minutos, litros }]. Os litros do registro (vazão
         // congelada) são repartidos pela vazão atual de cada sistema × tempo dele. Registro antigo
         // (sem minutos por sistema): bloco com um sistema só fica com ele; com vários, "Sem divisão".
-        function partesPorSistema(r, litros, vazoesBloco) {
+        // Com minutos por válvula, o peso de cada parte usa a vazão daquela válvula (valvulasBloco).
+        function partesPorSistema(r, litros, vazoesBloco, valvulasBloco) {
             const total = Number(r.minutos) || 0;
             const tipos = Object.keys(vazoesBloco || {});
             let partes = Array.isArray(r.minutos_sistema)
-                ? r.minutos_sistema.map(s => ({ tipo: API.tipoSistema(s.tipo), minutos: Number(s.minutos) || 0 })).filter(s => s.minutos > 0)
+                ? r.minutos_sistema.map(s => ({ tipo: API.tipoSistema(s.tipo), valvula: Number(s.valvula) || null, minutos: Number(s.minutos) || 0 })).filter(s => s.minutos > 0)
                 : [];
-            if (!partes.length) partes = total > 0 ? [{ tipo: tipos.length === 1 ? tipos[0] : SEM_DIVISAO, minutos: total }] : [];
-            const pesos = partes.map(p => (vazoesBloco && vazoesBloco[p.tipo] || 0) * p.minutos);
+            if (!partes.length) partes = total > 0 ? [{ tipo: tipos.length === 1 ? tipos[0] : SEM_DIVISAO, valvula: null, minutos: total }] : [];
+            const lpmParte = p => {
+                const v = p.valvula && (valvulasBloco || [])[p.valvula - 1];
+                return v ? v.lh / 60 : (vazoesBloco && vazoesBloco[p.tipo] || 0);
+            };
+            const pesos = partes.map(p => lpmParte(p) * p.minutos);
             const somaPesos = pesos.reduce((s, x) => s + x, 0);
             const somaMin = partes.reduce((s, p) => s + p.minutos, 0);
             return partes.map((p, k) => ({
@@ -8802,13 +8906,14 @@
             const litDiaBloco = dias.map(() => ({}));
             // Por sistema: { bloco: { tipo: { minutos, litros } } } em cada dia (litros null = bloco sem dados)
             const vazoesSis = vazaoSistemasPorBloco(dadosBlocos);
+            const valvulasBl = API.valvulasDoBloco(dadosBlocos);
             const sisDiaBloco = dias.map(() => ({}));
             registros.forEach(r => {
                 const i = idx[r.data];
                 const b = API.limparNomeBloco(r.bloco);
                 const l = litrosDoRegistro(r, taxas);
                 if (i == null || !b) return;
-                partesPorSistema(r, l, vazoesSis[b]).forEach(p => {
+                partesPorSistema(r, l, vazoesSis[b], valvulasBl[b]).forEach(p => {
                     const s = ((sisDiaBloco[i][b] = sisDiaBloco[i][b] || {})[p.tipo] = sisDiaBloco[i][b][p.tipo] || { minutos: 0, litros: null });
                     s.minutos += p.minutos;
                     if (p.litros != null) s.litros = (s.litros || 0) + p.litros;
@@ -9321,7 +9426,6 @@
 
         // ===== ABA RESUMO: tudo do período num olhar (sem os filtros da aba Tendências) =====
         let resumoPedido = 0;
-        const FILTRO_VAZIO = { pocos: new Set(), blocos: new Set(), sistemas: new Set() };
 
         window.periodoResumo = function(dias) {
             const hoje = new Date();
@@ -9359,7 +9463,9 @@
                 const [g, culturas] = await Promise.all([dadosGraficosPeriodo(de, ate), API.listarCulturas().catch(() => [])]);
                 if (pedido !== resumoPedido) return;
                 atualizarApelidos(culturas);
-                caixa.innerHTML = htmlResumo(agregarGraficos(g, FILTRO_VAZIO), culturas || []);
+                ultimoResumo = { g, culturas: culturas || [] };
+                renderResumo();
+                return;
             } catch (err) {
                 console.error(err);
                 if (pedido === resumoPedido) caixa.innerHTML = `<p class="text-xs text-rose-500 py-6 text-center">Não foi possível carregar os dados.</p>`;
@@ -9367,7 +9473,132 @@
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        function htmlResumo(a, culturas) {
+        // ----- Filtro de blocos do Resumo (lembrado no aparelho, separado do da aba Tendências) -----
+        const filtroResumo = (() => {
+            let blocos = [];
+            try { blocos = JSON.parse(localStorage.getItem('irrigacao_resumo_blocos')) || []; } catch (e) {}
+            return { pocos: new Set(), blocos: new Set(blocos), sistemas: new Set() };
+        })();
+        let ultimoResumo = null;
+        let filtroResumoAberto = false;
+        let buscaResumo = '';
+
+        function opcoesBlocosResumo() {
+            if (!ultimoResumo) return [];
+            const blocos = new Set(ultimoResumo.g.minDiaBloco.flatMap(o => Object.keys(o)));
+            filtroResumo.blocos.forEach(b => blocos.add(b));
+            return [...blocos].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+                .map(b => ({ id: b, nome: rotuloBloco(b) }));
+        }
+
+        function renderFiltroResumo() {
+            const box = document.getElementById('resumoFiltros');
+            if (!box) return;
+            const sel = filtroResumo.blocos;
+            const opcoes = opcoesBlocosResumo();
+            const texto = !sel.size ? 'Todos' : sel.size <= 3 ? [...sel].join(', ') : `${sel.size} selecionados`;
+            const atalho = (preset, txt, icone) => `<button type="button" onclick="window.presetFiltroResumo('${preset}')"
+                class="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"><i data-lucide="${icone}" class="w-3 h-3"></i>${txt}</button>`;
+            const chips = opcoes.map(o => {
+                const on = sel.has(o.id);
+                return `<button type="button" data-busca="${escapeHtml(o.nome.toLowerCase())}" title="${escapeHtml(o.nome)}"
+                    onclick="window.alternarBlocoResumo('${escapeHtml(o.id)}')"
+                    class="${buscaResumo && !o.nome.toLowerCase().includes(buscaResumo) ? 'hidden ' : ''}flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl border-2 text-xs font-black transition-all active:scale-95
+                    ${on ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300'}">
+                    ${on ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}${escapeHtml(o.id)}</button>`;
+            }).join('');
+            box.innerHTML = `
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Filtro</span>
+                <div class="relative">
+                    <button type="button" onclick="window.abrirFiltroResumo()" aria-expanded="${filtroResumoAberto}"
+                        class="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-full border-2 text-xs font-bold transition-all
+                        ${sel.size ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}">
+                        <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                        <span>Blocos: <span class="font-black">${escapeHtml(texto)}</span></span>
+                        ${sel.size ? `<span class="min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-600 text-white text-[10px] font-black leading-[18px] text-center">${sel.size}</span>` : ''}
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 opacity-60 transition-transform ${filtroResumoAberto ? 'rotate-180' : ''}"></i>
+                    </button>
+                    ${filtroResumoAberto ? `
+                    <div class="fixed inset-0 z-[60] bg-slate-900/30 sm:bg-transparent" onclick="window.fecharFiltroResumo()"></div>
+                    <div class="fixed inset-x-0 bottom-0 z-[61] max-h-[80vh] overflow-y-auto bg-white rounded-t-3xl shadow-2xl border border-slate-200 p-4 pb-6 safe-area-bottom
+                                sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-0 sm:top-full sm:mt-2 sm:w-[24rem] sm:max-h-[28rem] sm:rounded-2xl sm:pb-4">
+                        <div class="w-10 h-1 rounded-full bg-slate-200 mx-auto mb-3 sm:hidden"></div>
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <p class="text-sm font-black text-slate-800 flex items-center gap-1.5"><i data-lucide="layers" class="w-4 h-4 text-emerald-600"></i> Filtrar blocos</p>
+                            <button type="button" onclick="window.fecharFiltroResumo()" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100" title="Fechar"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        </div>
+                        <div class="relative mb-3">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                            <input type="search" value="${escapeHtml(buscaResumo)}" oninput="window.buscarFiltroResumo(this.value)" placeholder="Buscar bloco..."
+                                class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2 pl-9 pr-3 text-sm font-medium text-slate-800">
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 mb-3">
+                            ${atalho('todos', 'Todos', 'list-checks')}
+                            ${atalho('inverter', 'Inverter', 'arrow-left-right')}
+                        </div>
+                        <div id="resumoFiltroChips" class="grid grid-cols-4 sm:grid-cols-5 gap-1.5">${chips || '<p class="col-span-full text-xs text-slate-400 py-3 text-center">Nada no período.</p>'}</div>
+                        <div class="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-100">
+                            <span class="text-[11px] font-bold text-slate-400">${sel.size ? `${sel.size} de ${opcoes.length} selecionado${sel.size === 1 ? '' : 's'}` : `Todos os ${opcoes.length}`}</span>
+                            <button type="button" onclick="window.fecharFiltroResumo()" class="text-xs font-black px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">Pronto</button>
+                        </div>
+                    </div>` : ''}
+                </div>
+                ${sel.size ? `<button type="button" onclick="window.presetFiltroResumo('todos')" class="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-rose-600 px-2 py-1.5"><i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Limpar filtro</button>` : ''}`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function renderResumo() {
+            renderFiltroResumo();
+            if (!ultimoResumo) return;
+            const caixa = document.getElementById('resumoConteudo');
+            caixa.innerHTML = htmlResumo(agregarGraficos(ultimoResumo.g, filtroResumo), ultimoResumo.culturas, filtroResumo.blocos.size > 0);
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function aplicarFiltroResumo() {
+            try { localStorage.setItem('irrigacao_resumo_blocos', JSON.stringify([...filtroResumo.blocos])); } catch (e) {}
+            renderResumo();
+        }
+
+        window.abrirFiltroResumo = function() {
+            filtroResumoAberto = !filtroResumoAberto;
+            buscaResumo = '';
+            renderFiltroResumo();
+        }
+
+        window.fecharFiltroResumo = function() {
+            if (!filtroResumoAberto) return;
+            filtroResumoAberto = false;
+            buscaResumo = '';
+            renderFiltroResumo();
+        }
+
+        window.alternarBlocoResumo = function(id) {
+            const sel = filtroResumo.blocos;
+            if (sel.has(id)) sel.delete(id); else sel.add(id);
+            if (sel.size === opcoesBlocosResumo().length) sel.clear(); // marcar todos = sem filtro
+            aplicarFiltroResumo();
+        }
+
+        window.presetFiltroResumo = function(preset) {
+            const sel = filtroResumo.blocos;
+            const ids = opcoesBlocosResumo().map(o => o.id);
+            const novos = preset === 'inverter' && sel.size ? ids.filter(id => !sel.has(id)) : [];
+            sel.clear();
+            if (novos.length < ids.length) novos.forEach(id => sel.add(id));
+            aplicarFiltroResumo();
+        }
+
+        window.buscarFiltroResumo = function(valor) {
+            buscaResumo = String(valor || '').trim().toLowerCase();
+            document.querySelectorAll('#resumoFiltroChips [data-busca]').forEach(b =>
+                b.classList.toggle('hidden', !!buscaResumo && !b.dataset.busca.includes(buscaResumo)));
+        }
+
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && filtroResumoAberto) window.fecharFiltroResumo(); });
+
+        function htmlResumo(a, culturas, filtrado) {
+            const blocosFiltro = [...filtroResumo.blocos].sort((x, y) => x.localeCompare(y, undefined, { numeric: true }));
             const cartaoSecao = (icone, titulo, sub, corpo) => `
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-3">
                     <div>
@@ -9428,7 +9659,7 @@
                 frases.push(`A irrigação usou **${fmtM3(saida)} m³** (${fmtLh(saida)} L) em ${diasIrrig} dia${diasIrrig === 1 ? '' : 's'}, ${formatDuration(minutosTotal)} de irrigação.`);
             } else frases.push('Nenhuma irrigação registrada no período.');
             if (entrada > 0) {
-                frases.push(`Os poços colocaram **${fmtM3(entrada)} m³**` + (saida > 0 ? ` e repõem **${fmtNum(entrada / saida * 100, 0)}%** do que foi usado.` : '.'));
+                frases.push(`Os poços colocaram **${fmtM3(entrada)} m³**` + (filtrado ? ' (todos os poços, sem filtro de bloco).' : saida > 0 ? ` e repõem **${fmtNum(entrada / saida * 100, 0)}%** do que foi usado.` : '.'));
             } else frases.push('Sem aferição de poço no período: não dá para saber quanto entrou.');
             if (maiorBloco) frases.push(`Bloco que mais usou água: **${rotuloBloco(maiorBloco.bloco)}**${culturaDe(maiorBloco.bloco) ? ` (${culturaDe(maiorBloco.bloco)})` : ''} com ${fmtLh(maiorBloco.litros)} L (${fmtNum(saida > 0 ? maiorBloco.litros / saida * 100 : 0, 0)}% do total).`);
             if (maisGasta && reais.length > 1) frases.push(`Sistema que mais usou água: **${maisGasta.tipo}** (${fmtNum(maisGasta.pct, 0)}% do total).` +
@@ -9444,7 +9675,7 @@
             const emResumo = `
                 <div class="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-4 shadow-sm">
                     <h2 class="text-base font-black text-emerald-800 flex items-center gap-2"><i data-lucide="sprout" class="w-5 h-5"></i> Em resumo</h2>
-                    <p class="text-[11px] font-bold text-emerald-700/70 mt-0.5">${escapeHtml(rotuloPeriodo(a.de, a.ate))}</p>
+                    <p class="text-[11px] font-bold text-emerald-700/70 mt-0.5">${escapeHtml(rotuloPeriodo(a.de, a.ate))}${filtrado ? ` · só ${blocosFiltro.length} bloco${blocosFiltro.length === 1 ? '' : 's'}: ${escapeHtml(blocosFiltro.map(rotuloBloco).join(', '))}` : ''}</p>
                     <ul class="mt-3 space-y-2">${frases.map(f => `<li class="flex items-start gap-2.5 text-sm text-slate-700 leading-snug">
                         <span class="mt-1.5 w-2 h-2 rounded-full shrink-0 bg-emerald-500"></span><span>${negrito(f)}</span></li>`).join('')}</ul>
                 </div>`;
@@ -9462,7 +9693,9 @@
             const cartoes = `<div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
                 ${cartao(COR_SAIDA, 'Água usada', saida > 0 ? `${fmtLh(saida)} L` : 'Sem dados', saida > 0 ? `${fmtM3(saida)} m³ · média ${fmtLh(saida / Math.max(1, diasIrrig))} L/dia` : 'nenhuma irrigação')}
                 ${cartao(COR_ENTRADA, 'Entrou (poços)', entrada > 0 ? `${fmtLh(entrada)} L` : 'Sem dados', entrada > 0 ? `${fmtM3(entrada)} m³ · ${diasAfer} dia${diasAfer === 1 ? '' : 's'} com aferição` : 'nenhuma aferição')}
-                ${cartao('#c3c2b7', 'Saldo', saida > 0 || entrada > 0 ? `${saldo >= 0 ? '+' : '−'}${fmtLh(Math.abs(saldo))} L` : 'Sem dados', saldo >= 0 ? 'entrou mais do que saiu' : 'saiu mais do que entrou')}
+                ${filtrado
+                    ? cartao('#c3c2b7', 'Saldo', '—', 'só com todos os blocos')
+                    : cartao('#c3c2b7', 'Saldo', saida > 0 || entrada > 0 ? `${saldo >= 0 ? '+' : '−'}${fmtLh(Math.abs(saldo))} L` : 'Sem dados', saldo >= 0 ? 'entrou mais do que saiu' : 'saiu mais do que entrou')}
                 ${cartao(COR_NIVEL, 'Tanque (média)', t0 && t0.media != null ? `${fmtNivel(t0.media)}${un}` : 'Sem dados', t0 && t0.ultimo != null ? `última leitura ${fmtNivel(t0.ultimo)}${un}` : 'nenhuma leitura')}
             </div>`;
 
@@ -10136,6 +10369,29 @@
             window.escolherTipoSistema(rascunhoBloco.length - 1, 'MicroAspersor');
         }
 
+        // Mudou o nº de válvulas: redesenha para atualizar a numeração e o botão de separar
+        window.alterarValvulasSistema = function(i, valor) {
+            rascunhoBloco[i].valvulas = valor;
+            renderDadosBlocos();
+        }
+
+        // Linha com N válvulas -> N linhas de 1 válvula (aspersores divididos), para informar a quantidade
+        // de cada válvula. As novas vão para o fim do bloco (é a ordem em que o banco grava).
+        window.separarValvulasBloco = function(i) {
+            const s = rascunhoBloco[i];
+            const n = Math.max(1, parseInt(s.valvulas) || 1);
+            if (n < 2) return;
+            const qtd = parseInt(String(s.qtd).replace(/\D/g, '')) || 0;
+            const base = Math.floor(qtd / n), resto = qtd - base * n;
+            s.valvulas = 1;
+            s.qtd = base + (resto > 0 ? 1 : 0);
+            for (let k = 1; k < n; k++) {
+                rascunhoBloco.push({ original: null, removido: false, tipo: s.tipo, tipoOutro: s.tipoOutro, vazao: s.vazao,
+                    qtd: base + (k < resto ? 1 : 0), valvulas: 1 });
+            }
+            renderDadosBlocos();
+        }
+
         window.removerSistemaBloco = function(i) {
             if (rascunhoBloco[i].original) rascunhoBloco[i].removido = true;
             else rascunhoBloco.splice(i, 1);
@@ -10155,8 +10411,14 @@
             const ICONES_TIPO = { 'MicroAspersor': 'droplets', 'Aspersor': 'cloud-drizzle', 'Fita Gotejo': 'droplet' };
             const personalizados = tiposPersonalizados();
 
+            // Numeração das válvulas (mesma ordem do registro: as linhas em ordem, N válvulas por linha)
+            let proximaValvula = 1;
             const sistemas = rascunhoBloco.map((s, i) => {
                 if (s.removido) return '';
+                const nValv = Math.max(1, parseInt(s.valvulas) || 1);
+                const primeiraValv = proximaValvula;
+                proximaValvula += nValv;
+                const rotuloValv = nValv === 1 ? `Válvula ${primeiraValv}` : `Válvulas ${primeiraValv} a ${primeiraValv + nValv - 1}`;
                 const nomeAtual = nomeTipoSistema(s);
                 const ehPersonalizado = s.tipo === 'Outro' && personalizados.includes(nomeAtual);
                 const chipsTipo = TIPOS_ASPERSOR.map(t => chip(s.tipo === t, `window.escolherTipoSistema(${i}, '${t}')`, ICONES_TIPO[t], t)).join('')
@@ -10171,6 +10433,7 @@
                     </div>` : '';
                 return `
                 <div class="py-3">
+                    <p class="text-[10px] font-black text-green-700 uppercase tracking-wider mb-1.5 flex items-center gap-1"><i data-lucide="git-branch" class="w-3 h-3"></i>${rotuloValv}</p>
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
                             ${rotulo('Tipo de aspersor')}
@@ -10189,9 +10452,16 @@
                         <label class="block">${rotulo('Aspersores')}
                             <input type="text" value="${s.qtd === '' || s.qtd == null ? '' : fmtNum(s.qtd, 0)}" inputmode="numeric" autocomplete="off" oninput="window.digitarQtdSistema(${i}, this)" class="${campo}"></label>
                         <label class="block">${rotulo('Válvulas')}
-                            <input type="number" value="${s.valvulas}" min="1" step="1" inputmode="numeric" oninput="window.alterarSistemaBloco(${i}, 'valvulas', this.value)" class="${campo}"></label>
+                            <input type="number" value="${s.valvulas}" min="1" step="1" inputmode="numeric" onchange="window.alterarValvulasSistema(${i}, this.value)" class="${campo}"></label>
                     </div>
                     ${chipsVazao}
+                    ${nValv > 1 ? `
+                    <div class="flex flex-wrap items-center justify-between gap-2 mt-2 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2">
+                        <span class="text-[10px] text-slate-500">Os aspersores são divididos igual entre as ${nValv} válvulas.</span>
+                        <button type="button" onclick="window.separarValvulasBloco(${i})"
+                            class="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-full bg-white border border-green-300 text-green-700 hover:bg-green-50">
+                            <i data-lucide="split" class="w-3 h-3"></i> Separar por válvula</button>
+                    </div>` : ''}
                 </div>`;
             }).join('');
 
