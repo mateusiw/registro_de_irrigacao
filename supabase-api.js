@@ -217,12 +217,19 @@
         return lista.length ? lista : null;
     }
 
+    // Ordem dos sistemas no bloco: MicroAspersor, Aspersor, outros e por último Fita Gotejo
+    function ordemSistema(tipo) {
+        const t = tipoSistema(tipo);
+        return t === 'MicroAspersor' ? 0 : t === 'Aspersor' ? 1 : t === 'Fita Gotejo' ? 3 : 2;
+    }
+
     // Válvulas de cada bloco: { bloco: [{ n, tipo, qtd, vazao, lh }] }, numeradas a partir de 1.
-    // Linhas dos Dados dos Blocos em ordem (id); uma linha com N válvulas vira N válvulas,
-    // cada uma com 1/N dos aspersores. Mesma regra do valvulas_do_bloco() do banco (minutos_por_valvula.sql).
+    // Linhas dos Dados dos Blocos em ordem de sistema (ordemSistema) e depois id; uma linha com N válvulas
+    // vira N válvulas, cada uma com 1/N dos aspersores. Mesma regra do valvulas_do_bloco() do banco (minutos_por_valvula.sql).
     function valvulasDoBloco(dados) {
         const mapa = {};
-        [...(dados || [])].sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0)).forEach(linha => {
+        [...(dados || [])].sort((a, b) => ordemSistema(a.tipo_aspersor) - ordemSistema(b.tipo_aspersor)
+            || (Number(a.id) || 0) - (Number(b.id) || 0)).forEach(linha => {
             const b = limparNomeBloco(linha.bloco);
             if (!b) return;
             const mv = String(linha.valvulas || '').match(/(\d+)/);
@@ -235,6 +242,13 @@
             for (let i = 0; i < n; i++) lista.push({ n: lista.length + 1, tipo: tipoSistema(tipoTxt), qtd: qtd / n, vazao, lh: qtd / n * vazao });
         });
         return mapa;
+    }
+
+    // Válvula de uma parte do registro ({ tipo, valvula }), só se o tipo bate. Registros feitos antes de
+    // mudar a numeração (micro antes da fita) podem apontar para outra válvula: aí usa a conta por sistema.
+    function valvulaDoRegistro(valvulasBloco, parte) {
+        const v = parte && parte.valvula && (valvulasBloco || [])[Number(parte.valvula) - 1];
+        return v && v.tipo === tipoSistema(parte.tipo) ? v : null;
     }
 
     // Erro do Supabase -> Error com status (status 0 = sem conexão)
@@ -743,7 +757,7 @@
             const sistemas = limparSistemas(rec.sistemas);
             const litros = sistemas
                 ? sistemas.reduce((s, x) => {
-                    const v = x.valvula && (valvulas[blocoApp] || [])[x.valvula - 1];
+                    const v = valvulaDoRegistro(valvulas[blocoApp], x);
                     const lh = v ? v.lh : infos.porSistema[x.tipo] ? lhUmaValvula(infos.porSistema[x.tipo]) : lhBloco;
                     return s + lh * x.minutos / 60;
                 }, 0)
@@ -1653,7 +1667,7 @@
         enviar, historico, programacaoAtual, listarVersoesBloco, listarRegistrosBloco, salvarProgramacaoItem, excluirProgramacaoItem,
         salvarRegistro, excluirRegistro, atualizarRegistroEquipe, excluirRegistroEquipe, salvarMotor, registrarEnvio,
         // dados dos blocos
-        limparNomeBloco, tipoSistema, valvulasDoBloco, listarDadosBlocos, salvarDadoBloco, excluirDadoBloco, recalcularVolumeBloco,
+        limparNomeBloco, tipoSistema, ordemSistema, valvulasDoBloco, valvulaDoRegistro, listarDadosBlocos, salvarDadoBloco, excluirDadoBloco, recalcularVolumeBloco,
         // água
         listarPocos, salvarPoco, listarLeiturasPocos, listarLeiturasDoPoco, salvarLeituraPoco, atualizarLeituraPoco, excluirLeituraPoco,
         listarReservatorios, salvarReservatorio, listarLeiturasReservatorios, listarLeiturasReservPeriodo, salvarLeituraReservatorio, atualizarLeituraReservatorio, excluirLeituraReservatorio,
