@@ -2948,7 +2948,8 @@
             const lista = (sistemas || []).filter(s => Number(s.minutos) > 0);
             lista.forEach(s => {
                 const m = Number(s.minutos);
-                const daValvula = s.valvula && campos.find(c => c.valvula === Number(s.valvula));
+                // Número da válvula só vale se o tipo bate (registros de antes da numeração micro -> fita)
+                const daValvula = s.valvula && campos.find(c => c.valvula === Number(s.valvula) && c.tipo === API.tipoSistema(s.tipo));
                 if (daValvula) return somar(daValvula, m);
                 const doTipo = campos.filter(c => c.valvula && c.tipo === API.tipoSistema(s.tipo));
                 if (!doTipo.length) {
@@ -8869,7 +8870,7 @@
                 : [];
             if (!partes.length) partes = total > 0 ? [{ tipo: tipos.length === 1 ? tipos[0] : SEM_DIVISAO, valvula: null, minutos: total }] : [];
             const lpmParte = p => {
-                const v = p.valvula && (valvulasBloco || [])[p.valvula - 1];
+                const v = API.valvulaDoRegistro(valvulasBloco, p);
                 return v ? v.lh / 60 : (vazoesBloco && vazoesBloco[p.tipo] || 0);
             };
             const pesos = partes.map(p => lpmParte(p) * p.minutos);
@@ -10282,7 +10283,9 @@
                 tipo: TIPOS_ASPERSOR.includes(d.tipo) ? d.tipo : 'Outro',
                 tipoOutro: TIPOS_ASPERSOR.includes(d.tipo) ? '' : d.tipo,
                 vazao: d.vazao, qtd: d.qtd, valvulas: d.valvulas
-            }));
+            })).map((s, i) => ({ s, i }))
+                .sort((a, b) => API.ordemSistema(nomeTipoSistema(a.s)) - API.ordemSistema(nomeTipoSistema(b.s)) || a.i - b.i)
+                .map(x => x.s);
             renderDadosBlocos();
         }
 
@@ -10411,13 +10414,16 @@
             const ICONES_TIPO = { 'MicroAspersor': 'droplets', 'Aspersor': 'cloud-drizzle', 'Fita Gotejo': 'droplet' };
             const personalizados = tiposPersonalizados();
 
-            // Numeração das válvulas (mesma ordem do registro: as linhas em ordem, N válvulas por linha)
+            // Numeração das válvulas (mesma ordem do registro: micro primeiro, fita por último; N válvulas por linha)
+            const primeiraValvDe = {};
             let proximaValvula = 1;
+            rascunhoBloco.map((s, i) => ({ s, i })).filter(x => !x.s.removido)
+                .sort((a, b) => API.ordemSistema(nomeTipoSistema(a.s)) - API.ordemSistema(nomeTipoSistema(b.s)) || a.i - b.i)
+                .forEach(({ s, i }) => { primeiraValvDe[i] = proximaValvula; proximaValvula += Math.max(1, parseInt(s.valvulas) || 1); });
             const sistemas = rascunhoBloco.map((s, i) => {
                 if (s.removido) return '';
                 const nValv = Math.max(1, parseInt(s.valvulas) || 1);
-                const primeiraValv = proximaValvula;
-                proximaValvula += nValv;
+                const primeiraValv = primeiraValvDe[i];
                 const rotuloValv = nValv === 1 ? `Válvula ${primeiraValv}` : `Válvulas ${primeiraValv} a ${primeiraValv + nValv - 1}`;
                 const nomeAtual = nomeTipoSistema(s);
                 const ehPersonalizado = s.tipo === 'Outro' && personalizados.includes(nomeAtual);
@@ -10652,7 +10658,9 @@
                 const culturaAtual = ((culturasCache.find(c => String(c.id) === bloco) || {}).cultura || '');
                 if (bloco === blocoEditando) return editorBlocoHtml(bloco, culturaAtual);
 
-                const linhasHtml = linhas.map(d => `
+                const linhasHtml = linhas.map((d, i) => ({ d, i }))
+                    .sort((a, b) => API.ordemSistema(a.d.tipo) - API.ordemSistema(b.d.tipo) || a.i - b.i)
+                    .map(({ d }) => `
                     <div class="py-2 text-[11px]">
                         <p class="font-bold text-slate-700">${escapeHtml(d.tipo)} ${fmtNum(d.vazao, d.vazao % 1 ? 1 : 0)} L/H · ${fmtNum(d.qtd, 0)} aspersores</p>
                         <p class="text-slate-400">${d.valvulas} válvula${d.valvulas > 1 ? 's' : ''} · atualizado ${d.data ? formatDate(d.data) : '—'}</p>
